@@ -77,6 +77,8 @@ final class Router
         if ($method === 'GET' && $path === '/api/admin/session') { $adminAuth->session(); return; }
         if ($method === 'POST' && $path === '/api/admin/login') { $adminAuth->login(); return; }
         if ($method === 'POST' && $path === '/api/admin/logout') { $adminAuth->logout(); return; }
+        if ($method === 'POST' && $path === '/api/admin/password/forgot') { $adminAuth->forgotPassword(); return; }
+        if ($method === 'POST' && $path === '/api/admin/password/reset') { $adminAuth->resetPassword(); return; }
         if ($method === 'GET' && $path === '/api/admin/media') { $adminMedia->index(); return; }
         if ($method === 'POST' && $path === '/api/admin/media') { $adminMedia->upload(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/media/(\d+)$#', $path, $m)) { $adminMedia->update((int) $m[1]); return; }
@@ -108,6 +110,7 @@ final class Router
         if ($method === 'DELETE' && preg_match('#^/api/admin/comments/(\d+)$#', $path, $m)) { $adminComments->delete((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/settings/seo') { $adminSettings->seo(); return; }
         if ($method === 'PUT' && $path === '/api/admin/settings/seo') { $adminSettings->updateSeo(); return; }
+        if ($method === 'POST' && $path === '/api/admin/settings/mail/test') { $adminSettings->testMail(); return; }
         if ($method === 'GET' && $path === '/api/admin/ad-slots') { $adminAds->slots(); return; }
         if ($method === 'GET' && $path === '/api/admin/ads') { $adminAds->index(); return; }
         if ($method === 'POST' && $path === '/api/admin/ads') { $adminAds->create(); return; }

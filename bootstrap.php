@@ -10,11 +10,6 @@ if (is_file($envFile)) {
     }
 }
 
-spl_autoload_register(static function (string $class): void {
-    if (str_starts_with($class, 'App\\')) {
-        $path = __DIR__ . '/app/' . str_replace('\\', '/', substr($class, 4)) . '.php';
-        if (is_file($path)) require $path;
-    }
-});
+require __DIR__ . '/vendor/autoload.php';
 
 (new Router())->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $_SERVER['REQUEST_URI'] ?? '/');

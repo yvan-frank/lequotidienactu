@@ -2,7 +2,8 @@
   "name": "lequotidienactu/media-platform",
   "description": "SEO-first news platform: PHP SSR/API plus React islands and admin.",
   "type": "project",
-  "require": { "php": ">=8.1" },
+  "require": { "php": ">=8.1",
+    "phpmailer/phpmailer": "^7.1" },
   "autoload": { "psr-4": { "App\\": "app/" } },
   "scripts": { "serve": "php -S localhost:8000 -t public public/router.php", "migrate": "php database/migrate.php" }
 }

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Support\Mailer;
 use App\Support\Settings;
 use PDOException;
 
@@ -35,6 +36,32 @@ final class AdminSettingsController
 
             Settings::set('seo', ['ga_measurement_id' => $gaId, 'gsc_verification' => $gscCode]);
             return ['data' => ['ga_measurement_id' => $gaId, 'gsc_verification' => $gscCode], 'message' => 'Paramètres SEO enregistrés.'];
+        });
+    }
+
+    public function testMail(): void
+    {
+        AdminAuthController::requireStaff(['admin']);
+        $this->respond(function (): array {
+            $input = json_decode(file_get_contents('php://input') ?: '[]', true, 512, JSON_THROW_ON_ERROR);
+            $to = filter_var(trim((string) ($input['to'] ?? '')), FILTER_VALIDATE_EMAIL);
+            if (!$to) {
+                throw new \InvalidArgumentException('Adresse e-mail de destination invalide.');
+            }
+
+            $appName = $_ENV['APP_NAME'] ?? 'Le Quotidien Actu';
+            $result = Mailer::send(
+                $to,
+                $to,
+                'Test SMTP — ' . $appName,
+                "Ceci est un e-mail de test envoyé depuis l’administration de {$appName}.\n\nSi vous le recevez, la configuration SMTP fonctionne correctement.\n"
+            );
+
+            if (!$result['success']) {
+                throw new \RuntimeException($result['error'] ?? 'Échec de l’envoi, raison inconnue.');
+            }
+
+            return ['message' => 'E-mail de test envoyé à ' . $to . '.'];
         });
     }
 

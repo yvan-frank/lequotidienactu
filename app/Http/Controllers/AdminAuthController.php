@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Support\Config;
+use App\Support\Mailer;
 use App\Support\RateLimiter;
 use PDO;
 use PDOException;
@@ -58,6 +60,100 @@ final class AdminAuthController
         } catch (PDOException) {
             $this->json(['message' => 'Base de données indisponible.'], 503);
         }
+    }
+
+    public function forgotPassword(): void
+    {
+        $this->startSession();
+        $input = $this->input();
+        $email = filter_var($input['email'] ?? '', FILTER_VALIDATE_EMAIL);
+        $generic = ['message' => 'Si un compte existe pour cette adresse, un e-mail de réinitialisation vient d’être envoyé.'];
+
+        if (!$email) {
+            $this->json($generic);
+            return;
+        }
+
+        try {
+            $pdo = $this->pdo();
+            if ((new RateLimiter($pdo))->tooManyAttempts('admin-forgot-password', 5, 900)) {
+                $this->json(['message' => 'Trop de tentatives. Réessayez dans quelques minutes.'], 429);
+                return;
+            }
+
+            $statement = $pdo->prepare('SELECT id, name, email, role FROM users WHERE email = :email LIMIT 1');
+            $statement->execute(['email' => $email]);
+            $user = $statement->fetch(PDO::FETCH_ASSOC);
+
+            if ($user && in_array($user['role'], self::STAFF_ROLES, true)) {
+                $token = bin2hex(random_bytes(32));
+                $tokenHash = hash('sha256', $token);
+                $expiresAt = date('Y-m-d H:i:s', time() + 3600);
+
+                $pdo->prepare('DELETE FROM password_resets WHERE user_id = :user_id')->execute(['user_id' => $user['id']]);
+                $pdo->prepare('INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (:user_id, :token_hash, :expires_at)')
+                    ->execute(['user_id' => $user['id'], 'token_hash' => $tokenHash, 'expires_at' => $expiresAt]);
+
+                $this->sendResetEmail($user['email'], $user['name'], $token);
+            }
+
+            $this->json($generic);
+        } catch (PDOException) {
+            $this->json(['message' => 'Base de données indisponible.'], 503);
+        }
+    }
+
+    public function resetPassword(): void
+    {
+        $this->startSession();
+        $input = $this->input();
+        $token = (string) ($input['token'] ?? '');
+        $password = (string) ($input['password'] ?? '');
+
+        if ($token === '' || mb_strlen($password) < 8) {
+            $this->json(['message' => 'Le mot de passe doit contenir au moins 8 caractères.'], 422);
+            return;
+        }
+
+        try {
+            $pdo = $this->pdo();
+            if ((new RateLimiter($pdo))->tooManyAttempts('admin-reset-password', 10, 900)) {
+                $this->json(['message' => 'Trop de tentatives. Réessayez dans quelques minutes.'], 429);
+                return;
+            }
+
+            $tokenHash = hash('sha256', $token);
+            $statement = $pdo->prepare('SELECT id, user_id, expires_at FROM password_resets WHERE token_hash = :token_hash LIMIT 1');
+            $statement->execute(['token_hash' => $tokenHash]);
+            $reset = $statement->fetch(PDO::FETCH_ASSOC);
+
+            if (!$reset || $reset['expires_at'] < date('Y-m-d H:i:s')) {
+                $this->json(['message' => 'Ce lien de réinitialisation est invalide ou a expiré.'], 422);
+                return;
+            }
+
+            $pdo->prepare('UPDATE users SET password_hash = :hash WHERE id = :id')
+                ->execute(['hash' => password_hash($password, PASSWORD_DEFAULT), 'id' => $reset['user_id']]);
+            $pdo->prepare('DELETE FROM password_resets WHERE user_id = :user_id')->execute(['user_id' => $reset['user_id']]);
+
+            $this->json(['message' => 'Mot de passe mis à jour. Vous pouvez maintenant vous connecter.']);
+        } catch (PDOException) {
+            $this->json(['message' => 'Base de données indisponible.'], 503);
+        }
+    }
+
+    private function sendResetEmail(string $to, string $name, string $token): void
+    {
+        $link = Config::url('/u/admin/reset-password') . '?token=' . urlencode($token);
+        $appName = $_ENV['APP_NAME'] ?? 'Le Quotidien Actu';
+
+        $subject = 'Réinitialisation de votre mot de passe — ' . $appName;
+        $body = "Bonjour {$name},\n\n"
+            . "Une demande de réinitialisation de mot de passe a été effectuée pour votre compte administrateur {$appName}.\n\n"
+            . "Cliquez sur le lien suivant pour choisir un nouveau mot de passe (valable 1 heure) :\n{$link}\n\n"
+            . "Si vous n’êtes pas à l’origine de cette demande, ignorez simplement cet e-mail.\n";
+
+        Mailer::send($to, $name, $subject, $body);
     }
 
     public function logout(): void

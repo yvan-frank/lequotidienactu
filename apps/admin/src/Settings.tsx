@@ -1,6 +1,6 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, ExternalLink, Search } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Mail, Search } from 'lucide-react';
 import { api } from './api';
 import { Toast } from './components/Toast';
 
@@ -145,7 +145,66 @@ export function Settings() {
           </div>
         </form>
       )}
+
+      <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-lg bg-orange-50 text-orange-700">
+            <Mail size={20} />
+          </span>
+          <div>
+            <h3 className="font-bold">Test SMTP</h3>
+            <p className="text-sm text-slate-500">
+              Vérifie que l'envoi d'e-mails (réinitialisation de mot de passe, etc.) fonctionne.
+            </p>
+          </div>
+        </div>
+        <MailTestForm />
+      </section>
+
       {toast && <Toast message={toast.message} tone={toast.tone} onClose={() => setToast(null)} />}
     </>
+  );
+}
+
+function MailTestForm() {
+  const [to, setTo] = React.useState('');
+  const test = useMutation({
+    mutationFn: () => api.post<{ message: string }>('/admin/settings/mail/test', { to }),
+  });
+
+  return (
+    <form
+      className="mt-5 flex flex-wrap items-end gap-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        test.mutate();
+      }}
+    >
+      <label className={`min-w-0 flex-1 ${labelClass}`}>
+        Adresse de destination
+        <input
+          required
+          type="email"
+          className={inputClass}
+          placeholder="vous@exemple.fr"
+          value={to}
+          onChange={(event) => setTo(event.target.value)}
+        />
+      </label>
+      <button
+        disabled={test.isPending}
+        className="rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+      >
+        {test.isPending ? 'Envoi…' : 'Envoyer un e-mail test'}
+      </button>
+      {test.isSuccess && (
+        <p className="w-full text-sm font-semibold text-emerald-700">{test.data.data.message}</p>
+      )}
+      {test.isError && (
+        <p className="w-full text-sm font-semibold text-red-700">
+          {apiErrorMessage(test.error, "Échec de l'envoi.")}
+        </p>
+      )}
+    </form>
   );
 }

@@ -52,9 +52,159 @@ import './styles.css';
 type AdminUser = { id: number; name: string; email: string; role: 'admin' | 'editor' | 'author' };
 type AdminSession = { authenticated: boolean; user: AdminUser | null; csrf_token: string | null };
 
+const ForgotPassword = ({ onBack }: { onBack: () => void }) => {
+  const [email, setEmail] = React.useState('');
+  const forgot = useMutation({
+    mutationFn: () => api.post<{ message: string }>('/admin/password/forgot', { email }),
+  });
+
+  if (forgot.isSuccess) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-stone-100 p-6 text-slate-900">
+        <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm">
+          <p className="text-sm font-semibold text-orange-700">Le Quotidien Actu</p>
+          <h1 className="mt-2 text-2xl font-bold">Vérifiez votre boîte mail</h1>
+          <p className="mt-3 text-sm leading-relaxed text-slate-600">
+            {forgot.data.data.message}
+          </p>
+          <button
+            onClick={onBack}
+            className="mt-6 w-full rounded bg-orange-700 px-4 py-3 font-semibold text-white hover:bg-orange-800"
+          >
+            Retour à la connexion
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="grid min-h-screen place-items-center bg-stone-100 p-6 text-slate-900">
+      <form
+        className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm"
+        onSubmit={(event) => {
+          event.preventDefault();
+          forgot.mutate();
+        }}
+      >
+        <p className="text-sm font-semibold text-orange-700">Le Quotidien Actu</p>
+        <h1 className="mt-2 text-2xl font-bold">Mot de passe oublié</h1>
+        <p className="mt-3 text-sm text-slate-600">
+          Indiquez votre adresse e-mail, nous vous enverrons un lien de réinitialisation.
+        </p>
+        <label className="mt-5 block text-sm font-semibold">
+          E-mail
+          <input
+            required
+            className="mt-2 w-full rounded border border-slate-300 px-3 py-2"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoFocus
+          />
+        </label>
+        <button
+          disabled={forgot.isPending}
+          className="mt-6 w-full rounded bg-orange-700 px-4 py-3 font-semibold text-white hover:bg-orange-800 disabled:opacity-60"
+        >
+          {forgot.isPending ? 'Envoi…' : 'Envoyer le lien'}
+        </button>
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-3 w-full rounded px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+        >
+          Retour à la connexion
+        </button>
+      </form>
+    </main>
+  );
+};
+
+const ResetPassword = ({ token }: { token: string }) => {
+  const [password, setPassword] = React.useState('');
+  const [confirm, setConfirm] = React.useState('');
+  const mismatch = confirm.length > 0 && password !== confirm;
+  const reset = useMutation({
+    mutationFn: () => api.post<{ message: string }>('/admin/password/reset', { token, password }),
+  });
+
+  if (reset.isSuccess) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-stone-100 p-6 text-slate-900">
+        <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm">
+          <p className="text-sm font-semibold text-orange-700">Le Quotidien Actu</p>
+          <h1 className="mt-2 text-2xl font-bold">Mot de passe mis à jour</h1>
+          <p className="mt-3 text-sm leading-relaxed text-slate-600">{reset.data.data.message}</p>
+          <a
+            href="/u/admin"
+            className="mt-6 block w-full rounded bg-orange-700 px-4 py-3 text-center font-semibold text-white hover:bg-orange-800"
+          >
+            Se connecter
+          </a>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="grid min-h-screen place-items-center bg-stone-100 p-6 text-slate-900">
+      <form
+        className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!mismatch) reset.mutate();
+        }}
+      >
+        <p className="text-sm font-semibold text-orange-700">Le Quotidien Actu</p>
+        <h1 className="mt-2 text-2xl font-bold">Choisir un nouveau mot de passe</h1>
+        <label className="mt-5 block text-sm font-semibold">
+          Nouveau mot de passe
+          <input
+            required
+            minLength={8}
+            className="mt-2 w-full rounded border border-slate-300 px-3 py-2"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoFocus
+          />
+          <span className="mt-1 block text-xs text-slate-400">8 caractères minimum</span>
+        </label>
+        <label className="mt-4 block text-sm font-semibold">
+          Confirmer le mot de passe
+          <input
+            required
+            className="mt-2 w-full rounded border border-slate-300 px-3 py-2"
+            type="password"
+            value={confirm}
+            onChange={(event) => setConfirm(event.target.value)}
+          />
+          {mismatch && (
+            <span className="mt-1 block text-xs text-red-600">Les mots de passe ne correspondent pas.</span>
+          )}
+        </label>
+        {reset.isError && (
+          <Toast
+            message={(reset.error as any)?.response?.data?.message ?? 'Impossible de réinitialiser ce mot de passe.'}
+            onClose={() => reset.reset()}
+          />
+        )}
+        <button
+          disabled={reset.isPending || mismatch || password === ''}
+          className="mt-6 w-full rounded bg-orange-700 px-4 py-3 font-semibold text-white hover:bg-orange-800 disabled:opacity-60"
+        >
+          {reset.isPending ? 'Mise à jour…' : 'Réinitialiser le mot de passe'}
+        </button>
+      </form>
+    </main>
+  );
+};
+
 const Login = () => {
   const [email, setEmail] = React.useState('admin@lequotidienactu.local');
   const [password, setPassword] = React.useState('');
+  const [showForgot, setShowForgot] = React.useState(false);
   const login = useMutation({
     mutationFn: () => api.post<{ user: AdminUser; csrf_token: string }>('/admin/login', { email, password }),
     onSuccess: (response) => {
@@ -62,6 +212,8 @@ const Login = () => {
       window.location.assign('/u/admin');
     },
   });
+
+  if (showForgot) return <ForgotPassword onBack={() => setShowForgot(false)} />;
 
   return (
     <main className="grid min-h-screen place-items-center bg-stone-100 p-6 text-slate-900">
@@ -93,6 +245,13 @@ const Login = () => {
             autoFocus
           />
         </label>
+        <button
+          type="button"
+          onClick={() => setShowForgot(true)}
+          className="mt-2 text-sm font-semibold text-orange-700 hover:text-orange-800"
+        >
+          Mot de passe oublié ?
+        </button>
         {login.isError && (
           <Toast
             message="Identifiants invalides ou accès non autorisé."
@@ -149,6 +308,11 @@ const AdminGate = () => {
       collapsed ? '76px' : '250px',
     );
   }, [collapsed]);
+
+  const resetToken = new URLSearchParams(window.location.search).get('token');
+  if (window.location.pathname.startsWith('/u/admin/reset-password') && resetToken) {
+    return <ResetPassword token={resetToken} />;
+  }
 
   if (session.isLoading)
     return (
