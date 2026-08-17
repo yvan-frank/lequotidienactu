@@ -12,10 +12,10 @@ pnpm-lock.yaml.*
 
 # Build output generated into public/assets/ — keep hand-authored source
 # (public.js, favicons, logos) tracked; only ignore what a build regenerates.
-/public/assets/public.css
-/public/assets/islands.js
-/public/assets/islands-*.js
-/public/assets/islands*.css
+# /public/assets/public.css
+# /public/assets/islands.js
+# /public/assets/islands-*.js
+# /public/assets/islands*.css
 
 /public/uploads/*
 !/public/uploads/.gitkeep

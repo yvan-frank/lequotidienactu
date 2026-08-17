@@ -1,0 +1,25 @@
+# Apache front-controller config, mirrors public/router.php (used by the PHP
+# built-in server in local dev via `composer serve`). Only needed when this
+# app is served by Apache/mod_rewrite in production.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Admin SPA assets are built into public/admin/assets/, but the app links
+  # to them under /u/admin/assets/ — remap before the catch-all below.
+  RewriteRule ^u/admin/assets/(.*)$ admin/assets/$1 [L]
+
+  # Serve existing files and directories (images, sitemap.xsl, vendor/, etc.) directly.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Everything else goes through the front controller.
+  RewriteRule ^ index.php [L]
+</IfModule>
+
+# Defense in depth: never serve dotfiles (.env, .git, .htaccess itself) even
+# if the document root is ever misconfigured to include them.
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>
