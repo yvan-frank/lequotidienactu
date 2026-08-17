@@ -1,0 +1,179 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Http;
+
+use App\Http\Controllers\ApiController;
+use App\Http\Controllers\AdminAdsController;
+use App\Http\Controllers\AdminArticleController;
+use App\Http\Controllers\AdminAuthController;
+use App\Http\Controllers\AdminCommentController;
+use App\Http\Controllers\AdminMediaController;
+use App\Http\Controllers\AdminRedirectController;
+use App\Http\Controllers\AdminSettingsController;
+use App\Http\Controllers\AdminTaxonomyController;
+use App\Http\Controllers\PublicController;
+use App\Http\Controllers\SeoController;
+use App\Seo\RedirectService;
+
+final class Router
+{
+    public function dispatch(string $method, string $uri): void
+    {
+        $path = rtrim(parse_url($uri, PHP_URL_PATH) ?: '/', '/') ?: '/';
+        $public = new PublicController();
+        $api = new ApiController();
+        $adminArticles = new AdminArticleController();
+        $adminAuth = new AdminAuthController();
+        $adminMedia = new AdminMediaController();
+        $adminTaxonomy = new AdminTaxonomyController();
+        $adminRedirects = new AdminRedirectController();
+        $adminComments = new AdminCommentController();
+        $adminSettings = new AdminSettingsController();
+        $adminAds = new AdminAdsController();
+        $seo = new SeoController();
+
+        if ($method === 'GET' && ($path === '/u/admin' || str_starts_with($path, '/u/admin/'))) {
+            $this->admin();
+            return;
+        }
+
+        $redirect = (new RedirectService())->destinationFor($path);
+        if ($redirect !== null) {
+            http_response_code((int) $redirect['status_code']);
+            header('Location: ' . $redirect['destination_url']);
+            return;
+        }
+
+        if ($method === 'GET' && $path === '/robots.txt') {
+            $seo->robots();
+            return;
+        }
+        if ($method === 'GET' && $path === '/sitemap.xml') {
+            $seo->sitemap();
+            return;
+        }
+        if ($method === 'GET' && $path === '/sitemap-news.xml') {
+            $seo->newsSitemap();
+            return;
+        }
+        if ($method === 'GET' && $path === '/sitemap-pages.xml') {
+            $seo->pagesSitemap();
+            return;
+        }
+        if ($method === 'GET' && $path === '/sitemap-categories.xml') {
+            $seo->categoriesSitemap();
+            return;
+        }
+        if ($method === 'GET' && $path === '/sitemap-articles.xml') {
+            $seo->articlesSitemap();
+            return;
+        }
+
+        if ($method === 'GET' && $path === '/api/articles') {
+            $api->articles();
+            return;
+        }
+        if ($method === 'GET' && $path === '/api/admin/session') { $adminAuth->session(); return; }
+        if ($method === 'POST' && $path === '/api/admin/login') { $adminAuth->login(); return; }
+        if ($method === 'POST' && $path === '/api/admin/logout') { $adminAuth->logout(); return; }
+        if ($method === 'GET' && $path === '/api/admin/media') { $adminMedia->index(); return; }
+        if ($method === 'POST' && $path === '/api/admin/media') { $adminMedia->upload(); return; }
+        if ($method === 'PUT' && preg_match('#^/api/admin/media/(\d+)$#', $path, $m)) { $adminMedia->update((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/articles') { $adminArticles->index(); return; }
+        if ($method === 'GET' && $path === '/api/admin/taxonomy') { $adminArticles->taxonomy(); return; }
+        if ($method === 'POST' && $path === '/api/admin/articles') { $adminArticles->create(); return; }
+        if ($method === 'GET' && preg_match('#^/api/admin/articles/(\d+)$#', $path, $m)) { $adminArticles->show((int) $m[1]); return; }
+        if ($method === 'PUT' && preg_match('#^/api/admin/articles/(\d+)$#', $path, $m)) { $adminArticles->update((int) $m[1]); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/articles/(\d+)$#', $path, $m)) { $adminArticles->delete((int) $m[1]); return; }
+        if ($method === 'POST' && preg_match('#^/api/admin/articles/(\d+)/transition$#', $path, $m)) { $adminArticles->transition((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/categories') { $adminTaxonomy->categories(); return; }
+        if ($method === 'POST' && $path === '/api/admin/categories') { $adminTaxonomy->createCategory(); return; }
+        if ($method === 'PUT' && preg_match('#^/api/admin/categories/(\d+)$#', $path, $m)) { $adminTaxonomy->updateCategory((int) $m[1]); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/categories/(\d+)$#', $path, $m)) { $adminTaxonomy->deleteCategory((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/tags') { $adminTaxonomy->tags(); return; }
+        if ($method === 'POST' && $path === '/api/admin/tags') { $adminTaxonomy->createTag(); return; }
+        if ($method === 'PUT' && preg_match('#^/api/admin/tags/(\d+)$#', $path, $m)) { $adminTaxonomy->updateTag((int) $m[1]); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/tags/(\d+)$#', $path, $m)) { $adminTaxonomy->deleteTag((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/authors') { $adminTaxonomy->authors(); return; }
+        if ($method === 'POST' && $path === '/api/admin/authors') { $adminTaxonomy->createAuthor(); return; }
+        if ($method === 'PUT' && preg_match('#^/api/admin/authors/(\d+)$#', $path, $m)) { $adminTaxonomy->updateAuthor((int) $m[1]); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/authors/(\d+)$#', $path, $m)) { $adminTaxonomy->deleteAuthor((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/redirects') { $adminRedirects->index(); return; }
+        if ($method === 'POST' && $path === '/api/admin/redirects') { $adminRedirects->create(); return; }
+        if ($method === 'PUT' && preg_match('#^/api/admin/redirects/(\d+)$#', $path, $m)) { $adminRedirects->update((int) $m[1]); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/redirects/(\d+)$#', $path, $m)) { $adminRedirects->delete((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/comments') { $adminComments->index(); return; }
+        if ($method === 'PUT' && preg_match('#^/api/admin/comments/(\d+)$#', $path, $m)) { $adminComments->update((int) $m[1]); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/comments/(\d+)$#', $path, $m)) { $adminComments->delete((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/settings/seo') { $adminSettings->seo(); return; }
+        if ($method === 'PUT' && $path === '/api/admin/settings/seo') { $adminSettings->updateSeo(); return; }
+        if ($method === 'GET' && $path === '/api/admin/ad-slots') { $adminAds->slots(); return; }
+        if ($method === 'GET' && $path === '/api/admin/ads') { $adminAds->index(); return; }
+        if ($method === 'POST' && $path === '/api/admin/ads') { $adminAds->create(); return; }
+        if ($method === 'PUT' && preg_match('#^/api/admin/ads/(\d+)$#', $path, $m)) { $adminAds->update((int) $m[1]); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/ads/(\d+)$#', $path, $m)) { $adminAds->delete((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/search') {
+            $api->search();
+            return;
+        }
+        if ($method === 'POST' && $path === '/api/newsletter/subscribe') {
+            $api->subscribe();
+            return;
+        }
+        if ($method === 'GET' && preg_match('#^/api/articles/(\d+)/reactions$#', $path, $m)) { $api->reactions((int) $m[1]); return; }
+        if ($method === 'POST' && preg_match('#^/api/articles/(\d+)/reactions$#', $path, $m)) { $api->react((int) $m[1]); return; }
+        if ($method === 'GET' && preg_match('#^/api/articles/(\d+)/comments$#', $path, $m)) { $api->comments((int) $m[1]); return; }
+        if ($method === 'POST' && preg_match('#^/api/articles/(\d+)/comments$#', $path, $m)) { $api->postComment((int) $m[1]); return; }
+        if ($method === 'POST' && preg_match('#^/api/ads/(\d+)/click$#', $path, $m)) { $api->adClick((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/') {
+            $public->home();
+            return;
+        }
+        if ($method === 'GET' && $path === '/recherche') {
+            $public->search();
+            return;
+        }
+        if ($method === 'GET' && preg_match('#^/([a-z0-9-]+)$#', $path, $m)) {
+            if ($public->categoryExists($m[1])) {
+                $public->category($m[1]);
+                return;
+            }
+
+            $this->notFound();
+            return;
+        }
+        if ($method === 'GET' && preg_match('#^/([a-z0-9-]+)/([a-z0-9-]+)$#', $path, $m)) {
+            if ($public->articleExists($m[1], $m[2])) {
+                $public->article($m[1], $m[2]);
+                return;
+            }
+
+            $this->notFound();
+            return;
+        }
+
+        $this->notFound();
+    }
+
+    private function notFound(): void
+    {
+        http_response_code(404);
+        $title = 'Page introuvable';
+        $page = '404';
+        require __DIR__ . '/../Views/layout.php';
+    }
+
+    private function admin(): void
+    {
+        $index = dirname(__DIR__, 2) . '/public/admin/index.html';
+        if (!is_file($index)) {
+            http_response_code(503);
+            echo 'Le back-office doit être compilé : pnpm build:admin';
+            return;
+        }
+
+        header('Content-Type: text/html; charset=utf-8');
+        readfile($index);
+    }
+}

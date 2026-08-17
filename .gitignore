@@ -1,0 +1,24 @@
+.idea/*
+.env
+.env.*.local
+/vendor/
+/node_modules/
+/apps/admin/node_modules/
+/public/admin/
+/apps/public/node_modules/
+/apps/public/dist/
+*.tsbuildinfo
+pnpm-lock.yaml.*
+
+# Build output generated into public/assets/ — keep hand-authored source
+# (public.js, favicons, logos) tracked; only ignore what a build regenerates.
+/public/assets/public.css
+/public/assets/islands.js
+/public/assets/islands-*.js
+/public/assets/islands*.css
+
+/public/uploads/*
+!/public/uploads/.gitkeep
+/storage/logs/*.log
+/storage/uploads/*
+!/storage/uploads/.gitkeep

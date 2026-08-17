@@ -1,0 +1,1 @@
+<section class="max-w-3xl py-8"><h1 class="text-4xl font-extrabold tracking-tight md:text-6xl">Page introuvable</h1><p class="mt-5"><a class="font-semibold text-brand-600 hover:text-brand-700" href="/">Retour à l’accueil</a></p></section>

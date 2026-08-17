@@ -1,0 +1,20 @@
+{
+  "name": "lequotidienactu",
+  "private": true,
+  "scripts": {
+    "install:admin": "pnpm --dir apps/admin install",
+    "dev:admin": "pnpm --dir apps/admin dev",
+    "build:admin": "pnpm --dir apps/admin build",
+    "build:public": "tailwindcss -i ./resources/css/public.css -o ./public/assets/public.css --minify",
+    "format": "prettier --write \"**/*.{css,html,js,json,md,ts,tsx}\" --ignore-path .gitignore"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.13",
+    "@tailwindcss/typography": "^0.5.20",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4.1.13"
+  },
+  "dependencies": {
+    "swiper": "^12.1.0"
+  }
+}

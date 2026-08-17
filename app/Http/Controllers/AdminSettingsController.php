@@ -1,0 +1,62 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Http\Controllers;
+
+use App\Support\Settings;
+use PDOException;
+
+final class AdminSettingsController
+{
+    private const SEO_DEFAULTS = ['ga_measurement_id' => '', 'gsc_verification' => ''];
+
+    public function seo(): void
+    {
+        AdminAuthController::requireStaff();
+        $this->respond(function (): array {
+            return ['data' => Settings::get('seo', self::SEO_DEFAULTS)];
+        });
+    }
+
+    public function updateSeo(): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        $this->respond(function (): array {
+            $input = json_decode(file_get_contents('php://input') ?: '[]', true, 512, JSON_THROW_ON_ERROR);
+            $gaId = trim((string) ($input['ga_measurement_id'] ?? ''));
+            $gscCode = trim((string) ($input['gsc_verification'] ?? ''));
+
+            if ($gaId !== '' && !preg_match('/^(G|UA|GT)-[A-Za-z0-9-]+$/', $gaId)) {
+                throw new \InvalidArgumentException('Identifiant Google Analytics invalide (format attendu : G-XXXXXXX).');
+            }
+            if (mb_strlen($gscCode) > 255) {
+                throw new \InvalidArgumentException('Code de vérification Google Search Console trop long.');
+            }
+
+            Settings::set('seo', ['ga_measurement_id' => $gaId, 'gsc_verification' => $gscCode]);
+            return ['data' => ['ga_measurement_id' => $gaId, 'gsc_verification' => $gscCode], 'message' => 'Paramètres SEO enregistrés.'];
+        });
+    }
+
+    private function respond(callable $operation, int $success = 200): void
+    {
+        try {
+            http_response_code($success);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($operation(), JSON_THROW_ON_ERROR);
+        } catch (\InvalidArgumentException $e) {
+            $this->error($e->getMessage(), 422);
+        } catch (PDOException) {
+            $this->error('Base de données indisponible.', 503);
+        } catch (\Throwable $e) {
+            $this->error($e->getMessage(), 500);
+        }
+    }
+
+    private function error(string $message, int $status): void
+    {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['message' => $message]);
+    }
+}
