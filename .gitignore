@@ -4,7 +4,8 @@
 /vendor/
 /node_modules/
 /apps/admin/node_modules/
-/public/admin/
+# /public/admin/ — commented out: build committed and pushed rather than
+# rebuilt on the server (no Node/pnpm on this host's deploy path).
 /apps/public/node_modules/
 /apps/public/dist/
 *.tsbuildinfo
