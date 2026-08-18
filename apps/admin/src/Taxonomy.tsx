@@ -758,7 +758,7 @@ export function Taxonomy() {
         <h2 className="text-3xl font-bold">Rubriques, tags & auteurs</h2>
         <p className="mt-1 text-sm text-slate-500">Structurez la taxonomie éditoriale du site.</p>
       </header>
-      <div className="mt-6 grid gap-6">
+      <div className="mt-6 grid grid-cols-1 gap-6">
         <CategoriesPanel setToast={setToast} />
         <TagsPanel setToast={setToast} />
         <AuthorsPanel setToast={setToast} />

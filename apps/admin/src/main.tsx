@@ -503,7 +503,7 @@ const Dashboard = () => {
       {stats.isError && <p className="mt-6 text-red-700">Impossible de charger les statistiques.</p>}
       {stats.data && (
         <>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
             <Link to="/articles" className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:border-orange-300 hover:shadow-md">
               <b className="block text-3xl">{stats.data.published_articles}</b>
               <span className="text-slate-500">Articles publiés</span>
@@ -804,7 +804,7 @@ const Articles = () => {
       </header>
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div
-          className="flex max-w-full gap-2 overflow-x-auto pb-1"
+          className="no-scrollbar flex max-w-full snap-x scroll-px-4 gap-2 overflow-x-auto scroll-smooth pb-1"
           role="tablist"
           aria-label="Filtrer les articles par statut"
         >
@@ -813,8 +813,11 @@ const Articles = () => {
               key={value}
               role="tab"
               aria-selected={filter === value}
-              onClick={() => setFilter(value)}
-              className={`shrink-0 rounded-full px-3 py-2 text-sm font-semibold transition ${filter === value ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100'}`}
+              onClick={(event) => {
+                setFilter(value);
+                event.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+              }}
+              className={`shrink-0 snap-center rounded-full px-3 py-2 text-sm font-semibold transition ${filter === value ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100'}`}
             >
               {label}
             </button>
@@ -938,7 +941,7 @@ const Articles = () => {
             </table>
           </section>
         ) : (
-          <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {articles.data.map((article) => (
               <article
                 className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"

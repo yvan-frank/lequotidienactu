@@ -111,7 +111,7 @@ function SeoPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
             event.preventDefault();
             save.mutate();
           }}
-          className="grid gap-6"
+          className="grid grid-cols-1 gap-6"
         >
           <section className="rounded-xl border border-slate-200 bg-white p-6">
             <div className="flex items-center gap-3">

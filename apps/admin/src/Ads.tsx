@@ -261,7 +261,7 @@ export function Ads() {
                 automatiquement quel que soit le contenu.
               </span>
             </label>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className={labelClass}>
                 Début de diffusion
                 <input

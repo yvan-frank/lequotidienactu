@@ -64,7 +64,7 @@ export function Newsletter() {
       </header>
 
       {meta && (
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-5">
             <span className="grid size-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
               <CheckCircle2 size={20} />
@@ -95,7 +95,7 @@ export function Newsletter() {
         </div>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
           {subscribers.isLoading && <p className="p-6 text-slate-500">Chargement…</p>}
           {subscribers.isError && <p className="p-6 text-red-700">Impossible de charger les abonnés.</p>}
