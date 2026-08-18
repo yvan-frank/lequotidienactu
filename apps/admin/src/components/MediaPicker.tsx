@@ -103,7 +103,7 @@ export function MediaPicker({ onClose, onSelect, selectedId }: MediaPickerProps)
           </button>
         </div>
         {tab === 'upload' ? (
-          <div className="grid gap-6 overflow-y-auto p-6 md:grid-cols-[1.15fr_.85fr]">
+          <div className="grid grid-cols-1 gap-6 overflow-y-auto p-6 md:grid-cols-[1.15fr_.85fr]">
             <button
               type="button"
               className="grid min-h-72 place-items-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center transition hover:border-orange-500 hover:bg-orange-50"

@@ -23,6 +23,7 @@ import {
   ListOrdered,
   Loader2,
   Maximize2,
+  Megaphone,
   Minimize2,
   Newspaper,
   Palette,
@@ -38,6 +39,7 @@ import { MediaPicker, type Media } from './components/MediaPicker';
 import { Toast } from './components/Toast';
 import { CategoryCombobox, TagsInput } from './components/TaxonomyPicker';
 import { ArticleEmbed } from './extensions/ArticleEmbed';
+import { AdEmbed } from './extensions/AdEmbed';
 
 type Taxonomy = {
   categories: { id: number; parent_id: number | null; name: string; slug: string }[];
@@ -342,6 +344,7 @@ function EditorToolbar({
   onInsertImage: () => void;
   onInsertArticleEmbed: () => void;
 }) {
+  const onInsertAdEmbed = () => editor?.chain().focus().insertAdEmbed().run();
   const [linkOpen, setLinkOpen] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
 
@@ -437,6 +440,9 @@ function EditorToolbar({
       <ToolbarButton label="À lire aussi" onClick={onInsertArticleEmbed}>
         <Newspaper size={16} />
       </ToolbarButton>
+      <ToolbarButton label="Annonce In-Article" onClick={onInsertAdEmbed}>
+        <Megaphone size={16} />
+      </ToolbarButton>
       <span className="mx-1 h-5 w-px bg-slate-300" aria-hidden="true" />
       <div className="relative ml-auto">
         <ToolbarButton label="Couleur du texte" onClick={() => setColorOpen((current) => !current)}>
@@ -513,6 +519,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
       TiptapTextStyle,
       TiptapColor,
       ArticleEmbed,
+      AdEmbed,
     ],
     content: '',
     editorProps: {
@@ -727,8 +734,8 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
 
   return (
     <div className="mx-auto max-w-6xl">
-      <header className="flex items-center justify-between gap-4">
-        <div>
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-orange-700">
             CMS / {articleId ? 'Modifier un article' : 'Nouvel article'}
           </p>
@@ -765,7 +772,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
           </p>
         </div>
       )}
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="space-y-6">
           <details open className="rounded-lg border border-slate-200 bg-white p-6">
             <summary className="cursor-pointer font-semibold">Titre & aperçu</summary>

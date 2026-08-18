@@ -30,7 +30,7 @@ final class ArticleEmbeds
         $rendered = $rendered ?? $bodyHtml;
 
         $rendered = preg_replace_callback(
-            '/<p[^>]*>\s*\[pub-in-article\]\s*<\/p>|\[pub-in-article\]/i',
+            '/<div\b[^>]*\bdata-ad-in-article\b[^>]*><\/div>|<p[^>]*>\s*\[pub-in-article\]\s*<\/p>|\[pub-in-article\]/i',
             static fn (): string => self::renderInArticleAd(),
             $rendered
         );
@@ -39,9 +39,11 @@ final class ArticleEmbeds
     }
 
     /**
-     * Replaces the [pub-in-article] shortcode — typed directly by editors
-     * anywhere in the article body — with the "article_in_article" ad slot.
-     * Can appear multiple times; each occurrence renders its own ad.
+     * Replaces "In-Article Ad" placeholders — inserted via the toolbar
+     * button in the article editor (<div data-ad-in-article></div>), or
+     * typed manually as the [pub-in-article] shortcode — with the
+     * "article_in_article" ad slot. Can appear multiple times; each
+     * occurrence renders its own ad.
      */
     private static function renderInArticleAd(): string
     {
