@@ -9,7 +9,7 @@ use PDOException;
 
 final class AdminSettingsController
 {
-    private const SEO_DEFAULTS = ['ga_measurement_id' => '', 'gsc_verification' => ''];
+    private const SEO_DEFAULTS = ['ga_measurement_id' => '', 'gsc_verification' => '', 'adsense_client' => ''];
 
     public function seo(): void
     {
@@ -26,6 +26,7 @@ final class AdminSettingsController
             $input = json_decode(file_get_contents('php://input') ?: '[]', true, 512, JSON_THROW_ON_ERROR);
             $gaId = trim((string) ($input['ga_measurement_id'] ?? ''));
             $gscCode = trim((string) ($input['gsc_verification'] ?? ''));
+            $adsenseClient = trim((string) ($input['adsense_client'] ?? ''));
 
             if ($gaId !== '' && !preg_match('/^(G|UA|GT)-[A-Za-z0-9-]+$/', $gaId)) {
                 throw new \InvalidArgumentException('Identifiant Google Analytics invalide (format attendu : G-XXXXXXX).');
@@ -33,9 +34,13 @@ final class AdminSettingsController
             if (mb_strlen($gscCode) > 255) {
                 throw new \InvalidArgumentException('Code de vérification Google Search Console trop long.');
             }
+            if ($adsenseClient !== '' && !preg_match('/^ca-pub-\d{10,20}$/', $adsenseClient)) {
+                throw new \InvalidArgumentException('Identifiant AdSense invalide (format attendu : ca-pub-XXXXXXXXXXXXXXXX).');
+            }
 
-            Settings::set('seo', ['ga_measurement_id' => $gaId, 'gsc_verification' => $gscCode]);
-            return ['data' => ['ga_measurement_id' => $gaId, 'gsc_verification' => $gscCode], 'message' => 'Paramètres SEO enregistrés.'];
+            $data = ['ga_measurement_id' => $gaId, 'gsc_verification' => $gscCode, 'adsense_client' => $adsenseClient];
+            Settings::set('seo', $data);
+            return ['data' => $data, 'message' => 'Paramètres SEO enregistrés.'];
         });
     }
 

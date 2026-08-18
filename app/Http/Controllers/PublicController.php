@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Seo\SeoManager;
+use App\Support\Categories;
 use PDO;
 use PDOException;
 
@@ -16,8 +17,49 @@ final class PublicController
         $title = 'Le Quotidien Actu - L’actualité qui compte';
         $page = 'home';
         $articles = $this->publishedArticles();
+        $featured = $this->featuredArticles($articles, 5);
+        $categorySpotlights = $this->categorySpotlights();
         $seo = (new SeoManager())->forHome();
         require __DIR__ . '/../../Views/layout.php';
+    }
+
+    /**
+     * Editor-picked articles (starred in the admin article list) first,
+     * padded with the most recent ones if fewer than $limit were picked.
+     */
+    private function featuredArticles(array $articles, int $limit): array
+    {
+        $featured = array_values(array_filter($articles, static fn (array $item): bool => !empty($item['is_featured'])));
+        if (count($featured) >= $limit) {
+            return array_slice($featured, 0, $limit);
+        }
+
+        $featuredIds = array_column($featured, 'id');
+        $padding = array_values(array_filter($articles, static fn (array $item): bool => !in_array($item['id'], $featuredIds, true)));
+        return array_slice(array_merge($featured, $padding), 0, $limit);
+    }
+
+    /**
+     * One spotlight per top-level category that actually has published
+     * content — replaces the old hardcoded Afrique/Business/Tech sections
+     * so every rubrique gets a homepage presence once it has articles.
+     */
+    private function categorySpotlights(): array
+    {
+        $spotlights = [];
+        foreach (Categories::tree() as $category) {
+            $items = Categories::spotlight((int) $category['id'], 4);
+            if ($items === []) {
+                continue;
+            }
+            $spotlights[] = [
+                'name' => $category['name'],
+                'slug' => $category['slug'],
+                'main' => $items[0],
+                'list' => array_slice($items, 1, 3),
+            ];
+        }
+        return $spotlights;
     }
 
     public function category(string $slug): void
@@ -139,7 +181,7 @@ final class PublicController
             if (is_array($category) && $category === []) {
                 return [];
             }
-            $sql = 'SELECT a.id, a.category_id, a.title, a.slug, a.excerpt, a.body, a.status, a.published_at, a.updated_at, a.meta_title, a.meta_description, a.is_sponsored, c.slug AS category, c.name AS category_name, au.display_name AS author, au.slug AS author_slug, au.bio AS author_bio, m.path AS hero_image, m.credit AS hero_credit, m.alt_text AS hero_alt FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN authors au ON au.id = a.author_id INNER JOIN media m ON m.id = a.hero_media_id WHERE 1 = 1';
+            $sql = 'SELECT a.id, a.category_id, a.title, a.slug, a.excerpt, a.body, a.status, a.published_at, a.updated_at, a.meta_title, a.meta_description, a.is_sponsored, a.is_featured, c.slug AS category, c.name AS category_name, au.display_name AS author, au.slug AS author_slug, au.bio AS author_bio, m.path AS hero_image, m.credit AS hero_credit, m.alt_text AS hero_alt FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN authors au ON au.id = a.author_id INNER JOIN media m ON m.id = a.hero_media_id WHERE 1 = 1';
             $params = [];
             if (is_array($category)) {
                 $placeholders = [];

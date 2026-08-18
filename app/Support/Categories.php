@@ -64,6 +64,38 @@ final class Categories
         }
     }
 
+    /**
+     * Up to $limit published articles for a category or its direct
+     * children, newest first — used to build the homepage's per-category
+     * spotlight sections.
+     */
+    public static function spotlight(int $categoryId, int $limit = 4): array
+    {
+        try {
+            $pdo = self::pdo();
+            $ids = [$categoryId];
+            $children = $pdo->prepare('SELECT id FROM categories WHERE parent_id = :id');
+            $children->execute(['id' => $categoryId]);
+            foreach ($children->fetchAll(PDO::FETCH_COLUMN) as $childId) {
+                $ids[] = (int) $childId;
+            }
+
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $statement = $pdo->prepare(
+                "SELECT a.title, a.slug, a.excerpt, c.slug AS category, c.name AS category_name, m.path AS hero_image
+                 FROM articles a
+                 INNER JOIN categories c ON c.id = a.category_id
+                 LEFT JOIN media m ON m.id = a.hero_media_id
+                 WHERE a.category_id IN ($placeholders) AND a.status = 'published' AND a.published_at <= NOW()
+                 ORDER BY a.published_at DESC LIMIT " . max(1, $limit)
+            );
+            $statement->execute($ids);
+            return $statement->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException) {
+            return [];
+        }
+    }
+
     private static function pdo(): PDO
     {
         return new PDO(sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', $_ENV['DB_HOST'] ?? '127.0.0.1', $_ENV['DB_PORT'] ?? '3306', $_ENV['DB_DATABASE'] ?? ''), $_ENV['DB_USERNAME'] ?? 'root', $_ENV['DB_PASSWORD'] ?? '', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);

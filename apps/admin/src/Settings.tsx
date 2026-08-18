@@ -1,10 +1,10 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, ExternalLink, Mail, Search } from 'lucide-react';
+import { CheckCircle2, DollarSign, ExternalLink, Mail, Search } from 'lucide-react';
 import { api } from './api';
 import { Toast } from './components/Toast';
 
-type SeoSettings = { ga_measurement_id: string; gsc_verification: string };
+type SeoSettings = { ga_measurement_id: string; gsc_verification: string; adsense_client: string };
 type ToastState = { message: string; tone: 'error' | 'success' } | null;
 
 const inputClass =
@@ -70,7 +70,11 @@ export function Settings() {
 
 function SeoPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
   const queryClient = useQueryClient();
-  const [form, setForm] = React.useState<SeoSettings>({ ga_measurement_id: '', gsc_verification: '' });
+  const [form, setForm] = React.useState<SeoSettings>({
+    ga_measurement_id: '',
+    gsc_verification: '',
+    adsense_client: '',
+  });
   const [loaded, setLoaded] = React.useState(false);
 
   const settings = useQuery({
@@ -175,6 +179,46 @@ function SeoPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
                 rel="noreferrer"
               >
                 Ouvrir Search Console <ExternalLink size={12} />
+              </a>
+            </p>
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-6">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-lg bg-orange-50 text-orange-700">
+                <DollarSign size={20} />
+              </span>
+              <div>
+                <h3 className="font-bold">Google AdSense</h3>
+                <p className="text-sm text-slate-500">
+                  Identifiant éditeur, pour la vérification du site et les Auto ads.
+                </p>
+              </div>
+              {form.adsense_client && (
+                <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                  Actif
+                </span>
+              )}
+            </div>
+            <label className={`mt-5 ${labelClass}`}>
+              Identifiant éditeur (client)
+              <input
+                className={inputClass}
+                placeholder="ca-pub-XXXXXXXXXXXXXXXX"
+                value={form.adsense_client}
+                onChange={(event) => setForm({ ...form, adsense_client: event.target.value })}
+              />
+            </label>
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400">
+              Dans AdSense, sous Compte → Informations sur le compte. Insère la balise de
+              vérification du site automatiquement sur toutes les pages. Laissez vide pour désactiver.
+              <a
+                className="inline-flex items-center gap-1 font-semibold text-orange-700 hover:underline"
+                href="https://adsense.google.com/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Ouvrir AdSense <ExternalLink size={12} />
               </a>
             </p>
           </section>

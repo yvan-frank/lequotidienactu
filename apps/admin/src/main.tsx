@@ -36,6 +36,7 @@ import {
   Route as RouteIcon,
   Send,
   Settings,
+  Star,
   Table2,
   Tags,
   Trash2,
@@ -438,36 +439,33 @@ const AdminGate = () => {
       </aside>
 
       <div className={`min-h-screen md:transition-[margin] md:duration-200 ${collapsed ? 'md:ml-[76px]' : 'md:ml-[250px]'}`}>
-        <header className="sticky top-0 z-30 flex min-h-20 items-center justify-between gap-4 border-b border-slate-200 bg-white/95 px-6 py-3 backdrop-blur md:px-12">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-30 flex h-11 items-center justify-between gap-4 border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-8">
+          <div className="flex min-w-0 items-center gap-2">
             <button
               onClick={() => setMobileNavOpen(true)}
-              className="rounded p-2 text-slate-600 hover:bg-slate-100 md:hidden"
+              className="rounded p-1.5 text-slate-600 hover:bg-slate-100 md:hidden"
               aria-label="Ouvrir le menu"
             >
-              <Menu size={20} />
+              <Menu size={16} />
             </button>
-            <div>
-              <p className="text-xs font-bold tracking-widest text-orange-700 uppercase">
-                Administration
-              </p>
-              <p className="mt-1 text-sm text-slate-500">Gérez l’actualité en temps réel.</p>
-            </div>
+            <p className="truncate text-xs font-bold tracking-widest text-orange-700 uppercase">
+              Administration
+            </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <a
-              className="hidden rounded px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 sm:inline-flex sm:items-center sm:gap-2"
+              className="hidden rounded px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 sm:inline-flex sm:items-center sm:gap-1.5"
               href="/"
               target="_blank"
               rel="noreferrer"
             >
-              <ExternalLink size={16} /> Voir le site
+              <ExternalLink size={13} /> Voir le site
             </a>
             <Link
-              className="inline-flex items-center gap-2 rounded bg-orange-700 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-800"
+              className="inline-flex items-center gap-1.5 rounded bg-orange-700 px-2.5 py-1 text-xs font-semibold text-white hover:bg-orange-800"
               to="/articles/new"
             >
-              <FilePlus2 size={17} /> Nouvel article
+              <FilePlus2 size={13} /> Nouvel article
             </Link>
           </div>
         </header>
@@ -565,6 +563,7 @@ type Article = {
   created_at: string;
   updated_at: string;
   is_sponsored: number | boolean;
+  is_featured: number | boolean;
 };
 const formatDateTime = (value: string) =>
   new Date(value.replace(' ', 'T')).toLocaleString('fr-FR', {
@@ -737,6 +736,22 @@ const Articles = () => {
         message: error.response?.data?.message ?? 'Impossible de mettre à jour cet article.',
       }),
   });
+  const toggleFeatured = useMutation({
+    mutationFn: ({ id, featured }: { id: number; featured: boolean }) =>
+      api.post(`/admin/articles/${id}/featured`, { is_featured: featured }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-articles'] });
+      setToast({
+        tone: 'success',
+        message: variables.featured ? 'Article mis en avant.' : 'Article retiré de la mise en avant.',
+      });
+    },
+    onError: (error: any) =>
+      setToast({
+        tone: 'error',
+        message: error.response?.data?.message ?? 'Impossible de mettre à jour cet article.',
+      }),
+  });
   const remove = useMutation({
     mutationFn: (id: number) => api.delete(`/admin/articles/${id}`),
     onSuccess: () => {
@@ -860,6 +875,24 @@ const Articles = () => {
                   >
                     <td className="max-w-md px-5 py-4">
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() =>
+                            toggleFeatured.mutate({ id: article.id, featured: !article.is_featured })
+                          }
+                          className={`rounded p-1 transition ${
+                            Boolean(article.is_featured)
+                              ? 'text-amber-500 hover:text-amber-600'
+                              : 'text-slate-300 hover:text-amber-500'
+                          }`}
+                          aria-label={
+                            article.is_featured
+                              ? `Retirer ${article.title} de la mise en avant`
+                              : `Mettre ${article.title} en avant`
+                          }
+                          title={article.is_featured ? 'Mis en avant' : 'Mettre en avant'}
+                        >
+                          <Star size={16} fill={article.is_featured ? 'currentColor' : 'none'} />
+                        </button>
                         <p className="font-bold text-slate-900">{article.title}</p>
                         {Boolean(article.is_sponsored) && (
                           <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold tracking-wide text-amber-800 uppercase">
@@ -918,6 +951,24 @@ const Articles = () => {
                     {statusLabels[article.status] ?? article.status}
                   </span>
                   <div className="flex items-center gap-1">
+                    <button
+                      onClick={() =>
+                        toggleFeatured.mutate({ id: article.id, featured: !article.is_featured })
+                      }
+                      className={`rounded p-1 transition ${
+                        Boolean(article.is_featured)
+                          ? 'text-amber-500 hover:text-amber-600'
+                          : 'text-slate-300 hover:text-amber-500'
+                      }`}
+                      aria-label={
+                        article.is_featured
+                          ? `Retirer ${article.title} de la mise en avant`
+                          : `Mettre ${article.title} en avant`
+                      }
+                      title={article.is_featured ? 'Mis en avant' : 'Mettre en avant'}
+                    >
+                      <Star size={16} fill={article.is_featured ? 'currentColor' : 'none'} />
+                    </button>
                     <Link
                       to="/articles/$articleId"
                       params={{ articleId: String(article.id) }}

@@ -1,7 +1,7 @@
 <?php
 /** @var string $title */
 $currentPath = rtrim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/', '/') ?: '/';
-$seoSettings = \App\Support\Settings::get('seo', ['ga_measurement_id' => '', 'gsc_verification' => '']);
+$seoSettings = \App\Support\Settings::get('seo', ['ga_measurement_id' => '', 'gsc_verification' => '', 'adsense_client' => '']);
 $categoryTree = \App\Support\Categories::tree();
 if ($categoryTree === []) {
     $categoryTree = array_map(
@@ -55,6 +55,10 @@ if ($categoryTree === []) {
       gtag('config', '<?= htmlspecialchars($seoSettings['ga_measurement_id'], ENT_QUOTES) ?>');
     </script>
   <?php endif; ?>
+  <?php if (!empty($seoSettings['adsense_client']) && empty($isPreview)): ?>
+    <meta name="google-adsense-account" content="<?= htmlspecialchars($seoSettings['adsense_client']) ?>">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=<?= htmlspecialchars($seoSettings['adsense_client']) ?>" crossorigin="anonymous"></script>
+  <?php endif; ?>
 </head>
 <body class="overflow-x-hidden bg-stone-50 font-sans text-slate-900 antialiased">
   <header data-site-header class="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur transition-all duration-300">
@@ -68,7 +72,7 @@ if ($categoryTree === []) {
         $childSlugs = array_column($children, 'slug');
         $currentFirstSegment = explode('/', trim($currentPath, '/'))[0] ?? '';
         $isActive = $currentFirstSegment === $slug || in_array($currentFirstSegment, $childSlugs, true);
-        $featured = $navItem['id'] ? \App\Support\Categories::latestArticle((int) $navItem['id']) : null;
+        $megaMenuFeatured = $navItem['id'] ? \App\Support\Categories::latestArticle((int) $navItem['id']) : null;
         ?>
         <details class="group" data-mega-menu>
           <summary class="relative z-30 flex cursor-pointer list-none items-center gap-1.5 rounded px-2.5 py-2 leading-none transition marker:hidden hover:bg-stone-100 hover:text-brand-600 focus:outline-none focus-visible:text-brand-700 group-open:rounded-t-md group-open:rounded-b-none group-open:border group-open:border-b-stone-50 group-open:border-slate-200 group-open:bg-stone-50 group-open:px-4 group-open:font-semibold group-open:text-brand-700 after:absolute after:top-full after:right-0 after:left-0 after:hidden after:h-6 after:bg-stone-50 group-open:after:block <?= $isActive ? 'bg-stone-50 font-semibold text-brand-700' : 'text-slate-700' ?>"><span><?= htmlspecialchars($navItem['name']) ?></span><svg class="mt-px size-3.5 shrink-0 transition-transform duration-200 group-open:rotate-180" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></svg></summary>
@@ -88,10 +92,10 @@ if ($categoryTree === []) {
                     </ul>
                   <?php endif; ?>
                 </section>
-                <?php if ($featured !== null): ?>
+                <?php if ($megaMenuFeatured !== null): ?>
                   <article class="rounded-lg bg-slate-950 p-6 text-white">
                     <p class="text-xs font-bold tracking-widest text-orange-200 uppercase">Article à la une</p>
-                    <h2 class="mt-3 text-xl leading-snug font-bold"><a class="hover:text-orange-200" href="/<?= htmlspecialchars($featured['category_slug']) ?>/<?= htmlspecialchars($featured['slug']) ?>"><?= htmlspecialchars($featured['title']) ?></a></h2>
+                    <h2 class="mt-3 text-xl leading-snug font-bold"><a class="hover:text-orange-200" href="/<?= htmlspecialchars($megaMenuFeatured['category_slug']) ?>/<?= htmlspecialchars($megaMenuFeatured['slug']) ?>"><?= htmlspecialchars($megaMenuFeatured['title']) ?></a></h2>
                     <p class="mt-5 text-sm text-slate-300">Lire l’analyse de la rédaction →</p>
                   </article>
                 <?php endif; ?>
@@ -148,10 +152,54 @@ if ($categoryTree === []) {
     </figure>
   </div>
   <main class="mx-auto max-w-7xl px-6 py-10"><?php require __DIR__ . '/' . ($page ?? '404') . '.php'; ?></main>
-  <footer class="w-full border-t border-slate-200 bg-white text-sm">
-    <div class="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-6 md:flex-row md:items-center md:justify-between">
-      <p>© <?= date('Y') ?> Le Quotidien Actu</p>
-      <form class="flex gap-2" data-island="newsletter"><label class="sr-only" for="newsletter-email">La newsletter</label><input class="rounded border border-slate-300 px-3 py-2" id="newsletter-email" type="email" name="email" placeholder="vous@exemple.fr" required><button class="rounded bg-brand-600 px-4 py-2 font-semibold text-white hover:bg-brand-700">S’inscrire</button></form>
+  <footer class="w-full bg-slate-950 text-slate-300">
+    <div class="mx-auto grid max-w-7xl gap-10 px-6 py-14 md:grid-cols-[1.3fr_2fr] lg:grid-cols-[1.3fr_2.2fr_1fr]">
+      <div class="max-w-sm">
+        <a class="inline-flex items-center" href="/" aria-label="Le Quotidien Actu - accueil">
+          <img class="h-10 w-auto max-w-40 object-contain object-left" src="/assets/logo-header.png" alt="Le Quotidien Actu" width="1482" height="720">
+        </a>
+        <p class="mt-4 text-sm leading-relaxed text-slate-400">
+          L’actualité Afrique francophone, France et diaspora : décryptée, vérifiée, sans détour.
+        </p>
+        <form class="mt-6 grid gap-2" data-island="newsletter">
+          <label class="text-xs font-bold tracking-widest text-slate-400 uppercase" for="newsletter-email">Newsletter</label>
+          <div class="flex gap-2">
+            <input class="min-w-0 flex-1 rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-brand-600 focus:outline-none" id="newsletter-email" type="email" name="email" placeholder="vous@exemple.fr" required>
+            <button class="shrink-0 rounded bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">S’inscrire</button>
+          </div>
+        </form>
+      </div>
+
+      <nav class="grid grid-cols-2 gap-8 sm:grid-cols-3" aria-label="Rubriques (pied de page)">
+        <?php foreach ($categoryTree as $navItem): ?>
+          <div>
+            <a class="text-xs font-bold tracking-widest text-white uppercase hover:text-brand-400" href="/<?= htmlspecialchars($navItem['slug']) ?>"><?= htmlspecialchars($navItem['name']) ?></a>
+            <?php if (!empty($navItem['children'])): ?>
+              <ul class="mt-3 grid gap-2">
+                <?php foreach (array_slice($navItem['children'], 0, 5) as $child): ?>
+                  <li><a class="text-sm text-slate-400 hover:text-white" href="/<?= htmlspecialchars($child['slug']) ?>"><?= htmlspecialchars($child['name']) ?></a></li>
+                <?php endforeach; ?>
+              </ul>
+            <?php endif; ?>
+          </div>
+        <?php endforeach; ?>
+      </nav>
+
+      <div>
+        <p class="text-xs font-bold tracking-widest text-white uppercase">Ressources</p>
+        <ul class="mt-3 grid gap-2 text-sm">
+          <li><a class="text-slate-400 hover:text-white" href="/recherche">Recherche</a></li>
+          <li><a class="text-slate-400 hover:text-white" href="/feed.xml">Flux RSS</a></li>
+          <li><a class="text-slate-400 hover:text-white" href="/sitemap.xml">Plan du site</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="border-t border-slate-800">
+      <div class="mx-auto flex max-w-7xl flex-col gap-2 px-6 py-5 text-xs text-slate-500 md:flex-row md:items-center md:justify-between">
+        <p>© <?= date('Y') ?> Le Quotidien Actu. Tous droits réservés.</p>
+        <p>Conçu pour l’actualité Afrique, France & diaspora.</p>
+      </div>
     </div>
   </footer>
   <script type="module" src="/assets/public.js"></script>

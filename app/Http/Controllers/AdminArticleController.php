@@ -20,7 +20,7 @@ final class AdminArticleController
             if ($status !== 'all' && !in_array($status, self::STATUSES, true)) {
                 throw new \InvalidArgumentException('Filtre de statut invalide.');
             }
-            $sql = 'SELECT a.id, a.title, a.slug, a.status, a.published_at, a.created_at, a.updated_at, a.is_sponsored, c.name AS category_name, c.slug AS category_slug, au.display_name AS author_name FROM articles a LEFT JOIN categories c ON c.id = a.category_id LEFT JOIN authors au ON au.id = a.author_id';
+            $sql = 'SELECT a.id, a.title, a.slug, a.status, a.published_at, a.created_at, a.updated_at, a.is_sponsored, a.is_featured, c.name AS category_name, c.slug AS category_slug, au.display_name AS author_name FROM articles a LEFT JOIN categories c ON c.id = a.category_id LEFT JOIN authors au ON au.id = a.author_id';
             $statement = $pdo->prepare($status === 'all' ? $sql . ' ORDER BY a.updated_at DESC LIMIT 50' : $sql . ' WHERE a.status = :status ORDER BY a.updated_at DESC LIMIT 50');
             $statement->execute($status === 'all' ? [] : ['status' => $status]);
             $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
@@ -91,6 +91,23 @@ final class AdminArticleController
             $statement = $pdo->prepare('UPDATE articles SET status = :status, published_at = :published_at WHERE id = :id');
             $statement->execute(['status' => $status, 'published_at' => $publishedAt, 'id' => $id]);
             return ['message' => 'Workflow mis à jour.'];
+        });
+    }
+
+    public function toggleFeatured(int $id): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        $this->respond(function (PDO $pdo) use ($id): array {
+            $input = $this->input();
+            $featured = !empty($input['is_featured']) ? 1 : 0;
+            $statement = $pdo->prepare('UPDATE articles SET is_featured = :featured WHERE id = :id');
+            $statement->execute(['featured' => $featured, 'id' => $id]);
+            if ($statement->rowCount() === 0) {
+                $exists = $pdo->prepare('SELECT 1 FROM articles WHERE id = :id');
+                $exists->execute(['id' => $id]);
+                if (!$exists->fetchColumn()) throw new \InvalidArgumentException('Article introuvable.');
+            }
+            return ['message' => $featured ? 'Article mis en avant.' : 'Article retiré de la mise en avant.'];
         });
     }
 

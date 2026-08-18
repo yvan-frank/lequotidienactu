@@ -103,6 +103,7 @@ final class Router
         if ($method === 'PUT' && preg_match('#^/api/admin/articles/(\d+)$#', $path, $m)) { $adminArticles->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/articles/(\d+)$#', $path, $m)) { $adminArticles->delete((int) $m[1]); return; }
         if ($method === 'POST' && preg_match('#^/api/admin/articles/(\d+)/transition$#', $path, $m)) { $adminArticles->transition((int) $m[1]); return; }
+        if ($method === 'POST' && preg_match('#^/api/admin/articles/(\d+)/featured$#', $path, $m)) { $adminArticles->toggleFeatured((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/categories') { $adminTaxonomy->categories(); return; }
         if ($method === 'POST' && $path === '/api/admin/categories') { $adminTaxonomy->createCategory(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/categories/(\d+)$#', $path, $m)) { $adminTaxonomy->updateCategory((int) $m[1]); return; }

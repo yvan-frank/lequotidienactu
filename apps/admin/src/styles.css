@@ -7,7 +7,7 @@ button:not(:disabled),
 
 :root {
   --admin-sidebar-width: 250px;
-  --admin-header-height: 5rem;
+  --admin-header-height: 2.75rem;
 }
 
 @media (max-width: 767px) {

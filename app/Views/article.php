@@ -4,6 +4,7 @@ $categoryName = $article['category_name'] ?? ucfirst($categorySlug);
 $canonicalUrl = rtrim($_ENV['APP_URL'] ?? 'http://localhost:8000', '/') . '/' . $categorySlug . '/' . ($article['slug'] ?? '');
 $authorInitial = mb_strtoupper(mb_substr($article['author'] ?? '?', 0, 1));
 $showUpdated = !empty($article['updated_at_display']) && !empty($article['published_at']) && $article['updated_at_display'] !== $article['published_at'];
+$articleBody = \App\Support\ArticleEmbeds::render($article['body'] ?? '<p>' . htmlspecialchars($article['excerpt'] ?? '') . '</p>');
 ?>
 <div data-reading-progress class="fixed inset-x-0 top-0 z-50 -translate-y-full bg-white/95 backdrop-blur transition-transform duration-300" aria-hidden="true">
   <div class="mx-auto flex max-w-7xl items-center gap-3 px-5 py-2.5">
@@ -77,7 +78,7 @@ $showUpdated = !empty($article['updated_at_display']) && !empty($article['publis
   <?php endif; ?>
 
   <div data-reading-start class="prose prose-slate mt-8 max-w-none font-serif text-xl leading-relaxed text-slate-700 prose-headings:font-sans prose-headings:font-extrabold prose-blockquote:border-brand-600 prose-blockquote:font-medium prose-blockquote:not-italic prose-a:text-brand-600 prose-img:rounded-xl">
-<?= $article['body'] ?? '<p>' . htmlspecialchars($article['excerpt'] ?? '') . '</p>' ?>
+<?= $articleBody ?>
   </div>
 
   <?php if (!empty($tags)): ?>
@@ -141,17 +142,6 @@ $showUpdated = !empty($article['updated_at_display']) && !empty($article['publis
 
 <aside class="space-y-6 lg:sticky lg:top-20">
   <div class="min-h-64"><?= \App\Support\Ads::renderSlot('article_sidebar', 'Publicité · 300 × 250') ?></div>
-
-  <div class="rounded-xl border border-slate-200 bg-white p-5">
-    <p class="text-xs font-bold tracking-widest text-brand-600 uppercase">Newsletter</p>
-    <h3 class="mt-2 text-lg font-bold">Ne manquez rien</h3>
-    <p class="mt-2 text-sm text-slate-600">Recevez chaque semaine l’essentiel de l’actualité Afrique, France et diaspora.</p>
-    <form class="mt-4 grid gap-2" data-island="newsletter">
-      <label class="sr-only" for="sidebar-newsletter-email">Adresse e-mail</label>
-      <input class="w-full rounded border border-slate-300 px-3 py-2 text-sm" id="sidebar-newsletter-email" type="email" name="email" placeholder="vous@exemple.fr" required>
-      <button class="rounded bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">S’inscrire</button>
-    </form>
-  </div>
 
   <?php if (!empty($sidebarArticles)): ?>
     <div class="rounded-xl border border-slate-200 bg-white p-5">

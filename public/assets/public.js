@@ -19,6 +19,7 @@ if (document.querySelector('.featured-swiper')) {
     keyboard: { enabled: true },
     navigation: { nextEl: '.featured-next', prevEl: '.featured-prev' },
     pagination: { el: '.featured-pagination', clickable: true },
+    autoplay: { delay: 6000, disableOnInteraction: false, pauseOnMouseEnter: true },
   });
 }
 
@@ -118,7 +119,12 @@ const readingStart = document.querySelector('[data-reading-start]');
 
 if (siteHeader) {
   const updateHeaderState = () => {
-    siteHeader.dataset.scrolled = window.scrollY > 24 ? 'true' : 'false';
+    const alreadyScrolled = siteHeader.dataset.scrolled === 'true';
+    const shrinkAt = 40;
+    const growAt = 16;
+    siteHeader.dataset.scrolled = alreadyScrolled
+      ? (window.scrollY > growAt ? 'true' : 'false')
+      : (window.scrollY > shrinkAt ? 'true' : 'false');
 
     if (readingProgress && readingStart) {
       const rect = readingStart.getBoundingClientRect();
@@ -136,9 +142,18 @@ if (siteHeader) {
       }
     }
   };
+  let headerStateQueued = false;
+  const queueHeaderStateUpdate = () => {
+    if (headerStateQueued) return;
+    headerStateQueued = true;
+    requestAnimationFrame(() => {
+      headerStateQueued = false;
+      updateHeaderState();
+    });
+  };
   updateHeaderState();
-  window.addEventListener('scroll', updateHeaderState, { passive: true });
-  window.addEventListener('resize', updateHeaderState);
+  window.addEventListener('scroll', queueHeaderStateUpdate, { passive: true });
+  window.addEventListener('resize', queueHeaderStateUpdate);
 }
 
 const lightboxTargets = document.querySelectorAll(

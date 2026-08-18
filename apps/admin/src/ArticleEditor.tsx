@@ -24,6 +24,7 @@ import {
   Loader2,
   Maximize2,
   Minimize2,
+  Newspaper,
   Palette,
   Quote,
   Redo2,
@@ -32,9 +33,11 @@ import {
   Undo2,
 } from 'lucide-react';
 import { api } from './api';
+import { ArticlePicker, type ArticleSummary } from './components/ArticlePicker';
 import { MediaPicker, type Media } from './components/MediaPicker';
 import { Toast } from './components/Toast';
 import { CategoryCombobox, TagsInput } from './components/TaxonomyPicker';
+import { ArticleEmbed } from './extensions/ArticleEmbed';
 
 type Taxonomy = {
   categories: { id: number; parent_id: number | null; name: string; slug: string }[];
@@ -333,9 +336,11 @@ function ColorPopover({ editor, onClose }: { editor: Editor | null; onClose: () 
 function EditorToolbar({
   editor,
   onInsertImage,
+  onInsertArticleEmbed,
 }: {
   editor: Editor | null;
   onInsertImage: () => void;
+  onInsertArticleEmbed: () => void;
 }) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
@@ -429,6 +434,9 @@ function EditorToolbar({
       <ToolbarButton label="Insérer une image" onClick={onInsertImage}>
         <ImageIcon size={16} />
       </ToolbarButton>
+      <ToolbarButton label="À lire aussi" onClick={onInsertArticleEmbed}>
+        <Newspaper size={16} />
+      </ToolbarButton>
       <span className="mx-1 h-5 w-px bg-slate-300" aria-hidden="true" />
       <div className="relative ml-auto">
         <ToolbarButton label="Couleur du texte" onClick={() => setColorOpen((current) => !current)}>
@@ -468,6 +476,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
   const [isSponsored, setIsSponsored] = useState(false);
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [bodyImagePickerOpen, setBodyImagePickerOpen] = useState(false);
+  const [articlePickerOpen, setArticlePickerOpen] = useState(false);
   const [tagIds, setTagIds] = useState<number[]>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [contentExpanded, setContentExpanded] = useState(false);
@@ -503,6 +512,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
       TiptapImage,
       TiptapTextStyle,
       TiptapColor,
+      ArticleEmbed,
     ],
     content: '',
     editorProps: {
@@ -806,7 +816,11 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
                     <Maximize2 size={14} /> Agrandir
                   </button>
                 </div>
-                <EditorToolbar editor={editor} onInsertImage={() => setBodyImagePickerOpen(true)} />
+                <EditorToolbar
+                  editor={editor}
+                  onInsertImage={() => setBodyImagePickerOpen(true)}
+                  onInsertArticleEmbed={() => setArticlePickerOpen(true)}
+                />
                 <EditorContent editor={editor} />
               </div>
             </details>
@@ -1130,7 +1144,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
             contentVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
           }`}
           style={{
-            top: 'var(--admin-header-height, 5rem)',
+            top: 'var(--admin-header-height, 2.75rem)',
             left: 'var(--admin-sidebar-width, 250px)',
             right: 0,
             bottom: 0,
@@ -1151,7 +1165,11 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
             </button>
           </div>
           <div className="flex min-h-0 flex-1 flex-col px-6 pb-6">
-            <EditorToolbar editor={editor} onInsertImage={() => setBodyImagePickerOpen(true)} />
+            <EditorToolbar
+              editor={editor}
+              onInsertImage={() => setBodyImagePickerOpen(true)}
+              onInsertArticleEmbed={() => setArticlePickerOpen(true)}
+            />
             <div className="editor-fullscreen min-h-0 flex-1 overflow-y-auto">
               <EditorContent editor={editor} className="h-full" />
             </div>
@@ -1185,6 +1203,25 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
           onSelect={(media) => {
             editor?.chain().focus().setImage({ src: media.url, alt: media.alt_text ?? '' }).run();
             setBodyImagePickerOpen(false);
+          }}
+        />
+      )}
+      {articlePickerOpen && (
+        <ArticlePicker
+          excludeId={effectiveArticleId}
+          onClose={() => setArticlePickerOpen(false)}
+          onSelect={(article: ArticleSummary) => {
+            editor
+              ?.chain()
+              .focus()
+              .insertArticleEmbed({
+                articleId: article.id,
+                title: article.title,
+                categorySlug: article.category_slug,
+                slug: article.slug,
+              })
+              .run();
+            setArticlePickerOpen(false);
           }}
         />
       )}
