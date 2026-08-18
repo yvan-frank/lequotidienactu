@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Support\Config;
 use App\Support\Mailer;
+use App\Support\MailTemplate;
 use App\Support\RateLimiter;
 use PDO;
 use PDOException;
@@ -146,14 +147,26 @@ final class AdminAuthController
     {
         $link = Config::url('/u/admin/reset-password') . '?token=' . urlencode($token);
         $appName = $_ENV['APP_NAME'] ?? 'Le Quotidien Actu';
+        $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
 
         $subject = 'Réinitialisation de votre mot de passe — ' . $appName;
-        $body = "Bonjour {$name},\n\n"
+        $html = MailTemplate::render(
+            preheader: 'Choisissez un nouveau mot de passe pour votre compte administrateur.',
+            heading: 'Réinitialisation de mot de passe',
+            paragraphs: [
+                "Bonjour {$safeName},",
+                'Une demande de réinitialisation de mot de passe a été effectuée pour votre compte administrateur <strong>' . htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') . '</strong>.',
+                'Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe. Ce lien est valable 1 heure.',
+            ],
+            button: ['label' => 'Choisir un nouveau mot de passe', 'url' => $link],
+            footnote: 'Si vous n’êtes pas à l’origine de cette demande, ignorez simplement cet e-mail : votre mot de passe restera inchangé.',
+        );
+        $text = "Bonjour {$name},\n\n"
             . "Une demande de réinitialisation de mot de passe a été effectuée pour votre compte administrateur {$appName}.\n\n"
             . "Cliquez sur le lien suivant pour choisir un nouveau mot de passe (valable 1 heure) :\n{$link}\n\n"
             . "Si vous n’êtes pas à l’origine de cette demande, ignorez simplement cet e-mail.\n";
 
-        Mailer::send($to, $name, $subject, $body);
+        Mailer::sendHtml($to, $name, $subject, $html, $text);
     }
 
     public function logout(): void

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Support\Config;
 use App\Support\Mailer;
+use App\Support\MailTemplate;
 use App\Support\RateLimiter;
 use App\Support\TooManyAttemptsException;
 use PDO;
@@ -125,10 +126,22 @@ final class ApiController
     {
         $appName = $_ENV['APP_NAME'] ?? 'Le Quotidien Actu';
         $link = Config::url('/api/newsletter/confirm') . '?token=' . urlencode($token);
-        $body = "Bonjour,\n\nMerci de vous être inscrit(e) à la newsletter {$appName}.\n\n"
+
+        $html = MailTemplate::render(
+            preheader: 'Confirmez votre inscription à la newsletter ' . $appName . '.',
+            heading: 'Plus qu’une étape !',
+            paragraphs: [
+                'Merci de vous être inscrit(e) à la newsletter <strong>' . htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') . '</strong>.',
+                'Confirmez votre adresse e-mail en cliquant sur le bouton ci-dessous pour recevoir nos prochaines actualités.',
+            ],
+            button: ['label' => 'Confirmer mon inscription', 'url' => $link],
+            footnote: 'Si vous n’êtes pas à l’origine de cette inscription, ignorez simplement cet e-mail : aucun compte ne sera créé.',
+        );
+        $text = "Bonjour,\n\nMerci de vous être inscrit(e) à la newsletter {$appName}.\n\n"
             . "Confirmez votre inscription en cliquant sur ce lien :\n{$link}\n\n"
             . "Si vous n’êtes pas à l’origine de cette inscription, ignorez cet e-mail.\n";
-        Mailer::send($email, $email, 'Confirmez votre inscription — ' . $appName, $body);
+
+        Mailer::sendHtml($email, $email, 'Confirmez votre inscription — ' . $appName, $html, $text);
     }
 
     private function renderNewsletterPage(string $title, string $message): void

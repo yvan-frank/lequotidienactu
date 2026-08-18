@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Support\Config;
 use App\Support\Mailer;
+use App\Support\MailTemplate;
 use App\Support\RateLimiter;
 use PDO;
 use PDOException;
@@ -113,14 +114,26 @@ final class AdminUserController
     {
         $link = Config::url('/u/admin/reset-password') . '?token=' . urlencode($token);
         $appName = $_ENV['APP_NAME'] ?? 'Le Quotidien Actu';
+        $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
 
         $subject = 'Invitation à rejoindre l’administration — ' . $appName;
-        $body = "Bonjour {$name},\n\n"
+        $html = MailTemplate::render(
+            preheader: 'Activez votre compte administrateur ' . $appName . '.',
+            heading: 'Bienvenue dans l’équipe !',
+            paragraphs: [
+                "Bonjour {$safeName},",
+                'Un compte administrateur vient d’être créé pour vous sur <strong>' . htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') . '</strong>.',
+                'Cliquez sur le bouton ci-dessous pour choisir votre mot de passe et activer votre compte. Ce lien est valable 24 heures.',
+            ],
+            button: ['label' => 'Activer mon compte', 'url' => $link],
+            footnote: 'Si vous ne vous attendiez pas à cette invitation, ignorez simplement cet e-mail.',
+        );
+        $text = "Bonjour {$name},\n\n"
             . "Un compte administrateur vient d’être créé pour vous sur {$appName}.\n\n"
             . "Cliquez sur le lien suivant pour choisir votre mot de passe et activer votre compte (valable 24 heures) :\n{$link}\n\n"
             . "Si vous ne vous attendiez pas à cette invitation, ignorez simplement cet e-mail.\n";
 
-        Mailer::send($to, $name, $subject, $body);
+        Mailer::sendHtml($to, $name, $subject, $html, $text);
     }
 
     private function input(): array { return json_decode(file_get_contents('php://input') ?: '[]', true, 512, JSON_THROW_ON_ERROR); }

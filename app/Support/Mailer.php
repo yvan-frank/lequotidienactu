@@ -17,6 +17,25 @@ final class Mailer
      */
     public static function send(string $to, string $toName, string $subject, string $body): array
     {
+        return self::dispatch($to, $toName, $subject, $body, null);
+    }
+
+    /**
+     * Sends a branded HTML email with a plain-text fallback via SMTP.
+     * Never throws, same contract as send().
+     *
+     * @return array{success: bool, error: ?string}
+     */
+    public static function sendHtml(string $to, string $toName, string $subject, string $html, string $text): array
+    {
+        return self::dispatch($to, $toName, $subject, $html, $text);
+    }
+
+    /**
+     * @return array{success: bool, error: ?string}
+     */
+    private static function dispatch(string $to, string $toName, string $subject, string $body, ?string $altText): array
+    {
         $mail = new PHPMailer(true);
         try {
             $host = $_ENV['MAIL_HOST'] ?? '';
@@ -48,8 +67,14 @@ final class Mailer
             $mail->setFrom($fromAddress, $fromName);
             $mail->addAddress($to, $toName);
             $mail->Subject = $subject;
-            $mail->Body = $body;
-            $mail->isHTML(false);
+            if ($altText !== null) {
+                $mail->isHTML(true);
+                $mail->Body = $body;
+                $mail->AltBody = $altText;
+            } else {
+                $mail->isHTML(false);
+                $mail->Body = $body;
+            }
 
             $mail->send();
             return ['success' => true, 'error' => null];

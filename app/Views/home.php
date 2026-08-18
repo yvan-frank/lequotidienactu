@@ -49,3 +49,4 @@ $latest = $remaining !== [] ? array_slice($remaining, 0, 3) : array_slice($artic
 <?php if ($categorySpotlights === []): ?>
   <div class="my-10"><?= \App\Support\Ads::renderSlot('home_banner') ?></div>
 <?php endif; ?>
+<div class="my-10"><?= \App\Support\Ads::renderSlot('home_multiplex', 'Publicité · Multiplex') ?></div>

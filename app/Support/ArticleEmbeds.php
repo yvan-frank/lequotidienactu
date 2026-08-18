@@ -27,8 +27,25 @@ final class ArticleEmbeds
             },
             $bodyHtml
         );
+        $rendered = $rendered ?? $bodyHtml;
+
+        $rendered = preg_replace_callback(
+            '/<p[^>]*>\s*\[pub-in-article\]\s*<\/p>|\[pub-in-article\]/i',
+            static fn (): string => self::renderInArticleAd(),
+            $rendered
+        );
 
         return $rendered ?? $bodyHtml;
+    }
+
+    /**
+     * Replaces the [pub-in-article] shortcode — typed directly by editors
+     * anywhere in the article body — with the "article_in_article" ad slot.
+     * Can appear multiple times; each occurrence renders its own ad.
+     */
+    private static function renderInArticleAd(): string
+    {
+        return '<div class="not-prose my-8">' . Ads::renderSlot('article_in_article', 'Publicité') . '</div>';
     }
 
     private static function renderCard(int $articleId): string
