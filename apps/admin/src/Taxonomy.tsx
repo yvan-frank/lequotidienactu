@@ -1,6 +1,15 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Tags as TagsIcon, Trash2, UserRound, X } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Pencil,
+  Plus,
+  Tags as TagsIcon,
+  Trash2,
+  UserRound,
+  X,
+} from 'lucide-react';
 import { api } from './api';
 import { Toast } from './components/Toast';
 
@@ -107,20 +116,27 @@ const inputClass =
   'mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-orange-600 focus:outline-none';
 const labelClass = 'block text-sm font-semibold text-slate-700';
 
-function orderedByHierarchy(categories: Category[]): (Category & { depth: number })[] {
+type HierarchyCategory = Category & { depth: number; hasChildren: boolean; parentIds: number[] };
+
+function orderedByHierarchy(categories: Category[]): HierarchyCategory[] {
   const byParent = new Map<number, Category[]>();
   for (const category of categories) {
     const key = category.parent_id ?? 0;
     byParent.set(key, [...(byParent.get(key) ?? []), category]);
   }
-  const result: (Category & { depth: number })[] = [];
-  const visit = (parentId: number, depth: number) => {
+  const result: HierarchyCategory[] = [];
+  const visit = (parentId: number, depth: number, parentIds: number[]) => {
     for (const category of byParent.get(parentId) ?? []) {
-      result.push({ ...category, depth });
-      visit(category.id, depth + 1);
+      result.push({
+        ...category,
+        depth,
+        hasChildren: (byParent.get(category.id) ?? []).length > 0,
+        parentIds,
+      });
+      visit(category.id, depth + 1, [...parentIds, category.id]);
     }
   };
-  visit(0, 0);
+  visit(0, 0, []);
   return result;
 }
 
@@ -133,6 +149,18 @@ function CategoriesPanel({ setToast }: { setToast: (toast: ToastState) => void }
   const hierarchy = React.useMemo(
     () => orderedByHierarchy(categories.data ?? []),
     [categories.data],
+  );
+  const [collapsed, setCollapsed] = React.useState<Set<number>>(new Set());
+  const toggleCollapsed = (id: number) => {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const visibleHierarchy = React.useMemo(
+    () => hierarchy.filter((category) => !category.parentIds.some((id) => collapsed.has(id))),
+    [hierarchy, collapsed],
   );
   const [editing, setEditing] = React.useState<Category | 'new' | null>(null);
   const parentOptions = React.useMemo(() => {
@@ -159,8 +187,8 @@ function CategoriesPanel({ setToast }: { setToast: (toast: ToastState) => void }
     parent_id: '',
   });
 
-  const openNew = () => {
-    setForm({ name: '', slug: '', description: '', position: '0', parent_id: '' });
+  const openNew = (parentId?: number) => {
+    setForm({ name: '', slug: '', description: '', position: '0', parent_id: parentId ? String(parentId) : '' });
     setEditing('new');
   };
   const openEdit = (category: Category) => {
@@ -212,7 +240,7 @@ function CategoriesPanel({ setToast }: { setToast: (toast: ToastState) => void }
     >
       <div className="flex justify-end px-6 pt-5">
         <button
-          onClick={openNew}
+          onClick={() => openNew()}
           className="inline-flex items-center gap-2 rounded bg-orange-700 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-800"
         >
           <Plus size={16} /> Nouvelle rubrique
@@ -238,11 +266,22 @@ function CategoriesPanel({ setToast }: { setToast: (toast: ToastState) => void }
               </tr>
             </thead>
             <tbody>
-              {hierarchy.map((category) => (
+              {visibleHierarchy.map((category) => (
                 <tr key={category.id} className="border-b border-slate-100 last:border-0">
                   <td className="py-3 pr-4 font-semibold text-slate-900">
                     <span style={{ paddingLeft: `${category.depth * 1.25}rem` }} className="inline-flex items-center gap-1.5">
-                      {category.depth > 0 && <span className="text-slate-300" aria-hidden="true">↳</span>}
+                      {category.hasChildren ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleCollapsed(category.id)}
+                          className="-ml-1 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                          aria-label={collapsed.has(category.id) ? `Déplier ${category.name}` : `Replier ${category.name}`}
+                        >
+                          {collapsed.has(category.id) ? <ChevronRight size={15} /> : <ChevronDown size={15} />}
+                        </button>
+                      ) : (
+                        category.depth > 0 && <span className="text-slate-300" aria-hidden="true">↳</span>
+                      )}
                       {category.name}
                     </span>
                   </td>
@@ -251,6 +290,14 @@ function CategoriesPanel({ setToast }: { setToast: (toast: ToastState) => void }
                   <td className="py-3 pr-4 text-slate-500">{category.articles_count}</td>
                   <td className="py-3 pr-4">
                     <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => openNew(category.id)}
+                        className="rounded p-2 text-slate-600 hover:bg-slate-100"
+                        aria-label={`Ajouter une sous-rubrique à ${category.name}`}
+                        title="Ajouter une sous-rubrique"
+                      >
+                        <Plus size={16} />
+                      </button>
                       <button
                         onClick={() => openEdit(category)}
                         className="rounded p-2 text-slate-600 hover:bg-slate-100"
@@ -378,6 +425,7 @@ function TagsPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
   const [editing, setEditing] = React.useState<Tag | 'new' | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<Tag | null>(null);
   const [form, setForm] = React.useState({ name: '', slug: '' });
+  const [quickAdd, setQuickAdd] = React.useState('');
 
   const openNew = () => {
     setForm({ name: '', slug: '' });
@@ -407,10 +455,39 @@ function TagsPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
     },
     onError: (error) => setToast({ tone: 'error', message: apiErrorMessage(error, 'Impossible de supprimer ce tag.') }),
   });
+  const quickCreate = useMutation({
+    mutationFn: () => api.post('/admin/tags', { name: quickAdd, slug: '' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-tags'] });
+      setQuickAdd('');
+    },
+    onError: (error) => setToast({ tone: 'error', message: apiErrorMessage(error, "Impossible d'ajouter ce tag.") }),
+  });
 
   return (
     <SectionCard icon={<TagsIcon size={20} />} title="Tags" description="Taxonomie fine pour affiner la recherche.">
-      <div className="flex justify-end px-6 pt-5">
+      <div className="flex flex-wrap items-center justify-end gap-2 px-6 pt-5">
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (quickAdd.trim() !== '') quickCreate.mutate();
+          }}
+        >
+          <input
+            className="rounded border border-slate-300 px-3 py-2 text-sm focus:border-orange-600 focus:outline-none"
+            placeholder="Ajout rapide : nom du tag"
+            value={quickAdd}
+            onChange={(event) => setQuickAdd(event.target.value)}
+          />
+          <button
+            disabled={quickAdd.trim() === '' || quickCreate.isPending}
+            className="inline-flex items-center gap-1.5 rounded border border-orange-700 px-3 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Ajouter rapidement ce tag"
+          >
+            <Plus size={16} />
+          </button>
+        </form>
         <button
           onClick={openNew}
           className="inline-flex items-center gap-2 rounded bg-orange-700 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-800"

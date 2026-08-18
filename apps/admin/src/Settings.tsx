@@ -5,6 +5,7 @@ import { api } from './api';
 import { Toast } from './components/Toast';
 
 type SeoSettings = { ga_measurement_id: string; gsc_verification: string };
+type ToastState = { message: string; tone: 'error' | 'success' } | null;
 
 const inputClass =
   'mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-orange-600 focus:outline-none';
@@ -14,11 +15,61 @@ function apiErrorMessage(error: any, fallback: string): string {
   return error?.response?.data?.message ?? fallback;
 }
 
+const TABS = [
+  { id: 'seo', label: 'SEO & Analytics', icon: Search },
+  { id: 'mail', label: 'E-mail (SMTP)', icon: Mail },
+] as const;
+type TabId = (typeof TABS)[number]['id'];
+
 export function Settings() {
-  const queryClient = useQueryClient();
-  const [toast, setToast] = React.useState<{ message: string; tone: 'error' | 'success' } | null>(
-    null,
+  const [activeTab, setActiveTab] = React.useState<TabId>('seo');
+  const [toast, setToast] = React.useState<ToastState>(null);
+
+  return (
+    <>
+      <header>
+        <p className="text-sm font-semibold text-orange-700">Paramètres</p>
+        <h2 className="text-3xl font-bold">Réglages de la plateforme</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Configurez les intégrations et services techniques du site, par domaine.
+        </p>
+      </header>
+
+      <div className="mt-6 inline-flex gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              aria-current={active}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+                active
+                  ? 'bg-white text-orange-700 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Icon size={16} />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-6">
+        {activeTab === 'seo' && <SeoPanel setToast={setToast} />}
+        {activeTab === 'mail' && <MailPanel />}
+      </div>
+
+      {toast && <Toast message={toast.message} tone={toast.tone} onClose={() => setToast(null)} />}
+    </>
   );
+}
+
+function SeoPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
+  const queryClient = useQueryClient();
   const [form, setForm] = React.useState<SeoSettings>({ ga_measurement_id: '', gsc_verification: '' });
   const [loaded, setLoaded] = React.useState(false);
 
@@ -46,16 +97,9 @@ export function Settings() {
 
   return (
     <>
-      <header>
-        <p className="text-sm font-semibold text-orange-700">Paramètres</p>
-        <h2 className="text-3xl font-bold">SEO & analytics</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Connectez Google Analytics et Google Search Console au site public.
-        </p>
-      </header>
-      {settings.isLoading && <p className="mt-6 rounded-xl bg-white p-6 text-slate-500">Chargement…</p>}
+      {settings.isLoading && <p className="rounded-xl bg-white p-6 text-slate-500">Chargement…</p>}
       {settings.isError && (
-        <p className="mt-6 rounded-xl bg-white p-6 text-red-700">Impossible de charger les paramètres.</p>
+        <p className="rounded-xl bg-white p-6 text-red-700">Impossible de charger les paramètres.</p>
       )}
       {loaded && (
         <form
@@ -63,7 +107,7 @@ export function Settings() {
             event.preventDefault();
             save.mutate();
           }}
-          className="mt-6 grid gap-6"
+          className="grid gap-6"
         >
           <section className="rounded-xl border border-slate-200 bg-white p-6">
             <div className="flex items-center gap-3">
@@ -145,24 +189,28 @@ export function Settings() {
           </div>
         </form>
       )}
-
-      <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-        <div className="flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-lg bg-orange-50 text-orange-700">
-            <Mail size={20} />
-          </span>
-          <div>
-            <h3 className="font-bold">Test SMTP</h3>
-            <p className="text-sm text-slate-500">
-              Vérifie que l'envoi d'e-mails (réinitialisation de mot de passe, etc.) fonctionne.
-            </p>
-          </div>
-        </div>
-        <MailTestForm />
-      </section>
-
-      {toast && <Toast message={toast.message} tone={toast.tone} onClose={() => setToast(null)} />}
     </>
+  );
+}
+
+function MailPanel() {
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-6">
+      <div className="flex items-center gap-3">
+        <span className="grid size-10 place-items-center rounded-lg bg-orange-50 text-orange-700">
+          <Mail size={20} />
+        </span>
+        <div>
+          <h3 className="font-bold">Test SMTP</h3>
+          <p className="text-sm text-slate-500">
+            Vérifie que l'envoi d'e-mails (réinitialisation de mot de passe, etc.) fonctionne. La
+            configuration elle-même (hôte, port, identifiants) se fait dans le fichier{' '}
+            <code className="rounded bg-slate-100 px-1">.env</code> du serveur.
+          </p>
+        </div>
+      </div>
+      <MailTestForm />
+    </section>
   );
 }
 
