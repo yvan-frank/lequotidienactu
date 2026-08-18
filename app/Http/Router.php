@@ -8,19 +8,26 @@ use App\Http\Controllers\AdminAdsController;
 use App\Http\Controllers\AdminArticleController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminCommentController;
+use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminMediaController;
+use App\Http\Controllers\AdminNewsletterController;
 use App\Http\Controllers\AdminRedirectController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminTaxonomyController;
+use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\SeoController;
 use App\Seo\RedirectService;
+use App\Support\ScheduledPublisher;
 
 final class Router
 {
     public function dispatch(string $method, string $uri): void
     {
         $path = rtrim(parse_url($uri, PHP_URL_PATH) ?: '/', '/') ?: '/';
+        if ($method === 'GET' && !str_starts_with($path, '/u/admin')) {
+            ScheduledPublisher::run();
+        }
         $public = new PublicController();
         $api = new ApiController();
         $adminArticles = new AdminArticleController();
@@ -29,8 +36,11 @@ final class Router
         $adminTaxonomy = new AdminTaxonomyController();
         $adminRedirects = new AdminRedirectController();
         $adminComments = new AdminCommentController();
+        $adminDashboard = new AdminDashboardController();
         $adminSettings = new AdminSettingsController();
         $adminAds = new AdminAdsController();
+        $adminUsers = new AdminUserController();
+        $adminNewsletter = new AdminNewsletterController();
         $seo = new SeoController();
 
         if ($method === 'GET' && ($path === '/u/admin' || str_starts_with($path, '/u/admin/'))) {
@@ -47,6 +57,10 @@ final class Router
 
         if ($method === 'GET' && $path === '/robots.txt') {
             $seo->robots();
+            return;
+        }
+        if ($method === 'GET' && $path === '/feed.xml') {
+            $seo->rss();
             return;
         }
         if ($method === 'GET' && $path === '/sitemap.xml') {
@@ -105,9 +119,17 @@ final class Router
         if ($method === 'POST' && $path === '/api/admin/redirects') { $adminRedirects->create(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/redirects/(\d+)$#', $path, $m)) { $adminRedirects->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/redirects/(\d+)$#', $path, $m)) { $adminRedirects->delete((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/dashboard') { $adminDashboard->stats(); return; }
         if ($method === 'GET' && $path === '/api/admin/comments') { $adminComments->index(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/comments/(\d+)$#', $path, $m)) { $adminComments->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/comments/(\d+)$#', $path, $m)) { $adminComments->delete((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/users') { $adminUsers->index(); return; }
+        if ($method === 'POST' && $path === '/api/admin/users') { $adminUsers->invite(); return; }
+        if ($method === 'PUT' && preg_match('#^/api/admin/users/(\d+)$#', $path, $m)) { $adminUsers->update((int) $m[1]); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/users/(\d+)$#', $path, $m)) { $adminUsers->delete((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/newsletter') { $adminNewsletter->index(); return; }
+        if ($method === 'POST' && $path === '/api/admin/newsletter/send') { $adminNewsletter->send(); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/newsletter/(\d+)$#', $path, $m)) { $adminNewsletter->delete((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/settings/seo') { $adminSettings->seo(); return; }
         if ($method === 'PUT' && $path === '/api/admin/settings/seo') { $adminSettings->updateSeo(); return; }
         if ($method === 'POST' && $path === '/api/admin/settings/mail/test') { $adminSettings->testMail(); return; }
@@ -124,6 +146,8 @@ final class Router
             $api->subscribe();
             return;
         }
+        if ($method === 'GET' && $path === '/api/newsletter/confirm') { $api->confirmNewsletter(); return; }
+        if ($method === 'GET' && $path === '/api/newsletter/unsubscribe') { $api->unsubscribeNewsletter(); return; }
         if ($method === 'GET' && preg_match('#^/api/articles/(\d+)/reactions$#', $path, $m)) { $api->reactions((int) $m[1]); return; }
         if ($method === 'POST' && preg_match('#^/api/articles/(\d+)/reactions$#', $path, $m)) { $api->react((int) $m[1]); return; }
         if ($method === 'GET' && preg_match('#^/api/articles/(\d+)/comments$#', $path, $m)) { $api->comments((int) $m[1]); return; }

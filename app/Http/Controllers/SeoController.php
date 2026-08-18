@@ -15,6 +15,50 @@ final class SeoController
         echo "User-agent: *\nAllow: /\nDisallow: /api/admin/\nDisallow: /admin/\n\nSitemap: " . Config::url('/sitemap.xml') . "\nSitemap: " . Config::url('/sitemap-news.xml') . "\n";
     }
 
+    public function rss(): void
+    {
+        $appName = $_ENV['APP_NAME'] ?? 'Le Quotidien Actu';
+        $items = '';
+
+        try {
+            $statement = $this->pdo()->query(
+                'SELECT a.title, a.slug, a.excerpt, a.published_at, c.slug AS category, c.name AS category_name, au.display_name AS author
+                 FROM articles a
+                 INNER JOIN categories c ON c.id = a.category_id
+                 INNER JOIN authors au ON au.id = a.author_id
+                 WHERE a.status = "published" AND a.published_at <= NOW()
+                 ORDER BY a.published_at DESC LIMIT 30'
+            );
+            foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $article) {
+                $link = Config::url('/' . $article['category'] . '/' . $article['slug']);
+                $pubDate = (new \DateTimeImmutable($article['published_at']))->format(DATE_RSS);
+                $items .= '<item>'
+                    . '<title>' . $this->escape($article['title']) . '</title>'
+                    . '<link>' . $this->escape($link) . '</link>'
+                    . '<guid isPermaLink="true">' . $this->escape($link) . '</guid>'
+                    . '<pubDate>' . $pubDate . '</pubDate>'
+                    . '<author>' . $this->escape($article['author']) . '</author>'
+                    . '<category>' . $this->escape($article['category_name']) . '</category>'
+                    . '<description>' . $this->escape((string) $article['excerpt']) . '</description>'
+                    . '</item>';
+            }
+        } catch (PDOException) {
+            // An empty feed is still a valid feed; nothing published yet or DB unavailable.
+        }
+
+        header('Content-Type: application/rss+xml; charset=utf-8');
+        echo '<?xml version="1.0" encoding="UTF-8"?>'
+            . '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">'
+            . '<channel>'
+            . '<title>' . $this->escape($appName) . '</title>'
+            . '<link>' . $this->escape(Config::url('/')) . '</link>'
+            . '<atom:link href="' . $this->escape(Config::url('/feed.xml')) . '" rel="self" type="application/rss+xml"/>'
+            . '<description>' . $this->escape('Les derniers articles de ' . $appName) . '</description>'
+            . '<language>fr</language>'
+            . $items
+            . '</channel></rss>';
+    }
+
     /**
      * Sitemap index: points search engines (and human visitors, styled via
      * sitemap.xsl) to the per-content-type sitemaps below.

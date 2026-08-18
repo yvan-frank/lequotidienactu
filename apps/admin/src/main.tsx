@@ -25,6 +25,7 @@ import {
   LayoutDashboard,
   List,
   LogOut,
+  Mail,
   Megaphone,
   Menu,
   MessageSquare,
@@ -43,7 +44,9 @@ import {
 } from 'lucide-react';
 import { ArticleEditor } from './ArticleEditor';
 import { Ads } from './Ads';
+import { Newsletter } from './Newsletter';
 import { Taxonomy } from './Taxonomy';
+import { Users as UsersPage } from './Users';
 import { Redirects } from './Redirects';
 import { Comments } from './Comments';
 import { Settings as SettingsPage } from './Settings';
@@ -279,6 +282,7 @@ const navItems = [
   { to: '/redirects', label: 'Redirections', icon: RouteIcon, exact: false },
   { to: '/comments', label: 'Commentaires', icon: MessageSquare, exact: false },
   { to: '/ads', label: 'Publicité', icon: Megaphone, exact: false },
+  { to: '/newsletter', label: 'Newsletter', icon: Mail, exact: false },
   { to: '/users', label: 'Utilisateurs', icon: Users, exact: false },
   { to: '/settings', label: 'Paramètres', icon: Settings, exact: false },
 ] as const;
@@ -475,41 +479,81 @@ const AdminGate = () => {
   );
 };
 const Root = () => <AdminGate />;
-const Dashboard = () => (
-  <>
-    <h2 className="text-3xl font-bold">Tableau de bord</h2>
-    <div className="mt-6 grid gap-4 md:grid-cols-3">
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <b className="block text-3xl">0</b>
-        <span className="text-slate-500">Articles publiés</span>
-      </section>
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <b className="block text-3xl">0</b>
-        <span className="text-slate-500">Lecteurs aujourd’hui</span>
-      </section>
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <b className="block text-3xl">0</b>
-        <span className="text-slate-500">Abonnés newsletter</span>
-      </section>
-    </div>
-    <p className="mt-6 text-slate-600">
-      Connectez cette vue aux endpoints `/api/admin/analytics` et `/api/admin/articles`.
-    </p>
-  </>
-);
-const Resource = ({ name }: { name: string }) => (
-  <>
-    <header className="flex items-center justify-between">
-      <h2 className="text-3xl font-bold">{name}</h2>
-      <button className="rounded bg-orange-700 px-4 py-2 font-semibold text-white hover:bg-orange-800">
-        Créer
-      </button>
-    </header>
-    <section className="mt-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      Liste à relier à l’API admin.
-    </section>
-  </>
-);
+type DashboardStats = {
+  published_articles: number;
+  active_subscribers: number;
+  pending_comments: number;
+  recent_articles: {
+    id: number;
+    title: string;
+    status: string;
+    updated_at: string;
+    category_name: string | null;
+  }[];
+};
+
+const Dashboard = () => {
+  const stats = useQuery({
+    queryKey: ['admin-dashboard'],
+    queryFn: async () => (await api.get<{ data: DashboardStats }>('/admin/dashboard')).data.data,
+  });
+
+  return (
+    <>
+      <h2 className="text-3xl font-bold">Tableau de bord</h2>
+      {stats.isLoading && <p className="mt-6 text-slate-500">Chargement…</p>}
+      {stats.isError && <p className="mt-6 text-red-700">Impossible de charger les statistiques.</p>}
+      {stats.data && (
+        <>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <Link to="/articles" className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:border-orange-300 hover:shadow-md">
+              <b className="block text-3xl">{stats.data.published_articles}</b>
+              <span className="text-slate-500">Articles publiés</span>
+            </Link>
+            <Link to="/comments" className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:border-orange-300 hover:shadow-md">
+              <b className="block text-3xl">{stats.data.pending_comments}</b>
+              <span className="text-slate-500">Commentaires en attente</span>
+            </Link>
+            <Link to="/newsletter" className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:border-orange-300 hover:shadow-md">
+              <b className="block text-3xl">{stats.data.active_subscribers}</b>
+              <span className="text-slate-500">Abonnés newsletter</span>
+            </Link>
+          </div>
+          <section className="mt-6 rounded-lg border border-slate-200 bg-white shadow-sm">
+            <h3 className="border-b border-slate-100 px-6 py-4 font-bold">Articles récents</h3>
+            {stats.data.recent_articles.length === 0 ? (
+              <p className="p-6 text-slate-500">Aucun article pour le moment.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {stats.data.recent_articles.map((article) => (
+                  <li key={article.id} className="flex items-center justify-between gap-4 px-6 py-3">
+                    <div className="min-w-0">
+                      <Link
+                        to="/articles/$articleId"
+                        params={{ articleId: String(article.id) }}
+                        className="truncate font-semibold text-slate-900 hover:text-orange-700"
+                      >
+                        {article.title}
+                      </Link>
+                      <p className="text-xs text-slate-500">
+                        {article.category_name ?? 'Sans rubrique'} · {formatDateTime(article.updated_at)}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusClasses[article.status] ?? 'bg-slate-100 text-slate-700'}`}
+                    >
+                      {statusLabels[article.status] ?? article.status}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
+    </>
+  );
+};
 type Article = {
   id: number;
   title: string;
@@ -997,10 +1041,15 @@ const adsRoute = new Route({
   path: '/ads',
   component: Ads,
 });
+const newsletterRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/newsletter',
+  component: Newsletter,
+});
 const usersRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/users',
-  component: () => <Resource name="Utilisateurs" />,
+  component: UsersPage,
 });
 const settingsRoute = new Route({
   getParentRoute: () => rootRoute,
@@ -1019,6 +1068,7 @@ const router = createRouter({
     redirectsRoute,
     commentsRoute,
     adsRoute,
+    newsletterRoute,
     usersRoute,
     settingsRoute,
   ]),

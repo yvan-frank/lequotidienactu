@@ -24,6 +24,7 @@ if ($categoryTree === []) {
   <meta name="description" content="<?= htmlspecialchars($seo['description'] ?? 'Actualités Afrique francophone, France et diaspora.') ?>">
   <meta name="robots" content="<?= htmlspecialchars($seo['robots'] ?? 'noindex,nofollow') ?>">
   <link rel="canonical" href="<?= htmlspecialchars($seo['canonical'] ?? ($_ENV['APP_URL'] ?? 'http://localhost:8000')) ?>">
+  <link rel="alternate" type="application/rss+xml" title="<?= htmlspecialchars($_ENV['APP_NAME'] ?? 'Le Quotidien Actu') ?>" href="/feed.xml">
   <meta property="og:type" content="<?= htmlspecialchars($seo['og_type'] ?? 'website') ?>">
   <meta property="og:title" content="<?= htmlspecialchars($seo['title'] ?? $title ?? '') ?>">
   <meta property="og:description" content="<?= htmlspecialchars($seo['description'] ?? '') ?>">

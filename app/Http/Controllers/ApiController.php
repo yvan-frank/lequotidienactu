@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Support\Config;
+use App\Support\Mailer;
 use App\Support\RateLimiter;
 use App\Support\TooManyAttemptsException;
 use PDO;
@@ -50,10 +52,97 @@ final class ApiController
             if (!$email) {
                 throw new \InvalidArgumentException('Adresse e-mail invalide.');
             }
-            $statement = $pdo->prepare('INSERT INTO newsletter_subscribers (email, status) VALUES (:email, "pending") ON DUPLICATE KEY UPDATE email = email');
+
+            $statement = $pdo->prepare('SELECT id, status, token FROM newsletter_subscribers WHERE email = :email LIMIT 1');
             $statement->execute(['email' => $email]);
-            return ['message' => 'Merci ! Vérifiez votre boîte mail pour confirmer votre inscription.'];
+            $subscriber = $statement->fetch(PDO::FETCH_ASSOC);
+            $message = 'Merci ! Vérifiez votre boîte mail pour confirmer votre inscription.';
+
+            if (!$subscriber) {
+                $token = bin2hex(random_bytes(32));
+                $pdo->prepare('INSERT INTO newsletter_subscribers (email, status, token) VALUES (:email, "pending", :token)')
+                    ->execute(['email' => $email, 'token' => $token]);
+                $this->sendConfirmationEmail($email, $token);
+            } elseif ($subscriber['status'] === 'active') {
+                $message = 'Cette adresse est déjà inscrite à la newsletter.';
+            } else {
+                // 'pending' (resend) or 'unsubscribed' (re-opt-in): always issue a
+                // fresh token so an old leaked/expired link can't be reused.
+                $token = bin2hex(random_bytes(32));
+                $pdo->prepare('UPDATE newsletter_subscribers SET status = "pending", token = :token WHERE id = :id')
+                    ->execute(['token' => $token, 'id' => $subscriber['id']]);
+                $this->sendConfirmationEmail($email, $token);
+            }
+
+            return ['message' => $message];
         }, 201);
+    }
+
+    public function confirmNewsletter(): void
+    {
+        try {
+            $token = (string) ($_GET['token'] ?? '');
+            $pdo = $this->pdo();
+            $statement = $pdo->prepare('SELECT id FROM newsletter_subscribers WHERE token = :token AND status = "pending" LIMIT 1');
+            $statement->execute(['token' => $token]);
+            $subscriber = $statement->fetch(PDO::FETCH_ASSOC);
+
+            if ($subscriber) {
+                $pdo->prepare('UPDATE newsletter_subscribers SET status = "active", confirmed_at = NOW() WHERE id = :id')
+                    ->execute(['id' => $subscriber['id']]);
+            }
+
+            $this->renderNewsletterPage(
+                $subscriber ? 'Inscription confirmée' : 'Lien invalide',
+                $subscriber
+                    ? 'Merci, votre inscription à la newsletter est confirmée !'
+                    : 'Ce lien de confirmation est invalide ou a déjà été utilisé.'
+            );
+        } catch (PDOException) {
+            $this->renderNewsletterPage('Indisponible', 'Base de données indisponible. Réessayez plus tard.');
+        }
+    }
+
+    public function unsubscribeNewsletter(): void
+    {
+        try {
+            $token = (string) ($_GET['token'] ?? '');
+            $statement = $this->pdo()->prepare('UPDATE newsletter_subscribers SET status = "unsubscribed" WHERE token = :token');
+            $statement->execute(['token' => $token]);
+
+            $this->renderNewsletterPage(
+                $statement->rowCount() > 0 ? 'Désinscription confirmée' : 'Lien invalide',
+                $statement->rowCount() > 0
+                    ? 'Vous ne recevrez plus la newsletter. Vous pouvez vous réinscrire à tout moment depuis le site.'
+                    : 'Ce lien de désinscription est invalide.'
+            );
+        } catch (PDOException) {
+            $this->renderNewsletterPage('Indisponible', 'Base de données indisponible. Réessayez plus tard.');
+        }
+    }
+
+    private function sendConfirmationEmail(string $email, string $token): void
+    {
+        $appName = $_ENV['APP_NAME'] ?? 'Le Quotidien Actu';
+        $link = Config::url('/api/newsletter/confirm') . '?token=' . urlencode($token);
+        $body = "Bonjour,\n\nMerci de vous être inscrit(e) à la newsletter {$appName}.\n\n"
+            . "Confirmez votre inscription en cliquant sur ce lien :\n{$link}\n\n"
+            . "Si vous n’êtes pas à l’origine de cette inscription, ignorez cet e-mail.\n";
+        Mailer::send($email, $email, 'Confirmez votre inscription — ' . $appName, $body);
+    }
+
+    private function renderNewsletterPage(string $title, string $message): void
+    {
+        $appName = htmlspecialchars($_ENV['APP_NAME'] ?? 'Le Quotidien Actu', ENT_QUOTES, 'UTF-8');
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>'
+            . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . ' — ' . $appName . '</title>'
+            . '<style>body{font-family:system-ui,sans-serif;background:#f8fafc;color:#0f172a;display:grid;place-items:center;min-height:100vh;margin:0;padding:1.5rem}'
+            . 'main{max-width:28rem;background:#fff;border:1px solid #e2e8f0;border-radius:1rem;padding:2rem;text-align:center}'
+            . 'h1{font-size:1.35rem;margin:0 0 .75rem}p{color:#475569;line-height:1.5;margin:0 0 1.5rem}'
+            . 'a{display:inline-block;background:#c2410c;color:#fff;text-decoration:none;font-weight:600;padding:.6rem 1.25rem;border-radius:.5rem}</style>'
+            . '</head><body><main><h1>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h1><p>'
+            . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '</p><a href="/">Retour à l’accueil</a></main></body></html>';
     }
 
     public function reactions(int $articleId): void
