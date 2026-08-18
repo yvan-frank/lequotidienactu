@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']) {
+  cursor: pointer;
+}
+
 :root {
   --admin-sidebar-width: 250px;
   --admin-header-height: 5rem;

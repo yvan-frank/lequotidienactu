@@ -26,6 +26,7 @@ import {
   List,
   LogOut,
   Megaphone,
+  Menu,
   MessageSquare,
   MoreHorizontal,
   PanelLeftClose,
@@ -38,6 +39,7 @@ import {
   Tags,
   Trash2,
   Users,
+  X,
 } from 'lucide-react';
 import { ArticleEditor } from './ArticleEditor';
 import { Ads } from './Ads';
@@ -301,6 +303,7 @@ const AdminGate = () => {
   const [collapsed, setCollapsed] = React.useState(
     () => window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === '1',
   );
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   React.useEffect(() => {
     window.localStorage.setItem(SIDEBAR_STORAGE_KEY, collapsed ? '1' : '0');
     document.documentElement.style.setProperty(
@@ -308,6 +311,12 @@ const AdminGate = () => {
       collapsed ? '76px' : '250px',
     );
   }, [collapsed]);
+  React.useEffect(() => {
+    document.body.style.overflow = mobileNavOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileNavOpen]);
 
   const resetToken = new URLSearchParams(window.location.search).get('token');
   if (window.location.pathname.startsWith('/u/admin/reset-password') && resetToken) {
@@ -371,13 +380,75 @@ const AdminGate = () => {
           </button>
         </div>
       </aside>
+
+      <div
+        className={`fixed inset-0 z-40 bg-slate-950/50 transition-opacity duration-200 md:hidden ${
+          mobileNavOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        onClick={() => setMobileNavOpen(false)}
+        aria-hidden="true"
+      />
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col overflow-y-auto bg-slate-900 px-6 py-6 text-white transition-transform duration-200 md:hidden ${
+          mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu d’administration"
+      >
+        <div className="mb-8 flex items-center justify-between">
+          <h1 className="text-lg font-bold">Le Quotidien Actu</h1>
+          <button
+            onClick={() => setMobileNavOpen(false)}
+            className="rounded p-2 text-slate-300 hover:bg-slate-800 hover:text-white"
+            aria-label="Fermer le menu"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <nav className="grid gap-2">
+          {navItems.map(({ to, label, icon: Icon, exact }) => (
+            <Link
+              key={to}
+              to={to}
+              activeOptions={{ exact: Boolean(exact) }}
+              activeProps={{ className: 'bg-slate-800 text-white' }}
+              className="flex items-center gap-3 rounded px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white"
+              onClick={() => setMobileNavOpen(false)}
+            >
+              <Icon size={18} className="shrink-0" />
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <div className="mt-10 border-t border-slate-700 pt-5 text-sm text-slate-300">
+          <p className="font-semibold text-white">{session.data.user?.name}</p>
+          <p className="mt-1 capitalize">{session.data.user?.role}</p>
+          <button
+            onClick={() => logout.mutate()}
+            className="mt-4 flex items-center gap-2 text-sm font-semibold text-orange-300 hover:text-orange-200"
+          >
+            <LogOut size={16} /> Se déconnecter
+          </button>
+        </div>
+      </aside>
+
       <div className={`min-h-screen md:transition-[margin] md:duration-200 ${collapsed ? 'md:ml-[76px]' : 'md:ml-[250px]'}`}>
         <header className="sticky top-0 z-30 flex min-h-20 items-center justify-between gap-4 border-b border-slate-200 bg-white/95 px-6 py-3 backdrop-blur md:px-12">
-          <div>
-            <p className="text-xs font-bold tracking-widest text-orange-700 uppercase">
-              Administration
-            </p>
-            <p className="mt-1 text-sm text-slate-500">Gérez l’actualité en temps réel.</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileNavOpen(true)}
+              className="rounded p-2 text-slate-600 hover:bg-slate-100 md:hidden"
+              aria-label="Ouvrir le menu"
+            >
+              <Menu size={20} />
+            </button>
+            <div>
+              <p className="text-xs font-bold tracking-widest text-orange-700 uppercase">
+                Administration
+              </p>
+              <p className="mt-1 text-sm text-slate-500">Gérez l’actualité en temps réel.</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <a

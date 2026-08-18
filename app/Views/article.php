@@ -28,7 +28,7 @@ $showUpdated = !empty($article['updated_at_display']) && !empty($article['publis
     <span class="truncate text-slate-400"><?= htmlspecialchars($article['title']) ?></span>
   </nav>
 
-  <div class="max-w-2xl">
+  <div class="max-w-3xl">
   <p class="mt-5 flex flex-wrap items-center gap-2 text-xs font-bold tracking-widest text-brand-600 uppercase">
     <a class="hover:text-brand-700" href="/<?= htmlspecialchars($categorySlug) ?>"><?= htmlspecialchars($categoryName) ?></a>
     <?php if (!empty($article['is_sponsored'])): ?>

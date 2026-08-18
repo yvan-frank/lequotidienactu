@@ -1,6 +1,11 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']) {
+  cursor: pointer;
+}
+
 @theme {
   --container-8xl: 88rem;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
