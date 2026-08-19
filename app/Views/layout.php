@@ -46,11 +46,23 @@ if ($categoryTree === []) {
   <?php if (!empty($seoSettings['gsc_verification'])): ?>
     <meta name="google-site-verification" content="<?= htmlspecialchars($seoSettings['gsc_verification']) ?>">
   <?php endif; ?>
-  <?php if (!empty($seoSettings['ga_measurement_id']) && empty($isPreview)): ?>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=<?= htmlspecialchars($seoSettings['ga_measurement_id']) ?>"></script>
+  <?php $needsConsent = (!empty($seoSettings['ga_measurement_id']) || !empty($seoSettings['adsense_client'])) && empty($isPreview); ?>
+  <?php if ($needsConsent): ?>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag() { dataLayer.push(arguments); }
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+        wait_for_update: 500,
+      });
+    </script>
+  <?php endif; ?>
+  <?php if (!empty($seoSettings['ga_measurement_id']) && empty($isPreview)): ?>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=<?= htmlspecialchars($seoSettings['ga_measurement_id']) ?>"></script>
+    <script>
       gtag('js', new Date());
       gtag('config', '<?= htmlspecialchars($seoSettings['ga_measurement_id'], ENT_QUOTES) ?>');
     </script>
@@ -198,11 +210,64 @@ if ($categoryTree === []) {
     <div class="border-t border-slate-800">
       <div class="mx-auto flex max-w-7xl flex-col gap-2 px-6 py-5 text-xs text-slate-500 md:flex-row md:items-center md:justify-between">
         <p>© <?= date('Y') ?> Le Quotidien Actu. Tous droits réservés.</p>
-        <p>Conçu pour l’actualité Afrique, France & diaspora.</p>
+        <div class="flex items-center gap-4">
+          <?php if ($needsConsent): ?>
+            <button type="button" data-consent-open class="text-slate-500 hover:text-white">Gérer les cookies</button>
+          <?php endif; ?>
+          <p>Conçu pour l’actualité Afrique, France & diaspora.</p>
+        </div>
       </div>
     </div>
   </footer>
   <script type="module" src="/assets/public.js"></script>
   <script type="module" src="/assets/islands.js"></script>
+  <?php if ($needsConsent): ?>
+    <div id="cookie-consent" class="fixed inset-x-0 bottom-0 z-50 hidden border-t border-slate-200 bg-white p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] sm:p-6" role="dialog" aria-modal="false" aria-labelledby="cookie-consent-title">
+      <div class="mx-auto max-w-5xl">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="max-w-2xl">
+            <p id="cookie-consent-title" class="font-bold text-slate-900">Respect de votre vie privée</p>
+            <p class="mt-1 text-sm text-slate-600">
+              Nous utilisons des cookies pour mesurer notre audience et, le cas échéant, afficher des publicités personnalisées. Vous pouvez modifier votre choix à tout moment via « Gérer les cookies » en pied de page.
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-wrap items-center gap-2">
+            <button type="button" data-consent-customize class="rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Personnaliser</button>
+            <button type="button" data-consent-reject class="rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Tout refuser</button>
+            <button type="button" data-consent-accept class="rounded bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Tout accepter</button>
+          </div>
+        </div>
+        <div id="cookie-consent-details" class="mt-5 hidden border-t border-slate-100 pt-5">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label class="flex items-start gap-3 rounded-lg border border-slate-200 p-3">
+              <input type="checkbox" checked disabled class="mt-1">
+              <span>
+                <span class="block text-sm font-semibold text-slate-900">Essentiels</span>
+                <span class="block text-xs text-slate-500">Nécessaires au fonctionnement du site. Toujours actifs.</span>
+              </span>
+            </label>
+            <label class="flex items-start gap-3 rounded-lg border border-slate-200 p-3">
+              <input type="checkbox" data-consent-toggle="analytics" class="mt-1">
+              <span>
+                <span class="block text-sm font-semibold text-slate-900">Mesure d’audience</span>
+                <span class="block text-xs text-slate-500">Google Analytics — statistiques de visites.</span>
+              </span>
+            </label>
+            <label class="flex items-start gap-3 rounded-lg border border-slate-200 p-3 sm:col-span-2">
+              <input type="checkbox" data-consent-toggle="ads" class="mt-1">
+              <span>
+                <span class="block text-sm font-semibold text-slate-900">Publicité personnalisée</span>
+                <span class="block text-xs text-slate-500">Google Ads/AdSense — annonces adaptées à vos centres d’intérêt.</span>
+              </span>
+            </label>
+          </div>
+          <div class="mt-4 flex justify-end">
+            <button type="button" data-consent-save class="rounded bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Enregistrer mes choix</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="/assets/consent.js" defer></script>
+  <?php endif; ?>
 </body>
 </html>
