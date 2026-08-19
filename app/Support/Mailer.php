@@ -13,28 +13,31 @@ final class Mailer
      * and returns the reason, so a mail outage never breaks the request that
      * triggered it while still letting diagnostic callers see what broke.
      *
+     * @param array{email: string, name?: string}|null $replyTo
      * @return array{success: bool, error: ?string}
      */
-    public static function send(string $to, string $toName, string $subject, string $body): array
+    public static function send(string $to, string $toName, string $subject, string $body, ?array $replyTo = null): array
     {
-        return self::dispatch($to, $toName, $subject, $body, null);
+        return self::dispatch($to, $toName, $subject, $body, null, $replyTo);
     }
 
     /**
      * Sends a branded HTML email with a plain-text fallback via SMTP.
      * Never throws, same contract as send().
      *
+     * @param array{email: string, name?: string}|null $replyTo
      * @return array{success: bool, error: ?string}
      */
-    public static function sendHtml(string $to, string $toName, string $subject, string $html, string $text): array
+    public static function sendHtml(string $to, string $toName, string $subject, string $html, string $text, ?array $replyTo = null): array
     {
-        return self::dispatch($to, $toName, $subject, $html, $text);
+        return self::dispatch($to, $toName, $subject, $html, $text, $replyTo);
     }
 
     /**
+     * @param array{email: string, name?: string}|null $replyTo
      * @return array{success: bool, error: ?string}
      */
-    private static function dispatch(string $to, string $toName, string $subject, string $body, ?string $altText): array
+    private static function dispatch(string $to, string $toName, string $subject, string $body, ?string $altText, ?array $replyTo = null): array
     {
         $mail = new PHPMailer(true);
         try {
@@ -66,6 +69,9 @@ final class Mailer
             $fromName = $_ENV['MAIL_FROM_NAME'] ?? ($_ENV['APP_NAME'] ?? 'Le Quotidien Actu');
             $mail->setFrom($fromAddress, $fromName);
             $mail->addAddress($to, $toName);
+            if ($replyTo !== null) {
+                $mail->addReplyTo($replyTo['email'], $replyTo['name'] ?? '');
+            }
             $mail->Subject = $subject;
             if ($altText !== null) {
                 $mail->isHTML(true);

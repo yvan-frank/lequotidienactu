@@ -5,12 +5,18 @@ namespace App\Http\Controllers;
 
 use App\Seo\SeoManager;
 use App\Support\Categories;
+use App\Support\Config;
+use App\Support\Mailer;
+use App\Support\MailTemplate;
+use App\Support\RateLimiter;
+use App\Support\TooManyAttemptsException;
 use PDO;
 use PDOException;
 
 final class PublicController
 {
     private const CATEGORIES = ['afrique', 'france-diaspora', 'business', 'tech', 'sport', 'culture'];
+    private const CONTACT_EMAIL = 'yvanzangue@gmail.com';
 
     public function home(): void
     {
@@ -113,6 +119,88 @@ final class PublicController
         $articles = $searchQuery !== '' ? $this->searchArticles($searchQuery) : [];
         $seo = (new SeoManager())->forSearch();
         require __DIR__ . '/../../Views/layout.php';
+    }
+
+    public function mentionsLegales(): void
+    {
+        $title = 'Mentions légales - Le Quotidien Actu';
+        $page = 'mentions-legales';
+        $seo = (new SeoManager())->forStaticPage('Mentions légales', 'Mentions légales de Le Quotidien Actu : éditeur, hébergeur et directeur de la publication.', '/mentions-legales');
+        require __DIR__ . '/../../Views/layout.php';
+    }
+
+    public function confidentialite(): void
+    {
+        $title = 'Politique de confidentialité - Le Quotidien Actu';
+        $page = 'confidentialite';
+        $seo = (new SeoManager())->forStaticPage('Politique de confidentialité', 'Comment Le Quotidien Actu collecte, utilise et protège vos données personnelles.', '/confidentialite');
+        require __DIR__ . '/../../Views/layout.php';
+    }
+
+    public function aPropos(): void
+    {
+        $title = 'À propos - Le Quotidien Actu';
+        $page = 'a-propos';
+        $seo = (new SeoManager())->forStaticPage('À propos', 'Qui sommes-nous : la ligne éditoriale de Le Quotidien Actu.', '/a-propos');
+        require __DIR__ . '/../../Views/layout.php';
+    }
+
+    public function contact(): void
+    {
+        $title = 'Contact - Le Quotidien Actu';
+        $page = 'contact';
+        $contactStatus = (string) ($_GET['statut'] ?? '');
+        $seo = (new SeoManager())->forStaticPage('Contact', 'Contactez la rédaction de Le Quotidien Actu.', '/contact');
+        require __DIR__ . '/../../Views/layout.php';
+    }
+
+    public function submitContact(): void
+    {
+        try {
+            $pdo = $this->pdo();
+            if ((new RateLimiter($pdo))->tooManyAttempts('contact', 5, 600)) {
+                throw new TooManyAttemptsException('Trop de tentatives. Réessayez plus tard.');
+            }
+
+            // Honeypot: a hidden field real visitors never fill in; bots that
+            // auto-fill every field trip it and get silently no-opped as "sent".
+            if (trim((string) ($_POST['site_web'] ?? '')) !== '') {
+                header('Location: ' . Config::url('/contact?statut=envoye'));
+                return;
+            }
+
+            $name = trim((string) ($_POST['nom'] ?? ''));
+            $email = filter_var(trim((string) ($_POST['email'] ?? '')), FILTER_VALIDATE_EMAIL);
+            $message = trim((string) ($_POST['message'] ?? ''));
+            if ($name === '' || !$email || $message === '') {
+                throw new \InvalidArgumentException('Merci de renseigner votre nom, un e-mail valide et un message.');
+            }
+
+            $appName = $_ENV['APP_NAME'] ?? 'Le Quotidien Actu';
+            $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+            $safeEmail = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
+            $safeMessage = nl2br(htmlspecialchars($message, ENT_QUOTES, 'UTF-8'));
+            $html = MailTemplate::render(
+                preheader: 'Nouveau message via le formulaire de contact.',
+                heading: 'Nouveau message de contact',
+                paragraphs: [
+                    "<strong>Nom :</strong> {$safeName}",
+                    "<strong>E-mail :</strong> {$safeEmail}",
+                    "<strong>Message :</strong><br>{$safeMessage}",
+                ],
+            );
+            $text = "Nouveau message via le formulaire de contact de {$appName}\n\n"
+                . "Nom : {$name}\nE-mail : {$email}\n\nMessage :\n{$message}\n";
+            Mailer::sendHtml(self::CONTACT_EMAIL, self::CONTACT_EMAIL, 'Contact site — ' . $name, $html, $text, ['email' => $email, 'name' => $name]);
+
+            header('Location: ' . Config::url('/contact?statut=envoye'));
+        } catch (TooManyAttemptsException) {
+            header('Location: ' . Config::url('/contact?statut=limite'));
+        } catch (\InvalidArgumentException) {
+            header('Location: ' . Config::url('/contact?statut=invalide'));
+        } catch (PDOException) {
+            header('Location: ' . Config::url('/contact?statut=erreur'));
+        }
     }
 
     private function searchArticles(string $query): array

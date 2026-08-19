@@ -203,6 +203,10 @@ if ($categoryTree === []) {
           <li><a class="text-slate-400 hover:text-white" href="/recherche">Recherche</a></li>
           <li><a class="text-slate-400 hover:text-white" href="/feed.xml">Flux RSS</a></li>
           <li><a class="text-slate-400 hover:text-white" href="/sitemap.xml">Plan du site</a></li>
+          <li><a class="text-slate-400 hover:text-white" href="/a-propos">À propos</a></li>
+          <li><a class="text-slate-400 hover:text-white" href="/contact">Contact</a></li>
+          <li><a class="text-slate-400 hover:text-white" href="/mentions-legales">Mentions légales</a></li>
+          <li><a class="text-slate-400 hover:text-white" href="/confidentialite">Politique de confidentialité</a></li>
         </ul>
       </div>
     </div>

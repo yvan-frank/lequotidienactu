@@ -78,6 +78,16 @@ final class SeoManager
         return $this->document('Recherche - Le Quotidien Actu', 'Recherchez les actualités de Le Quotidien Actu.', '/recherche', 'website', []);
     }
 
+    public function forStaticPage(string $name, string $description, string $path): array
+    {
+        return $this->document($name . ' - Le Quotidien Actu', $description, $path, 'website', [
+            $this->breadcrumbs([
+                ['name' => 'Accueil', 'path' => '/'],
+                ['name' => $name, 'path' => $path],
+            ]),
+        ]);
+    }
+
     private function document(string $title, string $description, string $path, string $type, array $jsonLd): array
     {
         return [
