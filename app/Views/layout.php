@@ -228,41 +228,12 @@ if ($categoryTree === []) {
           <div class="max-w-2xl">
             <p id="cookie-consent-title" class="font-bold text-slate-900">Respect de votre vie privée</p>
             <p class="mt-1 text-sm text-slate-600">
-              Nous utilisons des cookies pour mesurer notre audience et, le cas échéant, afficher des publicités personnalisées. Vous pouvez modifier votre choix à tout moment via « Gérer les cookies » en pied de page.
+              Nous utilisons des cookies pour mesurer notre audience et afficher des publicités personnalisées. Accédez au site gratuitement en les acceptant, ou optez pour un abonnement sans publicité ni suivi. Vous pouvez modifier votre choix à tout moment via « Gérer les cookies » en pied de page.
             </p>
           </div>
           <div class="flex shrink-0 flex-wrap items-center gap-2">
-            <button type="button" data-consent-customize class="rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Personnaliser</button>
-            <button type="button" data-consent-reject class="rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Tout refuser</button>
+            <button type="button" data-consent-pay class="rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Payer pour ne pas être suivi</button>
             <button type="button" data-consent-accept class="rounded bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Tout accepter</button>
-          </div>
-        </div>
-        <div id="cookie-consent-details" class="mt-5 hidden border-t border-slate-100 pt-5">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label class="flex items-start gap-3 rounded-lg border border-slate-200 p-3">
-              <input type="checkbox" checked disabled class="mt-1">
-              <span>
-                <span class="block text-sm font-semibold text-slate-900">Essentiels</span>
-                <span class="block text-xs text-slate-500">Nécessaires au fonctionnement du site. Toujours actifs.</span>
-              </span>
-            </label>
-            <label class="flex items-start gap-3 rounded-lg border border-slate-200 p-3">
-              <input type="checkbox" data-consent-toggle="analytics" class="mt-1">
-              <span>
-                <span class="block text-sm font-semibold text-slate-900">Mesure d’audience</span>
-                <span class="block text-xs text-slate-500">Google Analytics — statistiques de visites.</span>
-              </span>
-            </label>
-            <label class="flex items-start gap-3 rounded-lg border border-slate-200 p-3 sm:col-span-2">
-              <input type="checkbox" data-consent-toggle="ads" class="mt-1">
-              <span>
-                <span class="block text-sm font-semibold text-slate-900">Publicité personnalisée</span>
-                <span class="block text-xs text-slate-500">Google Ads/AdSense — annonces adaptées à vos centres d’intérêt.</span>
-              </span>
-            </label>
-          </div>
-          <div class="mt-4 flex justify-end">
-            <button type="button" data-consent-save class="rounded bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Enregistrer mes choix</button>
           </div>
         </div>
       </div>

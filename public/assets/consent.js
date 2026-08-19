@@ -16,8 +16,8 @@
     }
   }
 
-  function writeConsent(analytics, ads) {
-    var data = { analytics: !!analytics, ads: !!ads, ts: Date.now() };
+  function writeConsent() {
+    var data = { analytics: true, ads: true, ts: Date.now() };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) {
@@ -39,57 +39,33 @@
   document.addEventListener('DOMContentLoaded', function () {
     var banner = document.getElementById('cookie-consent');
     if (!banner) return;
-    var details = document.getElementById('cookie-consent-details');
-    var toggleAnalytics = banner.querySelector('[data-consent-toggle="analytics"]');
-    var toggleAds = banner.querySelector('[data-consent-toggle="ads"]');
 
-    function open(showDetails) {
+    function open() {
       banner.classList.remove('hidden');
-      if (showDetails) details.classList.remove('hidden');
     }
 
     function close() {
       banner.classList.add('hidden');
-      details.classList.add('hidden');
     }
 
     var existing = readConsent();
     if (existing) {
       applyConsent(existing);
     } else {
-      open(false);
+      open();
     }
 
-    banner.querySelector('[data-consent-accept]').addEventListener('click', function () {
-      applyConsent(writeConsent(true, true));
+    // The "pay to opt out" flow isn't built yet — until it is, both buttons
+    // grant consent so visitors aren't blocked from the site.
+    function acceptAll() {
+      applyConsent(writeConsent());
       close();
-    });
+    }
 
-    banner.querySelector('[data-consent-reject]').addEventListener('click', function () {
-      applyConsent(writeConsent(false, false));
-      close();
-    });
+    banner.querySelector('[data-consent-accept]').addEventListener('click', acceptAll);
+    banner.querySelector('[data-consent-pay]').addEventListener('click', acceptAll);
 
-    banner.querySelector('[data-consent-customize]').addEventListener('click', function () {
-      var current = readConsent();
-      toggleAnalytics.checked = !!(current && current.analytics);
-      toggleAds.checked = !!(current && current.ads);
-      details.classList.toggle('hidden');
-    });
-
-    banner.querySelector('[data-consent-save]').addEventListener('click', function () {
-      applyConsent(writeConsent(toggleAnalytics.checked, toggleAds.checked));
-      close();
-    });
-
-    window.lqaConsent = {
-      open: function () {
-        var current = readConsent();
-        toggleAnalytics.checked = !!(current && current.analytics);
-        toggleAds.checked = !!(current && current.ads);
-        open(true);
-      },
-    };
+    window.lqaConsent = { open: open };
 
     document.querySelectorAll('[data-consent-open]').forEach(function (button) {
       button.addEventListener('click', function () {
