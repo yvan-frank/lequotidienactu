@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Seo\RedirectService;
+use App\Support\AuditLog;
 use App\Support\Slug;
 use PDO;
 use PDOException;
@@ -62,6 +63,7 @@ final class AdminArticleController
             if ($categorySlug !== null) {
                 (new RedirectService())->reclaim("/{$categorySlug}/{$data['slug']}");
             }
+            AuditLog::record('article.create', 'article', $id, ['title' => $data['title'], 'status' => $data['status']]);
             return ['data' => ['id' => $id], 'message' => 'Article enregistré.'];
         }, 201);
     }
@@ -90,6 +92,7 @@ final class AdminArticleController
             }
             $statement = $pdo->prepare('UPDATE articles SET status = :status, published_at = :published_at WHERE id = :id');
             $statement->execute(['status' => $status, 'published_at' => $publishedAt, 'id' => $id]);
+            AuditLog::record('article.transition', 'article', $id, ['status' => $status]);
             return ['message' => 'Workflow mis à jour.'];
         });
     }
@@ -169,6 +172,7 @@ final class AdminArticleController
                 }
             }
 
+            AuditLog::record('article.update', 'article', $id, ['title' => $data['title']]);
             return ['data' => ['id' => $id], 'message' => 'Article mis à jour.'];
         });
     }
@@ -177,9 +181,13 @@ final class AdminArticleController
     {
         AdminAuthController::requireStaff(['admin', 'editor']);
         $this->respond(function (PDO $pdo) use ($id): array {
+            $title = $pdo->prepare('SELECT title FROM articles WHERE id = :id');
+            $title->execute(['id' => $id]);
+            $articleTitle = $title->fetchColumn();
             $statement = $pdo->prepare('DELETE FROM articles WHERE id = :id');
             $statement->execute(['id' => $id]);
             if ($statement->rowCount() === 0) throw new \InvalidArgumentException('Article introuvable.');
+            AuditLog::record('article.delete', 'article', $id, ['title' => $articleTitle ?: null]);
             return ['message' => 'Article supprimé.'];
         });
     }

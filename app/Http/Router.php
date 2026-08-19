@@ -6,6 +6,7 @@ namespace App\Http;
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\AdminAdsController;
 use App\Http\Controllers\AdminArticleController;
+use App\Http\Controllers\AdminAuditLogController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminCommentController;
 use App\Http\Controllers\AdminDashboardController;
@@ -37,6 +38,7 @@ final class Router
         $adminRedirects = new AdminRedirectController();
         $adminComments = new AdminCommentController();
         $adminDashboard = new AdminDashboardController();
+        $adminAuditLog = new AdminAuditLogController();
         $adminSettings = new AdminSettingsController();
         $adminAds = new AdminAdsController();
         $adminUsers = new AdminUserController();
@@ -121,6 +123,7 @@ final class Router
         if ($method === 'PUT' && preg_match('#^/api/admin/redirects/(\d+)$#', $path, $m)) { $adminRedirects->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/redirects/(\d+)$#', $path, $m)) { $adminRedirects->delete((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/dashboard') { $adminDashboard->stats(); return; }
+        if ($method === 'GET' && $path === '/api/admin/audit-logs') { $adminAuditLog->index(); return; }
         if ($method === 'GET' && $path === '/api/admin/comments') { $adminComments->index(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/comments/(\d+)$#', $path, $m)) { $adminComments->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/comments/(\d+)$#', $path, $m)) { $adminComments->delete((int) $m[1]); return; }

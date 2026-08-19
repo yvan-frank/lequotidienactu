@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Support\AuditLog;
 use App\Support\Mailer;
 use App\Support\Settings;
 use PDOException;
@@ -57,6 +58,7 @@ final class AdminSettingsController
 
             $data = ['tagline' => $tagline, 'contact_email' => $contactEmail, ...$urls];
             Settings::set('general', $data);
+            AuditLog::record('settings.update', 'settings', null, ['group' => 'general']);
             return ['data' => $data, 'message' => 'Paramètres généraux enregistrés.'];
         });
     }
@@ -82,6 +84,7 @@ final class AdminSettingsController
 
             $data = ['cpm' => $cpm, 'cpc' => $cpc];
             Settings::set('revenue', $data);
+            AuditLog::record('settings.update', 'settings', null, ['group' => 'revenue']);
             return ['data' => $data, 'message' => 'Paramètres de revenus enregistrés.'];
         });
     }
@@ -107,6 +110,7 @@ final class AdminSettingsController
 
             $data = ['ga_measurement_id' => $gaId, 'gsc_verification' => $gscCode, 'adsense_client' => $adsenseClient];
             Settings::set('seo', $data);
+            AuditLog::record('settings.update', 'settings', null, ['group' => 'seo']);
             return ['data' => $data, 'message' => 'Paramètres SEO enregistrés.'];
         });
     }

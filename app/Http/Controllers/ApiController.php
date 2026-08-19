@@ -32,6 +32,9 @@ final class ApiController
     public function search(): void
     {
         $this->respond(function (PDO $pdo): array {
+            if ((new RateLimiter($pdo))->tooManyAttempts('search', 30, 60)) {
+                throw new TooManyAttemptsException('Trop de recherches. Réessayez dans un instant.');
+            }
             $query = trim((string) ($_GET['q'] ?? ''));
             if (mb_strlen($query) < 2) {
                 return ['data' => [], 'query' => $query];

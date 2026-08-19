@@ -11,6 +11,8 @@
 </header>
 <?php if ($searchQuery === ''): ?>
   <p class="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-slate-600">Saisissez un mot-clé pour lancer la recherche.</p>
+<?php elseif (!empty($searchRateLimited)): ?>
+  <p class="rounded-xl border border-dashed border-amber-300 bg-amber-50 p-8 text-amber-800">Trop de recherches en peu de temps. Réessayez dans un instant.</p>
 <?php elseif ($articles === []): ?>
   <p class="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-slate-600">Aucun article ne correspond à « <?= htmlspecialchars($searchQuery) ?> ».</p>
 <?php else: ?>

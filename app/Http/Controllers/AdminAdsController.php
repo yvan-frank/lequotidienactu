@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Support\AuditLog;
 use PDO;
 use PDOException;
 
@@ -37,7 +38,9 @@ final class AdminAdsController
             $data = $this->validate($this->input(), $pdo);
             $statement = $pdo->prepare('INSERT INTO advertisements (ad_slot_id, name, content_html, starts_at, ends_at) VALUES (:ad_slot_id, :name, :content_html, :starts_at, :ends_at)');
             $statement->execute($data);
-            return ['data' => ['id' => (int) $pdo->lastInsertId()], 'message' => 'Publicité créée.'];
+            $newId = (int) $pdo->lastInsertId();
+            AuditLog::record('ad.create', 'advertisement', $newId, ['name' => $data['name']]);
+            return ['data' => ['id' => $newId], 'message' => 'Publicité créée.'];
         }, 201);
     }
 
@@ -54,6 +57,7 @@ final class AdminAdsController
                 $exists->execute(['id' => $id]);
                 if (!$exists->fetchColumn()) throw new \InvalidArgumentException('Publicité introuvable.');
             }
+            AuditLog::record('ad.update', 'advertisement', $id, ['name' => $data['name']]);
             return ['data' => ['id' => $id], 'message' => 'Publicité mise à jour.'];
         });
     }
@@ -65,6 +69,7 @@ final class AdminAdsController
             $statement = $pdo->prepare('DELETE FROM advertisements WHERE id = :id');
             $statement->execute(['id' => $id]);
             if ($statement->rowCount() === 0) throw new \InvalidArgumentException('Publicité introuvable.');
+            AuditLog::record('ad.delete', 'advertisement', $id);
             return ['message' => 'Publicité supprimée.'];
         });
     }

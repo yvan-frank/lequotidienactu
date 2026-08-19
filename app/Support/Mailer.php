@@ -44,7 +44,7 @@ final class Mailer
             $host = $_ENV['MAIL_HOST'] ?? '';
             if ($host === '') {
                 $error = 'MAIL_HOST est vide : configurez les variables MAIL_* dans le fichier .env.';
-                error_log('Mailer: ' . $error . ' (destinataire : ' . $to . ')');
+                Logger::error('Mailer: ' . $error, ['to' => $to]);
                 return ['success' => false, 'error' => $error];
             }
 
@@ -85,7 +85,7 @@ final class Mailer
             $mail->send();
             return ['success' => true, 'error' => null];
         } catch (PHPMailerException $e) {
-            error_log('Mailer: failed to send to ' . $to . ': ' . $e->getMessage());
+            Logger::error('Mailer: failed to send', ['to' => $to, 'error' => $e->getMessage()]);
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }

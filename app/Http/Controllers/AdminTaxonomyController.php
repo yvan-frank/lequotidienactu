@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Seo\RedirectService;
+use App\Support\AuditLog;
 use App\Support\Slug;
 use PDO;
 use PDOException;
@@ -27,7 +28,9 @@ final class AdminTaxonomyController
             $statement = $pdo->prepare('INSERT INTO categories (parent_id, name, slug, description, position) VALUES (:parent_id, :name, :slug, :description, :position)');
             $statement->execute($data);
             (new RedirectService())->reclaim("/{$data['slug']}");
-            return ['data' => ['id' => (int) $pdo->lastInsertId()], 'message' => 'Rubrique créée.'];
+            $newId = (int) $pdo->lastInsertId();
+            AuditLog::record('category.create', 'category', $newId, ['name' => $data['name']]);
+            return ['data' => ['id' => $newId], 'message' => 'Rubrique créée.'];
         }, 201);
     }
 
@@ -56,6 +59,7 @@ final class AdminTaxonomyController
                 }
             }
 
+            AuditLog::record('category.update', 'category', $id, ['name' => $data['name']]);
             return ['data' => ['id' => $id], 'message' => 'Rubrique mise à jour.'];
         });
     }
@@ -67,6 +71,7 @@ final class AdminTaxonomyController
             $statement = $pdo->prepare('DELETE FROM categories WHERE id = :id');
             $statement->execute(['id' => $id]);
             if ($statement->rowCount() === 0) throw new \InvalidArgumentException('Rubrique introuvable.');
+            AuditLog::record('category.delete', 'category', $id);
             return ['message' => 'Rubrique supprimée.'];
         });
     }
@@ -87,7 +92,9 @@ final class AdminTaxonomyController
             $data = $this->validateTag($this->input());
             $statement = $pdo->prepare('INSERT INTO tags (name, slug) VALUES (:name, :slug)');
             $statement->execute($data);
-            return ['data' => ['id' => (int) $pdo->lastInsertId()], 'message' => 'Tag créé.'];
+            $newId = (int) $pdo->lastInsertId();
+            AuditLog::record('tag.create', 'tag', $newId, ['name' => $data['name']]);
+            return ['data' => ['id' => $newId], 'message' => 'Tag créé.'];
         }, 201);
     }
 
@@ -104,6 +111,7 @@ final class AdminTaxonomyController
                 $exists->execute(['id' => $id]);
                 if (!$exists->fetchColumn()) throw new \InvalidArgumentException('Tag introuvable.');
             }
+            AuditLog::record('tag.update', 'tag', $id, ['name' => $data['name']]);
             return ['data' => ['id' => $id], 'message' => 'Tag mis à jour.'];
         });
     }
@@ -115,6 +123,7 @@ final class AdminTaxonomyController
             $statement = $pdo->prepare('DELETE FROM tags WHERE id = :id');
             $statement->execute(['id' => $id]);
             if ($statement->rowCount() === 0) throw new \InvalidArgumentException('Tag introuvable.');
+            AuditLog::record('tag.delete', 'tag', $id);
             return ['message' => 'Tag supprimé.'];
         });
     }
@@ -135,7 +144,9 @@ final class AdminTaxonomyController
             $data = $this->validateAuthor($this->input(), $pdo);
             $statement = $pdo->prepare('INSERT INTO authors (user_id, display_name, slug, bio, avatar_media_id) VALUES (:user_id, :display_name, :slug, :bio, :avatar_media_id)');
             $statement->execute($data);
-            return ['data' => ['id' => (int) $pdo->lastInsertId()], 'message' => 'Auteur créé.'];
+            $newId = (int) $pdo->lastInsertId();
+            AuditLog::record('author.create', 'author', $newId, ['display_name' => $data['display_name']]);
+            return ['data' => ['id' => $newId], 'message' => 'Auteur créé.'];
         }, 201);
     }
 
@@ -152,6 +163,7 @@ final class AdminTaxonomyController
                 $exists->execute(['id' => $id]);
                 if (!$exists->fetchColumn()) throw new \InvalidArgumentException('Auteur introuvable.');
             }
+            AuditLog::record('author.update', 'author', $id, ['display_name' => $data['display_name']]);
             return ['data' => ['id' => $id], 'message' => 'Auteur mis à jour.'];
         });
     }
@@ -163,6 +175,7 @@ final class AdminTaxonomyController
             $statement = $pdo->prepare('DELETE FROM authors WHERE id = :id');
             $statement->execute(['id' => $id]);
             if ($statement->rowCount() === 0) throw new \InvalidArgumentException('Auteur introuvable.');
+            AuditLog::record('author.delete', 'author', $id);
             return ['message' => 'Auteur supprimé.'];
         });
     }

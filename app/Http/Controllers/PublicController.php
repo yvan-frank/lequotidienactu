@@ -119,7 +119,8 @@ final class PublicController
         $searchQuery = trim((string) ($_GET['q'] ?? ''));
         $title = ($searchQuery !== '' ? '« ' . $searchQuery . ' » - ' : '') . 'Recherche - Le Quotidien Actu';
         $page = 'search';
-        $articles = $searchQuery !== '' ? $this->searchArticles($searchQuery) : [];
+        $searchRateLimited = $searchQuery !== '' && (new RateLimiter($this->pdo()))->tooManyAttempts('search', 30, 60);
+        $articles = ($searchQuery !== '' && !$searchRateLimited) ? $this->searchArticles($searchQuery) : [];
         $seo = (new SeoManager())->forSearch();
         require __DIR__ . '/../../Views/layout.php';
     }

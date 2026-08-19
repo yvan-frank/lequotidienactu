@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Support\AuditLog;
 use App\Support\Config;
 use App\Support\Mailer;
 use App\Support\MailTemplate;
@@ -58,6 +59,7 @@ final class AdminUserController
                 ->execute(['user_id' => $userId, 'token_hash' => hash('sha256', $token), 'expires_at' => date('Y-m-d H:i:s', time() + 86400)]);
 
             $this->sendInviteEmail($email, $name, $token);
+            AuditLog::record('user.invite', 'user', $userId, ['email' => $email, 'role' => $role]);
 
             return ['data' => ['id' => $userId], 'message' => 'Invitation envoyée à ' . $email . '.'];
         }, 201);
@@ -89,6 +91,7 @@ final class AdminUserController
                 if (!$exists->fetchColumn()) throw new \InvalidArgumentException('Utilisateur introuvable.');
             }
 
+            AuditLog::record('user.update', 'user', $id, ['email' => $email, 'role' => $role]);
             return ['data' => ['id' => $id], 'message' => 'Utilisateur mis à jour.'];
         });
     }
@@ -102,10 +105,15 @@ final class AdminUserController
                 throw new \InvalidArgumentException('Vous ne pouvez pas supprimer votre propre compte.');
             }
 
+            $target = $pdo->prepare('SELECT email FROM users WHERE id = :id');
+            $target->execute(['id' => $id]);
+            $targetEmail = $target->fetchColumn();
+
             $statement = $pdo->prepare('DELETE FROM users WHERE id = :id');
             $statement->execute(['id' => $id]);
             if ($statement->rowCount() === 0) throw new \InvalidArgumentException('Utilisateur introuvable.');
 
+            AuditLog::record('user.delete', 'user', $id, ['email' => $targetEmail ?: null]);
             return ['message' => 'Utilisateur supprimé.'];
         });
     }

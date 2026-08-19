@@ -34,6 +34,7 @@ import {
   PanelLeftOpen,
   Pencil,
   Route as RouteIcon,
+  ScrollText,
   Send,
   Settings,
   Star,
@@ -51,6 +52,7 @@ import { Users as UsersPage } from './Users';
 import { Redirects } from './Redirects';
 import { Comments } from './Comments';
 import { Settings as SettingsPage } from './Settings';
+import { ActivityLog } from './ActivityLog';
 import { api, setCsrfToken } from './api';
 import { Toast } from './components/Toast';
 import './styles.css';
@@ -285,6 +287,7 @@ const navItems = [
   { to: '/ads', label: 'Publicité', icon: Megaphone, exact: false },
   { to: '/newsletter', label: 'Newsletter', icon: Mail, exact: false },
   { to: '/users', label: 'Utilisateurs', icon: Users, exact: false },
+  { to: '/activity', label: 'Journal d’activité', icon: ScrollText, exact: false },
   { to: '/settings', label: 'Paramètres', icon: Settings, exact: false },
 ] as const;
 
@@ -1178,6 +1181,11 @@ const settingsRoute = new Route({
   path: '/settings',
   component: SettingsPage,
 });
+const activityRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/activity',
+  component: ActivityLog,
+});
 const router = createRouter({
   basepath: '/u/admin',
   routeTree: rootRoute.addChildren([
@@ -1193,6 +1201,7 @@ const router = createRouter({
     newsletterRoute,
     usersRoute,
     settingsRoute,
+    activityRoute,
   ]),
 });
 declare module '@tanstack/react-router' {

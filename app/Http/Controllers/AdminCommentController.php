@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Support\AuditLog;
 use PDO;
 use PDOException;
 
@@ -41,6 +42,7 @@ final class AdminCommentController
                 $exists->execute(['id' => $id]);
                 if (!$exists->fetchColumn()) throw new \InvalidArgumentException('Commentaire introuvable.');
             }
+            AuditLog::record('comment.moderate', 'comment', $id, ['status' => $status]);
             return ['message' => 'Commentaire mis à jour.'];
         });
     }
@@ -76,7 +78,9 @@ final class AdminCommentController
                 'author_name' => $staffName,
                 'body' => $body,
             ]);
-            return ['message' => 'Réponse publiée.', 'data' => ['id' => (int) $pdo->lastInsertId()]];
+            $replyId = (int) $pdo->lastInsertId();
+            AuditLog::record('comment.reply', 'comment', $replyId, ['parent_id' => $id]);
+            return ['message' => 'Réponse publiée.', 'data' => ['id' => $replyId]];
         }, 201);
     }
 
@@ -87,6 +91,7 @@ final class AdminCommentController
             $statement = $pdo->prepare('DELETE FROM comments WHERE id = :id');
             $statement->execute(['id' => $id]);
             if ($statement->rowCount() === 0) throw new \InvalidArgumentException('Commentaire introuvable.');
+            AuditLog::record('comment.delete', 'comment', $id);
             return ['message' => 'Commentaire supprimé.'];
         });
     }
@@ -104,6 +109,7 @@ final class AdminCommentController
             $pdo->prepare('INSERT INTO blocked_commenters (ip_address, reason) VALUES (:ip, :reason) ON DUPLICATE KEY UPDATE reason = VALUES(reason)')
                 ->execute(['ip' => $ip, 'reason' => 'Bloqué depuis un commentaire signalé']);
             $pdo->prepare('UPDATE comments SET status = "rejected" WHERE id = :id')->execute(['id' => $id]);
+            AuditLog::record('comment.block', 'comment', $id, ['ip_address' => $ip]);
             return ['message' => 'Auteur bloqué : ses futurs commentaires seront refusés.'];
         });
     }
@@ -123,6 +129,7 @@ final class AdminCommentController
             $statement = $pdo->prepare('DELETE FROM blocked_commenters WHERE id = :id');
             $statement->execute(['id' => $id]);
             if ($statement->rowCount() === 0) throw new \InvalidArgumentException('Blocage introuvable.');
+            AuditLog::record('comment.unblock', 'blocked_commenter', $id);
             return ['message' => 'Adresse débloquée.'];
         });
     }

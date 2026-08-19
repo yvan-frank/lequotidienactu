@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Support\AuditLog;
 use App\Support\Config;
+use App\Support\Logger;
 use App\Support\Mailer;
 use App\Support\MailTemplate;
 use App\Support\RateLimiter;
@@ -50,6 +52,7 @@ final class AdminAuthController
             $user = $statement->fetch(PDO::FETCH_ASSOC);
 
             if (!$user || !password_verify($password, $user['password_hash']) || !in_array($user['role'], self::STAFF_ROLES, true)) {
+                Logger::warning('Admin login failed', ['email' => $email]);
                 $this->json(['message' => 'Identifiants invalides ou accès non autorisé.'], 401);
                 return;
             }
@@ -57,6 +60,8 @@ final class AdminAuthController
             session_regenerate_id(true);
             $_SESSION['admin_user'] = ['id' => (int) $user['id'], 'name' => $user['name'], 'email' => $user['email'], 'role' => $user['role']];
             $this->ensureCsrfToken(true);
+            Logger::info('Admin login', ['user_id' => $user['id'], 'email' => $email]);
+            AuditLog::record('auth.login', 'user', (int) $user['id']);
             $this->json(['user' => $_SESSION['admin_user'], 'csrf_token' => $_SESSION['csrf_token']]);
         } catch (PDOException) {
             $this->json(['message' => 'Base de données indisponible.'], 503);

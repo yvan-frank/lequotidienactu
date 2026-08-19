@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Support\AuditLog;
 use App\Support\Config;
 use App\Support\Mailer;
 use PDO;
@@ -34,6 +35,7 @@ final class AdminNewsletterController
             $statement = $pdo->prepare('DELETE FROM newsletter_subscribers WHERE id = :id');
             $statement->execute(['id' => $id]);
             if ($statement->rowCount() === 0) throw new \InvalidArgumentException('Abonné introuvable.');
+            AuditLog::record('newsletter.delete_subscriber', 'newsletter_subscriber', $id);
             return ['message' => 'Abonné supprimé.'];
         });
     }
@@ -59,6 +61,7 @@ final class AdminNewsletterController
                 }
             }
 
+            AuditLog::record('newsletter.send', null, null, ['subject' => $subject, 'sent' => $sent, 'total' => count($recipients)]);
             return ['message' => "Campagne envoyée à {$sent}/" . count($recipients) . ' abonné(s) actif(s).'];
         });
     }

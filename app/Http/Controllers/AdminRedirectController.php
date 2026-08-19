@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Seo\RedirectService;
+use App\Support\AuditLog;
 use PDO;
 use PDOException;
 
@@ -25,7 +26,9 @@ final class AdminRedirectController
             $data = $this->validate($this->input());
             $statement = $pdo->prepare('INSERT INTO redirects (source_path, destination_url, status_code) VALUES (:source_path, :destination_url, :status_code)');
             $statement->execute($data);
-            return ['data' => ['id' => (int) $pdo->lastInsertId()], 'message' => 'Redirection créée.'];
+            $newId = (int) $pdo->lastInsertId();
+            AuditLog::record('redirect.create', 'redirect', $newId, ['source_path' => $data['source_path']]);
+            return ['data' => ['id' => $newId], 'message' => 'Redirection créée.'];
         }, 201);
     }
 
@@ -42,6 +45,7 @@ final class AdminRedirectController
                 $exists->execute(['id' => $id]);
                 if (!$exists->fetchColumn()) throw new \InvalidArgumentException('Redirection introuvable.');
             }
+            AuditLog::record('redirect.update', 'redirect', $id, ['source_path' => $data['source_path']]);
             return ['data' => ['id' => $id], 'message' => 'Redirection mise à jour.'];
         });
     }
@@ -53,6 +57,7 @@ final class AdminRedirectController
             $statement = $pdo->prepare('DELETE FROM redirects WHERE id = :id');
             $statement->execute(['id' => $id]);
             if ($statement->rowCount() === 0) throw new \InvalidArgumentException('Redirection introuvable.');
+            AuditLog::record('redirect.delete', 'redirect', $id);
             return ['message' => 'Redirection supprimée.'];
         });
     }
