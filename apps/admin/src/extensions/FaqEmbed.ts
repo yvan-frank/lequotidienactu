@@ -52,12 +52,15 @@ export const FaqEmbed = Node.create({
   },
 
   addNodeView() {
-    return ({ editor, getPos, node }) => {
+    return ({ editor, getPos, node: initialNode }) => {
+      let node = initialNode;
       let items: FaqItem[] = node.attrs.items ?? [{ question: '', answer: '' }];
+      let selfTriggeredUpdate = false;
 
       const commit = () => {
         const pos = typeof getPos === 'function' ? getPos() : null;
         if (pos === null || pos === undefined) return;
+        selfTriggeredUpdate = true;
         editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { items }));
       };
 
@@ -151,7 +154,28 @@ export const FaqEmbed = Node.create({
       });
 
       dom.append(header, list, addButton);
-      return { dom };
+
+      return {
+        dom,
+        // Every keystroke commits a transaction that changes this node's own
+        // attrs (there's no other way to persist the text). Without this,
+        // Tiptap has no way to know the NodeView already reflects the new
+        // value and destroys + recreates the whole DOM on every change,
+        // which drops focus mid-keystroke and makes the block feel like it
+        // "disappears" while typing.
+        update: (updatedNode) => {
+          if (updatedNode.type.name !== 'faqEmbed') return false;
+          node = updatedNode;
+          if (selfTriggeredUpdate) {
+            selfTriggeredUpdate = false;
+            return true;
+          }
+          items = updatedNode.attrs.items ?? [{ question: '', answer: '' }];
+          renderList();
+          return true;
+        },
+        ignoreMutation: () => true,
+      };
     };
   },
 
