@@ -124,6 +124,10 @@ final class Router
         if ($method === 'GET' && $path === '/api/admin/comments') { $adminComments->index(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/comments/(\d+)$#', $path, $m)) { $adminComments->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/comments/(\d+)$#', $path, $m)) { $adminComments->delete((int) $m[1]); return; }
+        if ($method === 'POST' && preg_match('#^/api/admin/comments/(\d+)/block$#', $path, $m)) { $adminComments->block((int) $m[1]); return; }
+        if ($method === 'POST' && preg_match('#^/api/admin/comments/(\d+)/reply$#', $path, $m)) { $adminComments->reply((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/blocked-commenters') { $adminComments->blockedList(); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/blocked-commenters/(\d+)$#', $path, $m)) { $adminComments->unblock((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/users') { $adminUsers->index(); return; }
         if ($method === 'POST' && $path === '/api/admin/users') { $adminUsers->invite(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/users/(\d+)$#', $path, $m)) { $adminUsers->update((int) $m[1]); return; }
@@ -134,6 +138,10 @@ final class Router
         if ($method === 'GET' && $path === '/api/admin/settings/seo') { $adminSettings->seo(); return; }
         if ($method === 'PUT' && $path === '/api/admin/settings/seo') { $adminSettings->updateSeo(); return; }
         if ($method === 'POST' && $path === '/api/admin/settings/mail/test') { $adminSettings->testMail(); return; }
+        if ($method === 'GET' && $path === '/api/admin/settings/general') { $adminSettings->general(); return; }
+        if ($method === 'PUT' && $path === '/api/admin/settings/general') { $adminSettings->updateGeneral(); return; }
+        if ($method === 'GET' && $path === '/api/admin/settings/revenue') { $adminSettings->revenue(); return; }
+        if ($method === 'PUT' && $path === '/api/admin/settings/revenue') { $adminSettings->updateRevenue(); return; }
         if ($method === 'GET' && $path === '/api/admin/ad-slots') { $adminAds->slots(); return; }
         if ($method === 'GET' && $path === '/api/admin/ads') { $adminAds->index(); return; }
         if ($method === 'POST' && $path === '/api/admin/ads') { $adminAds->create(); return; }
@@ -153,6 +161,7 @@ final class Router
         if ($method === 'POST' && preg_match('#^/api/articles/(\d+)/reactions$#', $path, $m)) { $api->react((int) $m[1]); return; }
         if ($method === 'GET' && preg_match('#^/api/articles/(\d+)/comments$#', $path, $m)) { $api->comments((int) $m[1]); return; }
         if ($method === 'POST' && preg_match('#^/api/articles/(\d+)/comments$#', $path, $m)) { $api->postComment((int) $m[1]); return; }
+        if ($method === 'POST' && preg_match('#^/api/comments/(\d+)/report$#', $path, $m)) { $api->reportComment((int) $m[1]); return; }
         if ($method === 'POST' && preg_match('#^/api/ads/(\d+)/click$#', $path, $m)) { $api->adClick((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/') {
             $public->home();

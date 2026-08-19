@@ -9,6 +9,7 @@ use App\Support\Config;
 use App\Support\Mailer;
 use App\Support\MailTemplate;
 use App\Support\RateLimiter;
+use App\Support\Settings;
 use App\Support\TooManyAttemptsException;
 use PDO;
 use PDOException;
@@ -16,7 +17,7 @@ use PDOException;
 final class PublicController
 {
     private const CATEGORIES = ['afrique', 'france-diaspora', 'business', 'tech', 'sport', 'culture'];
-    private const CONTACT_EMAIL = 'yvanzangue@gmail.com';
+    private const CONTACT_EMAIL_FALLBACK = 'yvanzangue@gmail.com';
 
     public function home(): void
     {
@@ -100,6 +101,8 @@ final class PublicController
             || ($article['published_at_raw'] ?? '1970-01-01') > date('Y-m-d H:i:s');
         if ($isPreview) {
             header('X-Robots-Tag: noindex, nofollow');
+        } elseif (isset($article['id'])) {
+            $this->recordView((int) $article['id']);
         }
         $wordCount = str_word_count(strip_tags($article['body'] ?? ''));
         $readingMinutes = max(1, (int) ceil($wordCount / 200));
@@ -191,7 +194,8 @@ final class PublicController
             );
             $text = "Nouveau message via le formulaire de contact de {$appName}\n\n"
                 . "Nom : {$name}\nE-mail : {$email}\n\nMessage :\n{$message}\n";
-            Mailer::sendHtml(self::CONTACT_EMAIL, self::CONTACT_EMAIL, 'Contact site — ' . $name, $html, $text, ['email' => $email, 'name' => $name]);
+            $recipient = Settings::get('general', ['contact_email' => ''])['contact_email'] ?: self::CONTACT_EMAIL_FALLBACK;
+            Mailer::sendHtml($recipient, $recipient, 'Contact site — ' . $name, $html, $text, ['email' => $email, 'name' => $name]);
 
             header('Location: ' . Config::url('/contact?statut=envoye'));
         } catch (TooManyAttemptsException) {
@@ -269,7 +273,7 @@ final class PublicController
             if (is_array($category) && $category === []) {
                 return [];
             }
-            $sql = 'SELECT a.id, a.category_id, a.title, a.slug, a.excerpt, a.body, a.status, a.published_at, a.updated_at, a.meta_title, a.meta_description, a.is_sponsored, a.is_featured, c.slug AS category, c.name AS category_name, au.display_name AS author, au.slug AS author_slug, au.bio AS author_bio, m.path AS hero_image, m.credit AS hero_credit, m.alt_text AS hero_alt FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN authors au ON au.id = a.author_id INNER JOIN media m ON m.id = a.hero_media_id WHERE 1 = 1';
+            $sql = 'SELECT a.id, a.category_id, a.title, a.slug, a.excerpt, a.body, a.status, a.published_at, a.updated_at, a.meta_title, a.meta_description, a.canonical_url, a.robots, a.is_sponsored, a.is_featured, c.slug AS category, c.name AS category_name, au.display_name AS author, au.slug AS author_slug, au.bio AS author_bio, m.path AS hero_image, m.credit AS hero_credit, m.alt_text AS hero_alt FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN authors au ON au.id = a.author_id INNER JOIN media m ON m.id = a.hero_media_id WHERE 1 = 1';
             $params = [];
             if (is_array($category)) {
                 $placeholders = [];
@@ -307,6 +311,20 @@ final class PublicController
             }, $statement->fetchAll(PDO::FETCH_ASSOC));
         } catch (PDOException) {
             return [];
+        }
+    }
+
+    /**
+     * A missed or double-counted view is not worth failing the page render
+     * for, so this stays fire-and-forget like the ad impression counter.
+     */
+    private function recordView(int $articleId): void
+    {
+        try {
+            $this->pdo()->prepare('UPDATE articles SET views_count = views_count + 1 WHERE id = :id')
+                ->execute(['id' => $articleId]);
+        } catch (PDOException) {
+            // Ignore — view counts are a nice-to-have, not critical.
         }
     }
 

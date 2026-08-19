@@ -10,12 +10,79 @@ use PDOException;
 final class AdminSettingsController
 {
     private const SEO_DEFAULTS = ['ga_measurement_id' => '', 'gsc_verification' => '', 'adsense_client' => ''];
+    private const GENERAL_DEFAULTS = [
+        'tagline' => '',
+        'contact_email' => '',
+        'twitter_url' => '',
+        'facebook_url' => '',
+        'instagram_url' => '',
+        'linkedin_url' => '',
+    ];
+    private const REVENUE_DEFAULTS = ['cpm' => 0, 'cpc' => 0];
 
     public function seo(): void
     {
         AdminAuthController::requireStaff();
         $this->respond(function (): array {
             return ['data' => Settings::get('seo', self::SEO_DEFAULTS)];
+        });
+    }
+
+    public function general(): void
+    {
+        AdminAuthController::requireStaff();
+        $this->respond(function (): array {
+            return ['data' => Settings::get('general', self::GENERAL_DEFAULTS)];
+        });
+    }
+
+    public function updateGeneral(): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        $this->respond(function (): array {
+            $input = json_decode(file_get_contents('php://input') ?: '[]', true, 512, JSON_THROW_ON_ERROR);
+            $tagline = trim((string) ($input['tagline'] ?? ''));
+            $contactEmail = trim((string) ($input['contact_email'] ?? ''));
+            if ($contactEmail !== '' && !filter_var($contactEmail, FILTER_VALIDATE_EMAIL)) {
+                throw new \InvalidArgumentException('Adresse e-mail de contact invalide.');
+            }
+            $urls = [];
+            foreach (['twitter_url', 'facebook_url', 'instagram_url', 'linkedin_url'] as $field) {
+                $value = trim((string) ($input[$field] ?? ''));
+                if ($value !== '' && !filter_var($value, FILTER_VALIDATE_URL)) {
+                    throw new \InvalidArgumentException('Une des URL de réseau social est invalide.');
+                }
+                $urls[$field] = $value;
+            }
+
+            $data = ['tagline' => $tagline, 'contact_email' => $contactEmail, ...$urls];
+            Settings::set('general', $data);
+            return ['data' => $data, 'message' => 'Paramètres généraux enregistrés.'];
+        });
+    }
+
+    public function revenue(): void
+    {
+        AdminAuthController::requireStaff();
+        $this->respond(function (): array {
+            return ['data' => Settings::get('revenue', self::REVENUE_DEFAULTS)];
+        });
+    }
+
+    public function updateRevenue(): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        $this->respond(function (): array {
+            $input = json_decode(file_get_contents('php://input') ?: '[]', true, 512, JSON_THROW_ON_ERROR);
+            $cpm = (float) ($input['cpm'] ?? 0);
+            $cpc = (float) ($input['cpc'] ?? 0);
+            if ($cpm < 0 || $cpc < 0) {
+                throw new \InvalidArgumentException('Les valeurs doivent être positives.');
+            }
+
+            $data = ['cpm' => $cpm, 'cpc' => $cpc];
+            Settings::set('revenue', $data);
+            return ['data' => $data, 'message' => 'Paramètres de revenus enregistrés.'];
         });
     }
 

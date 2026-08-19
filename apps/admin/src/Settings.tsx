@@ -1,10 +1,19 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, DollarSign, ExternalLink, Mail, Search } from 'lucide-react';
+import { Building2, CheckCircle2, DollarSign, ExternalLink, Mail, Search, TrendingUp } from 'lucide-react';
 import { api } from './api';
 import { Toast } from './components/Toast';
 
 type SeoSettings = { ga_measurement_id: string; gsc_verification: string; adsense_client: string };
+type GeneralSettings = {
+  tagline: string;
+  contact_email: string;
+  twitter_url: string;
+  facebook_url: string;
+  instagram_url: string;
+  linkedin_url: string;
+};
+type RevenueSettings = { cpm: number; cpc: number };
 type ToastState = { message: string; tone: 'error' | 'success' } | null;
 
 const inputClass =
@@ -16,13 +25,14 @@ function apiErrorMessage(error: any, fallback: string): string {
 }
 
 const TABS = [
+  { id: 'general', label: 'Général', icon: Building2 },
   { id: 'seo', label: 'SEO & Analytics', icon: Search },
   { id: 'mail', label: 'E-mail (SMTP)', icon: Mail },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
 export function Settings() {
-  const [activeTab, setActiveTab] = React.useState<TabId>('seo');
+  const [activeTab, setActiveTab] = React.useState<TabId>('general');
   const [toast, setToast] = React.useState<ToastState>(null);
 
   return (
@@ -59,12 +69,222 @@ export function Settings() {
       </div>
 
       <div className="mt-6">
+        {activeTab === 'general' && <GeneralPanel setToast={setToast} />}
         {activeTab === 'seo' && <SeoPanel setToast={setToast} />}
         {activeTab === 'mail' && <MailPanel />}
       </div>
 
       {toast && <Toast message={toast.message} tone={toast.tone} onClose={() => setToast(null)} />}
     </>
+  );
+}
+
+function GeneralPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
+  const queryClient = useQueryClient();
+  const [form, setForm] = React.useState<GeneralSettings>({
+    tagline: '',
+    contact_email: '',
+    twitter_url: '',
+    facebook_url: '',
+    instagram_url: '',
+    linkedin_url: '',
+  });
+  const [loaded, setLoaded] = React.useState(false);
+  const settings = useQuery({
+    queryKey: ['admin-settings-general'],
+    queryFn: async () => (await api.get<{ data: GeneralSettings }>('/admin/settings/general')).data.data,
+  });
+  React.useEffect(() => {
+    if (settings.data && !loaded) {
+      setForm(settings.data);
+      setLoaded(true);
+    }
+  }, [settings.data, loaded]);
+  const save = useMutation({
+    mutationFn: () => api.put<{ data: GeneralSettings }>('/admin/settings/general', form),
+    onSuccess: (response) => {
+      queryClient.setQueryData(['admin-settings-general'], response.data.data);
+      setToast({ tone: 'success', message: 'Paramètres généraux enregistrés.' });
+    },
+    onError: (error) =>
+      setToast({ tone: 'error', message: apiErrorMessage(error, "Impossible d'enregistrer ces paramètres.") }),
+  });
+
+  const [revenueForm, setRevenueForm] = React.useState<RevenueSettings>({ cpm: 0, cpc: 0 });
+  const [revenueLoaded, setRevenueLoaded] = React.useState(false);
+  const revenueSettings = useQuery({
+    queryKey: ['admin-settings-revenue'],
+    queryFn: async () => (await api.get<{ data: RevenueSettings }>('/admin/settings/revenue')).data.data,
+  });
+  React.useEffect(() => {
+    if (revenueSettings.data && !revenueLoaded) {
+      setRevenueForm(revenueSettings.data);
+      setRevenueLoaded(true);
+    }
+  }, [revenueSettings.data, revenueLoaded]);
+  const saveRevenue = useMutation({
+    mutationFn: () => api.put<{ data: RevenueSettings }>('/admin/settings/revenue', revenueForm),
+    onSuccess: (response) => {
+      queryClient.setQueryData(['admin-settings-revenue'], response.data.data);
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+      setToast({ tone: 'success', message: 'Estimation de revenus enregistrée.' });
+    },
+    onError: (error) =>
+      setToast({ tone: 'error', message: apiErrorMessage(error, "Impossible d'enregistrer ces paramètres.") }),
+  });
+
+  return (
+    <div className="grid grid-cols-1 gap-6">
+      {loaded && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            save.mutate();
+          }}
+          className="rounded-xl border border-slate-200 bg-white p-6"
+        >
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-lg bg-orange-50 text-orange-700">
+              <Building2 size={20} />
+            </span>
+            <div>
+              <h3 className="font-bold">Identité du média</h3>
+              <p className="text-sm text-slate-500">
+                Description, contact public et réseaux sociaux affichés sur le site.
+              </p>
+            </div>
+          </div>
+          <label className={`mt-5 ${labelClass}`}>
+            Accroche (tagline)
+            <input
+              className={inputClass}
+              placeholder="L’actualité Afrique francophone, France et diaspora."
+              value={form.tagline}
+              onChange={(event) => setForm({ ...form, tagline: event.target.value })}
+            />
+          </label>
+          <label className={`mt-4 ${labelClass}`}>
+            E-mail de contact public
+            <input
+              type="email"
+              className={inputClass}
+              placeholder="contact@exemple.fr"
+              value={form.contact_email}
+              onChange={(event) => setForm({ ...form, contact_email: event.target.value })}
+            />
+          </label>
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className={labelClass}>
+              X (Twitter)
+              <input
+                type="url"
+                className={inputClass}
+                placeholder="https://x.com/..."
+                value={form.twitter_url}
+                onChange={(event) => setForm({ ...form, twitter_url: event.target.value })}
+              />
+            </label>
+            <label className={labelClass}>
+              Facebook
+              <input
+                type="url"
+                className={inputClass}
+                placeholder="https://facebook.com/..."
+                value={form.facebook_url}
+                onChange={(event) => setForm({ ...form, facebook_url: event.target.value })}
+              />
+            </label>
+            <label className={labelClass}>
+              Instagram
+              <input
+                type="url"
+                className={inputClass}
+                placeholder="https://instagram.com/..."
+                value={form.instagram_url}
+                onChange={(event) => setForm({ ...form, instagram_url: event.target.value })}
+              />
+            </label>
+            <label className={labelClass}>
+              LinkedIn
+              <input
+                type="url"
+                className={inputClass}
+                placeholder="https://linkedin.com/..."
+                value={form.linkedin_url}
+                onChange={(event) => setForm({ ...form, linkedin_url: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className="mt-5 flex justify-end">
+            <button
+              disabled={save.isPending}
+              className="rounded bg-orange-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-800 disabled:opacity-50"
+            >
+              {save.isPending ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {revenueLoaded && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            saveRevenue.mutate();
+          }}
+          className="rounded-xl border border-slate-200 bg-white p-6"
+        >
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-lg bg-orange-50 text-orange-700">
+              <TrendingUp size={20} />
+            </span>
+            <div>
+              <h3 className="font-bold">Estimation des revenus publicitaires</h3>
+              <p className="text-sm text-slate-500">
+                Tarifs indicatifs utilisés pour estimer les revenus dans le tableau de bord, à partir
+                des impressions et clics déjà comptabilisés.
+              </p>
+            </div>
+          </div>
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className={labelClass}>
+              CPM estimé (€ pour 1000 impressions)
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className={inputClass}
+                value={revenueForm.cpm}
+                onChange={(event) => setRevenueForm({ ...revenueForm, cpm: Number(event.target.value) })}
+              />
+            </label>
+            <label className={labelClass}>
+              CPC estimé (€ par clic)
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className={inputClass}
+                value={revenueForm.cpc}
+                onChange={(event) => setRevenueForm({ ...revenueForm, cpc: Number(event.target.value) })}
+              />
+            </label>
+          </div>
+          <p className="mt-3 text-xs text-slate-400">
+            Il s’agit d’une estimation basée sur des tarifs que vous renseignez — pas des revenus réels
+            versés par vos régies publicitaires.
+          </p>
+          <div className="mt-5 flex justify-end">
+            <button
+              disabled={saveRevenue.isPending}
+              className="rounded bg-orange-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-800 disabled:opacity-50"
+            >
+              {saveRevenue.isPending ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
 

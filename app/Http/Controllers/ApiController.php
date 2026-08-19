@@ -186,7 +186,7 @@ final class ApiController
     public function comments(int $articleId): void
     {
         $this->respond(function (PDO $pdo) use ($articleId): array {
-            $statement = $pdo->prepare('SELECT id, author_name, body, created_at FROM comments WHERE article_id = :id AND status = "approved" ORDER BY created_at DESC');
+            $statement = $pdo->prepare('SELECT id, parent_id, author_name, body, created_at FROM comments WHERE article_id = :id AND status = "approved" ORDER BY created_at DESC');
             $statement->execute(['id' => $articleId]);
             return ['data' => $statement->fetchAll(PDO::FETCH_ASSOC)];
         });
@@ -198,6 +198,12 @@ final class ApiController
             if ((new RateLimiter($pdo))->tooManyAttempts('comment', 5, 600)) {
                 throw new TooManyAttemptsException('Trop de commentaires envoyés. Réessayez dans quelques minutes.');
             }
+            $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+            $blocked = $pdo->prepare('SELECT 1 FROM blocked_commenters WHERE ip_address = :ip LIMIT 1');
+            $blocked->execute(['ip' => $ip]);
+            if ($blocked->fetchColumn()) {
+                throw new \InvalidArgumentException('Vous n’êtes plus autorisé(e) à publier de commentaires.');
+            }
             $input = $this->input();
             $author = trim((string) ($input['author_name'] ?? ''));
             $body = trim((string) ($input['body'] ?? ''));
@@ -208,10 +214,25 @@ final class ApiController
                 throw new \InvalidArgumentException('Commentaire trop long (2000 caractères maximum).');
             }
             $this->assertPublished($pdo, $articleId);
-            $statement = $pdo->prepare('INSERT INTO comments (article_id, author_name, body, status) VALUES (:id, :author, :body, "pending")');
-            $statement->execute(['id' => $articleId, 'author' => mb_substr($author, 0, 120), 'body' => $body]);
+            $statement = $pdo->prepare('INSERT INTO comments (article_id, author_name, body, status, ip_address) VALUES (:id, :author, :body, "pending", :ip)');
+            $statement->execute(['id' => $articleId, 'author' => mb_substr($author, 0, 120), 'body' => $body, 'ip' => $ip]);
             return ['message' => 'Merci ! Votre commentaire est en attente de modération.'];
         }, 201);
+    }
+
+    public function reportComment(int $commentId): void
+    {
+        $this->respond(function (PDO $pdo) use ($commentId): array {
+            if ((new RateLimiter($pdo))->tooManyAttempts('comment-report', 10, 600)) {
+                throw new TooManyAttemptsException('Trop de signalements. Réessayez plus tard.');
+            }
+            $statement = $pdo->prepare('UPDATE comments SET reported_count = reported_count + 1 WHERE id = :id');
+            $statement->execute(['id' => $commentId]);
+            if ($statement->rowCount() === 0) {
+                throw new \InvalidArgumentException('Commentaire introuvable.');
+            }
+            return ['message' => 'Merci, ce commentaire a été signalé à la modération.'];
+        });
     }
 
     public function adClick(int $adId): void

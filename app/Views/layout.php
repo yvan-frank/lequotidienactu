@@ -2,6 +2,14 @@
 /** @var string $title */
 $currentPath = rtrim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/', '/') ?: '/';
 $seoSettings = \App\Support\Settings::get('seo', ['ga_measurement_id' => '', 'gsc_verification' => '', 'adsense_client' => '']);
+$generalSettings = \App\Support\Settings::get('general', [
+    'tagline' => '',
+    'contact_email' => '',
+    'twitter_url' => '',
+    'facebook_url' => '',
+    'instagram_url' => '',
+    'linkedin_url' => '',
+]);
 $categoryTree = \App\Support\Categories::tree();
 if ($categoryTree === []) {
     $categoryTree = array_map(
@@ -171,8 +179,23 @@ if ($categoryTree === []) {
           <img class="h-10 w-auto max-w-40 object-contain object-left" src="/assets/logo-header.png" alt="Le Quotidien Actu" width="1482" height="720">
         </a>
         <p class="mt-4 text-sm leading-relaxed text-slate-400">
-          L’actualité Afrique francophone, France et diaspora : décryptée, vérifiée, sans détour.
+          <?= htmlspecialchars($generalSettings['tagline'] !== '' ? $generalSettings['tagline'] : 'L’actualité Afrique francophone, France et diaspora : décryptée, vérifiée, sans détour.') ?>
         </p>
+        <?php
+        $socialLinks = array_filter([
+            'X (Twitter)' => $generalSettings['twitter_url'],
+            'Facebook' => $generalSettings['facebook_url'],
+            'Instagram' => $generalSettings['instagram_url'],
+            'LinkedIn' => $generalSettings['linkedin_url'],
+        ]);
+        ?>
+        <?php if ($socialLinks !== []): ?>
+          <div class="mt-4 flex items-center gap-3">
+            <?php foreach ($socialLinks as $label => $url): ?>
+              <a class="text-sm font-semibold text-slate-400 hover:text-white" href="<?= htmlspecialchars($url) ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars($label) ?></a>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
         <form class="mt-6 grid gap-2" data-island="newsletter">
           <label class="text-xs font-bold tracking-widest text-slate-400 uppercase" for="newsletter-email">Newsletter</label>
           <div class="flex gap-2">

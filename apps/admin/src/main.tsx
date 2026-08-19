@@ -488,6 +488,19 @@ type DashboardStats = {
     updated_at: string;
     category_name: string | null;
   }[];
+  total_views: number;
+  popular_articles: {
+    id: number;
+    title: string;
+    views_count: number;
+    category_name: string | null;
+  }[];
+  revenue: {
+    estimated_total: number;
+    ad_impressions: number;
+    ad_clicks: number;
+    configured: boolean;
+  };
 };
 
 const Dashboard = () => {
@@ -503,11 +516,15 @@ const Dashboard = () => {
       {stats.isError && <p className="mt-6 text-red-700">Impossible de charger les statistiques.</p>}
       {stats.data && (
         <>
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Link to="/articles" className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:border-orange-300 hover:shadow-md">
               <b className="block text-3xl">{stats.data.published_articles}</b>
               <span className="text-slate-500">Articles publiés</span>
             </Link>
+            <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+              <b className="block text-3xl">{stats.data.total_views.toLocaleString('fr-FR')}</b>
+              <span className="text-slate-500">Vues totales (articles)</span>
+            </div>
             <Link to="/comments" className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:border-orange-300 hover:shadow-md">
               <b className="block text-3xl">{stats.data.pending_comments}</b>
               <span className="text-slate-500">Commentaires en attente</span>
@@ -517,36 +534,87 @@ const Dashboard = () => {
               <span className="text-slate-500">Abonnés newsletter</span>
             </Link>
           </div>
-          <section className="mt-6 rounded-lg border border-slate-200 bg-white shadow-sm">
-            <h3 className="border-b border-slate-100 px-6 py-4 font-bold">Articles récents</h3>
-            {stats.data.recent_articles.length === 0 ? (
-              <p className="p-6 text-slate-500">Aucun article pour le moment.</p>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {stats.data.recent_articles.map((article) => (
-                  <li key={article.id} className="flex items-center justify-between gap-4 px-6 py-3">
-                    <div className="min-w-0">
-                      <Link
-                        to="/articles/$articleId"
-                        params={{ articleId: String(article.id) }}
-                        className="truncate font-semibold text-slate-900 hover:text-orange-700"
-                      >
-                        {article.title}
-                      </Link>
-                      <p className="text-xs text-slate-500">
-                        {article.category_name ?? 'Sans rubrique'} · {formatDateTime(article.updated_at)}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusClasses[article.status] ?? 'bg-slate-100 text-slate-700'}`}
-                    >
-                      {statusLabels[article.status] ?? article.status}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+
+          <section className="mt-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold">Revenus publicitaires estimés</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  {stats.data.revenue.ad_impressions.toLocaleString('fr-FR')} impressions ·{' '}
+                  {stats.data.revenue.ad_clicks.toLocaleString('fr-FR')} clics (cumulés)
+                </p>
+              </div>
+              {stats.data.revenue.configured ? (
+                <b className="text-3xl">
+                  {stats.data.revenue.estimated_total.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                </b>
+              ) : (
+                <Link to="/settings" className="text-sm font-semibold text-orange-700 hover:underline">
+                  Configurer un CPM/CPC estimé →
+                </Link>
+              )}
+            </div>
           </section>
+
+          <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+              <h3 className="border-b border-slate-100 px-6 py-4 font-bold">Articles récents</h3>
+              {stats.data.recent_articles.length === 0 ? (
+                <p className="p-6 text-slate-500">Aucun article pour le moment.</p>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {stats.data.recent_articles.map((article) => (
+                    <li key={article.id} className="flex items-center justify-between gap-4 px-6 py-3">
+                      <div className="min-w-0">
+                        <Link
+                          to="/articles/$articleId"
+                          params={{ articleId: String(article.id) }}
+                          className="truncate font-semibold text-slate-900 hover:text-orange-700"
+                        >
+                          {article.title}
+                        </Link>
+                        <p className="text-xs text-slate-500">
+                          {article.category_name ?? 'Sans rubrique'} · {formatDateTime(article.updated_at)}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusClasses[article.status] ?? 'bg-slate-100 text-slate-700'}`}
+                      >
+                        {statusLabels[article.status] ?? article.status}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+              <h3 className="border-b border-slate-100 px-6 py-4 font-bold">Articles populaires</h3>
+              {stats.data.popular_articles.length === 0 ? (
+                <p className="p-6 text-slate-500">Pas encore assez de vues pour établir un classement.</p>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {stats.data.popular_articles.map((article) => (
+                    <li key={article.id} className="flex items-center justify-between gap-4 px-6 py-3">
+                      <div className="min-w-0">
+                        <Link
+                          to="/articles/$articleId"
+                          params={{ articleId: String(article.id) }}
+                          className="truncate font-semibold text-slate-900 hover:text-orange-700"
+                        >
+                          {article.title}
+                        </Link>
+                        <p className="text-xs text-slate-500">{article.category_name ?? 'Sans rubrique'}</p>
+                      </div>
+                      <span className="shrink-0 text-sm font-bold text-slate-500">
+                        {article.views_count.toLocaleString('fr-FR')} vues
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
         </>
       )}
     </>

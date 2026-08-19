@@ -1,3 +1,4 @@
+<?php $legalContactEmail = $generalSettings['contact_email'] !== '' ? $generalSettings['contact_email'] : 'yvanzangue@gmail.com'; ?>
 <header class="max-w-3xl py-8">
   <p class="text-xs font-bold tracking-widest text-brand-600 uppercase">Informations légales</p>
   <h1 class="mt-2 text-4xl font-extrabold tracking-tight md:text-6xl">Mentions légales</h1>
@@ -12,7 +13,7 @@
     autorités judiciaires qui en feraient la demande et n’est pas publiée sur le site.
   </p>
   <p>
-    Contact éditeur : <a href="mailto:yvanzangue@gmail.com">yvanzangue@gmail.com</a><br>
+    Contact éditeur : <a href="mailto:<?= htmlspecialchars($legalContactEmail) ?>"><?= htmlspecialchars($legalContactEmail) ?></a><br>
     Directeur de la publication : Yvan Zangue
   </p>
 

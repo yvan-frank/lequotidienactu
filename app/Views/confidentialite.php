@@ -1,3 +1,4 @@
+<?php $privacyContactEmail = $generalSettings['contact_email'] !== '' ? $generalSettings['contact_email'] : 'yvanzangue@gmail.com'; ?>
 <header class="max-w-3xl py-8">
   <p class="text-xs font-bold tracking-widest text-brand-600 uppercase">Vos données</p>
   <h1 class="mt-2 text-4xl font-extrabold tracking-tight md:text-6xl">Politique de confidentialité</h1>
@@ -12,7 +13,7 @@
 
   <h2>Responsable de traitement</h2>
   <p>
-    Yvan Zangue, éditeur du site — contact : <a href="mailto:yvanzangue@gmail.com">yvanzangue@gmail.com</a>
+    Yvan Zangue, éditeur du site — contact : <a href="mailto:<?= htmlspecialchars($privacyContactEmail) ?>"><?= htmlspecialchars($privacyContactEmail) ?></a>
   </p>
 
   <h2>Données collectées</h2>
@@ -35,8 +36,10 @@
       présent dans chaque envoi.
     </li>
     <li>
-      <strong>Commentaires</strong> : nom et e-mail que vous renseignez, et contenu du commentaire,
-      soumis à modération avant publication.
+      <strong>Commentaires</strong> : nom et contenu du commentaire que vous renseignez, soumis à
+      modération avant publication. Votre adresse IP est également conservée, uniquement à des fins
+      de lutte contre les abus (spam, harcèlement) et pour permettre de bloquer un auteur en cas de
+      besoin.
     </li>
     <li>
       <strong>Formulaire de contact</strong> : nom, e-mail et message que vous nous transmettez
@@ -63,7 +66,7 @@
   <p>
     Conformément au RGPD, vous disposez d’un droit d’accès, de rectification, d’effacement,
     d’opposition et de portabilité sur vos données personnelles. Pour l’exercer, écrivez à
-    <a href="mailto:yvanzangue@gmail.com">yvanzangue@gmail.com</a> ou utilisez notre
+    <a href="mailto:<?= htmlspecialchars($privacyContactEmail) ?>"><?= htmlspecialchars($privacyContactEmail) ?></a> ou utilisez notre
     <a href="/contact">formulaire de contact</a>. Vous pouvez également introduire une réclamation
     auprès de la CNIL (3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07 —
     <a href="https://www.cnil.fr" target="_blank" rel="noreferrer">www.cnil.fr</a>).

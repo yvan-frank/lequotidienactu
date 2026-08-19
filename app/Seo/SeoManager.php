@@ -51,7 +51,7 @@ final class SeoManager
         $publishedAt = $article['published_at_iso'] ?? date(DATE_ATOM);
         $updatedAt = $article['updated_at_iso'] ?? $publishedAt;
 
-        return $this->document($title, $description, $path, 'article', [
+        $document = $this->document($title, $description, $path, 'article', [
             $this->breadcrumbs([
                 ['name' => 'Accueil', 'path' => '/'],
                 ['name' => ucfirst($article['category']), 'path' => '/' . $article['category']],
@@ -71,6 +71,15 @@ final class SeoManager
                 'inLanguage' => 'fr-FR',
             ],
         ]);
+
+        if (!empty($article['robots'])) {
+            $document['robots'] = $article['robots'];
+        }
+        if (!empty($article['canonical_url'])) {
+            $document['canonical'] = $article['canonical_url'];
+        }
+
+        return $document;
     }
 
     public function forSearch(): array

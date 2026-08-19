@@ -917,6 +917,21 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
                 </span>
               </label>
               <label className="text-sm font-semibold">
+                Indexation
+                <select
+                  className="mt-2 w-full rounded border border-slate-300 px-3 py-2"
+                  value={form.robots}
+                  onChange={(event) => update('robots', event.target.value)}
+                >
+                  <option value="index,follow">Indexer et suivre les liens (par défaut)</option>
+                  <option value="noindex,follow">Ne pas indexer, mais suivre les liens</option>
+                  <option value="noindex,nofollow">Ne pas indexer ni suivre les liens</option>
+                </select>
+                <span className="mt-1 block text-xs text-slate-400">
+                  Contrôle la balise robots envoyée aux moteurs de recherche pour cet article.
+                </span>
+              </label>
+              <label className="text-sm font-semibold">
                 Canonical
                 <input
                   className="mt-2 w-full rounded border border-slate-300 px-3 py-2"
