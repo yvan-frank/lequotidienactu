@@ -18,6 +18,8 @@ import {
 } from '@tanstack/react-router';
 import {
   Archive,
+  ChevronDown,
+  CircleUserRound,
   ExternalLink,
   Eye,
   FilePlus2,
@@ -291,6 +293,47 @@ const navItems = [
   { to: '/settings', label: 'Paramètres', icon: Settings, exact: false },
 ] as const;
 
+function AccountMenu({ user, onLogout }: { user: AdminUser | null | undefined; onLogout: () => void }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const closeOutside = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+      >
+        <CircleUserRound size={16} />
+        <span className="hidden max-w-24 truncate sm:inline">{user?.name ?? 'Compte'}</span>
+        <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute right-0 z-40 mt-2 w-52 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+          <div className="px-2 py-1.5">
+            <p className="truncate text-sm font-semibold text-slate-900">{user?.name}</p>
+            <p className="mt-0.5 text-xs text-slate-500 capitalize">{user?.role}</p>
+          </div>
+          <div className="my-1 border-t border-slate-100" />
+          <button
+            onClick={onLogout}
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm font-semibold text-orange-700 hover:bg-orange-50"
+          >
+            <LogOut size={14} /> Se déconnecter
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const AdminGate = () => {
   const session = useQuery({
     queryKey: ['admin-session'],
@@ -342,9 +385,11 @@ const AdminGate = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <aside
-        className={`hidden md:fixed md:inset-y-0 md:left-0 md:flex md:flex-col md:overflow-y-auto md:bg-slate-900 md:py-6 md:text-white md:transition-[width] md:duration-200 ${collapsed ? 'md:w-[76px] md:px-3' : 'md:w-[250px] md:px-6'}`}
+        className={`hidden md:fixed md:inset-y-0 md:left-0 md:flex md:flex-col md:bg-slate-900 md:text-white md:transition-[width] md:duration-200 ${collapsed ? 'md:w-[76px]' : 'md:w-[250px]'}`}
       >
-        <div className={`mb-8 flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
+        <div
+          className={`flex shrink-0 items-center py-6 ${collapsed ? 'justify-center px-3' : 'justify-between px-6'}`}
+        >
           {!collapsed && <h1 className="text-lg font-bold">Le Quotidien Actu</h1>}
           <button
             onClick={() => setCollapsed((current) => !current)}
@@ -355,7 +400,7 @@ const AdminGate = () => {
             {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
         </div>
-        <nav className="grid gap-2">
+        <nav className={`grid flex-1 content-start gap-2 overflow-y-auto pb-6 ${collapsed ? 'px-3' : 'px-6'}`}>
           {navItems.map(({ to, label, icon: Icon, exact }) => (
             <Link
               key={to}
@@ -370,23 +415,6 @@ const AdminGate = () => {
             </Link>
           ))}
         </nav>
-        <div
-          className={`mt-10 border-t border-slate-700 pt-5 text-sm text-slate-300 ${collapsed ? 'flex flex-col items-center' : ''}`}
-        >
-          {!collapsed && (
-            <>
-              <p className="font-semibold text-white">{session.data.user?.name}</p>
-              <p className="mt-1 capitalize">{session.data.user?.role}</p>
-            </>
-          )}
-          <button
-            onClick={() => logout.mutate()}
-            title="Se déconnecter"
-            className={`mt-4 flex items-center gap-2 text-sm font-semibold text-orange-300 hover:text-orange-200 ${collapsed ? 'justify-center' : ''}`}
-          >
-            <LogOut size={16} /> {!collapsed && 'Se déconnecter'}
-          </button>
-        </div>
       </aside>
 
       <div
@@ -429,16 +457,6 @@ const AdminGate = () => {
             </Link>
           ))}
         </nav>
-        <div className="mt-10 border-t border-slate-700 pt-5 text-sm text-slate-300">
-          <p className="font-semibold text-white">{session.data.user?.name}</p>
-          <p className="mt-1 capitalize">{session.data.user?.role}</p>
-          <button
-            onClick={() => logout.mutate()}
-            className="mt-4 flex items-center gap-2 text-sm font-semibold text-orange-300 hover:text-orange-200"
-          >
-            <LogOut size={16} /> Se déconnecter
-          </button>
-        </div>
       </aside>
 
       <div className={`min-h-screen md:transition-[margin] md:duration-200 ${collapsed ? 'md:ml-[76px]' : 'md:ml-[250px]'}`}>
@@ -470,6 +488,7 @@ const AdminGate = () => {
             >
               <FilePlus2 size={13} /> Nouvel article
             </Link>
+            <AccountMenu user={session.data.user} onLogout={() => logout.mutate()} />
           </div>
         </header>
         <main className="mx-auto w-full max-w-6xl p-6 md:p-12">
