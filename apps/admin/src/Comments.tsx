@@ -86,7 +86,7 @@ export function Comments() {
       queryClient.invalidateQueries({ queryKey: ['admin-comments'] });
       setReplyingTo(null);
       setReplyText('');
-      setToast({ tone: 'success', message: 'Réponse publiée.' });
+      setToast({ tone: 'success', message: 'Réponse publiée — le commentaire est désormais approuvé.' });
     },
     onError: (error) =>
       setToast({ tone: 'error', message: apiErrorMessage(error, "Impossible de publier cette réponse.") }),

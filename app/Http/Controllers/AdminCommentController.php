@@ -59,7 +59,7 @@ final class AdminCommentController
             if (mb_strlen($body) > 2000) {
                 throw new \InvalidArgumentException('Réponse trop longue (2000 caractères maximum).');
             }
-            $parent = $pdo->prepare('SELECT article_id, parent_id FROM comments WHERE id = :id');
+            $parent = $pdo->prepare('SELECT article_id, parent_id, status FROM comments WHERE id = :id');
             $parent->execute(['id' => $id]);
             $row = $parent->fetch(PDO::FETCH_ASSOC);
             if (!$row) {
@@ -79,6 +79,13 @@ final class AdminCommentController
                 'body' => $body,
             ]);
             $replyId = (int) $pdo->lastInsertId();
+            // Répondre vaut approbation implicite : sans ça, la réponse reste
+            // invisible côté public tant que le commentaire parent n'est pas
+            // lui-même approuvé (la page publique ne liste que les
+            // commentaires "approved").
+            if ($row['status'] !== 'approved') {
+                $pdo->prepare('UPDATE comments SET status = "approved" WHERE id = :id')->execute(['id' => $id]);
+            }
             AuditLog::record('comment.reply', 'comment', $replyId, ['parent_id' => $id]);
             return ['message' => 'Réponse publiée.', 'data' => ['id' => $replyId]];
         }, 201);
