@@ -16,6 +16,7 @@ import {
   Eye,
   Heading2,
   Heading3,
+  HelpCircle,
   Image as ImageIcon,
   Italic,
   Link2,
@@ -40,6 +41,7 @@ import { Toast } from './components/Toast';
 import { CategoryCombobox, TagsInput } from './components/TaxonomyPicker';
 import { ArticleEmbed } from './extensions/ArticleEmbed';
 import { AdEmbed } from './extensions/AdEmbed';
+import { FaqEmbed } from './extensions/FaqEmbed';
 
 type Taxonomy = {
   categories: { id: number; parent_id: number | null; name: string; slug: string }[];
@@ -345,6 +347,7 @@ function EditorToolbar({
   onInsertArticleEmbed: () => void;
 }) {
   const onInsertAdEmbed = () => editor?.chain().focus().insertAdEmbed().run();
+  const onInsertFaqEmbed = () => editor?.chain().focus().insertFaqEmbed().run();
   const [linkOpen, setLinkOpen] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
 
@@ -443,6 +446,9 @@ function EditorToolbar({
       <ToolbarButton label="Annonce In-Article" onClick={onInsertAdEmbed}>
         <Megaphone size={16} />
       </ToolbarButton>
+      <ToolbarButton label="Bloc FAQ" onClick={onInsertFaqEmbed}>
+        <HelpCircle size={16} />
+      </ToolbarButton>
       <span className="mx-1 h-5 w-px bg-slate-300" aria-hidden="true" />
       <div className="relative ml-auto">
         <ToolbarButton label="Couleur du texte" onClick={() => setColorOpen((current) => !current)}>
@@ -520,6 +526,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
       TiptapColor,
       ArticleEmbed,
       AdEmbed,
+      FaqEmbed,
     ],
     content: '',
     editorProps: {

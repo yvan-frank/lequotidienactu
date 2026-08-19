@@ -34,6 +34,15 @@ final class ArticleEmbeds
             static fn (): string => self::renderInArticleAd(),
             $rendered
         );
+        $rendered = $rendered ?? $bodyHtml;
+
+        $rendered = preg_replace_callback(
+            '/<div\b[^>]*\bdata-faq="([^"]*)"[^>]*><\/div>/i',
+            static function (array $matches): string {
+                return self::renderFaq(html_entity_decode($matches[1], ENT_QUOTES, 'UTF-8'));
+            },
+            $rendered
+        );
 
         return $rendered ?? $bodyHtml;
     }
@@ -48,6 +57,60 @@ final class ArticleEmbeds
     private static function renderInArticleAd(): string
     {
         return '<div class="not-prose my-8">' . Ads::renderSlot('article_in_article', 'Publicité') . '</div>';
+    }
+
+    /**
+     * Replaces the FAQ block inserted via the editor toolbar
+     * (<div data-faq='[{"question":"…","answer":"…"}, …]'></div>) with a
+     * dependency-free accordion — native <details>/<summary>, no JS — plus
+     * FAQPage structured data so eligible pages can earn rich results.
+     */
+    private static function renderFaq(string $json): string
+    {
+        $items = json_decode($json, true);
+        if (!is_array($items) || $items === []) {
+            return '';
+        }
+
+        $rows = '';
+        $jsonLdItems = [];
+        foreach ($items as $item) {
+            $question = trim((string) ($item['question'] ?? ''));
+            $answer = trim((string) ($item['answer'] ?? ''));
+            if ($question === '' || $answer === '') {
+                continue;
+            }
+            $safeQuestion = htmlspecialchars($question, ENT_QUOTES, 'UTF-8');
+            $safeAnswer = htmlspecialchars($answer, ENT_QUOTES, 'UTF-8');
+            $rows .= '<details class="group px-4 py-3 open:pb-4">'
+                . '<summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-900 marker:content-none">'
+                . '<span>' . $safeQuestion . '</span>'
+                . '<span class="grid size-6 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 transition-transform duration-200 group-open:rotate-45" aria-hidden="true">+</span>'
+                . '</summary>'
+                . '<p class="mt-2 text-sm leading-relaxed text-slate-600">' . nl2br($safeAnswer) . '</p>'
+                . '</details>';
+            $jsonLdItems[] = [
+                '@type' => 'Question',
+                'name' => $question,
+                'acceptedAnswer' => ['@type' => 'Answer', 'text' => $answer],
+            ];
+        }
+
+        if ($rows === '') {
+            return '';
+        }
+
+        $jsonLd = json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'FAQPage',
+            'mainEntity' => $jsonLdItems,
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG);
+
+        return '<div class="not-prose my-8 overflow-hidden rounded-xl border border-slate-200 bg-white">'
+            . '<p class="border-b border-slate-100 px-4 py-3 text-xs font-bold tracking-widest text-brand-600 uppercase">Questions fréquentes</p>'
+            . '<div class="divide-y divide-slate-100">' . $rows . '</div>'
+            . '</div>'
+            . '<script type="application/ld+json">' . $jsonLd . '</script>';
     }
 
     private static function renderCard(int $articleId): string
