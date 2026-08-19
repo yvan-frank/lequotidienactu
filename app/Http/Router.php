@@ -61,6 +61,10 @@ final class Router
             $seo->robots();
             return;
         }
+        if ($method === 'GET' && $path === '/llms.txt') {
+            $seo->llmsTxt();
+            return;
+        }
         if ($method === 'GET' && $path === '/feed.xml') {
             $seo->rss();
             return;

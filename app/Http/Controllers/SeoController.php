@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Support\Config;
+use App\Support\Settings;
 use PDO;
 use PDOException;
 
@@ -12,7 +13,71 @@ final class SeoController
     public function robots(): void
     {
         header('Content-Type: text/plain; charset=utf-8');
-        echo "User-agent: *\nAllow: /\nDisallow: /api/admin/\nDisallow: /admin/\n\nSitemap: " . Config::url('/sitemap.xml') . "\nSitemap: " . Config::url('/sitemap-news.xml') . "\n";
+        echo "User-agent: *\nAllow: /\nDisallow: /api/admin/\nDisallow: /admin/\n\nSitemap: " . Config::url('/sitemap.xml') . "\nSitemap: " . Config::url('/sitemap-news.xml') . "\n\n# https://llmstxt.org/\nLLMs: " . Config::url('/llms.txt') . "\n";
+    }
+
+    /**
+     * llms.txt (https://llmstxt.org/) — a curated, Markdown index of the
+     * site for AI systems/LLM crawlers, generated fresh from the database
+     * on every request so it never drifts from what's actually published.
+     */
+    public function llmsTxt(): void
+    {
+        $appName = $_ENV['APP_NAME'] ?? 'Le Quotidien Actu';
+        $general = Settings::get('general', ['tagline' => '']);
+        $tagline = trim((string) ($general['tagline'] ?? '')) !== ''
+            ? $general['tagline']
+            : 'L’actualité Afrique francophone, France et diaspora : décryptée, vérifiée, sans détour.';
+
+        $lines = [
+            '# ' . $appName,
+            '',
+            '> ' . $tagline,
+            '',
+            $appName . ' est un média d’actualité francophone couvrant l’Afrique, la France et sa diaspora : immigration, business, tech, sport et culture. Le contenu ci-dessous est généré automatiquement à partir des articles réellement publiés.',
+            '',
+        ];
+
+        try {
+            $pdo = $this->pdo();
+
+            $categories = $pdo->query('SELECT name, slug FROM categories WHERE parent_id IS NULL ORDER BY position, name')->fetchAll(PDO::FETCH_ASSOC);
+            if ($categories !== []) {
+                $lines[] = '## Rubriques';
+                foreach ($categories as $category) {
+                    $lines[] = '- [' . $category['name'] . '](' . Config::url('/' . $category['slug']) . ')';
+                }
+                $lines[] = '';
+            }
+
+            $articles = $pdo->query(
+                'SELECT a.title, a.excerpt, a.slug, c.slug AS category
+                 FROM articles a INNER JOIN categories c ON c.id = a.category_id
+                 WHERE a.status = "published" AND a.published_at <= NOW()
+                 ORDER BY a.published_at DESC LIMIT 30'
+            )->fetchAll(PDO::FETCH_ASSOC);
+            if ($articles !== []) {
+                $lines[] = '## Articles récents';
+                foreach ($articles as $article) {
+                    $link = Config::url('/' . $article['category'] . '/' . $article['slug']);
+                    $excerpt = trim((string) $article['excerpt']);
+                    $lines[] = '- [' . $article['title'] . '](' . $link . ')' . ($excerpt !== '' ? ': ' . $excerpt : '');
+                }
+                $lines[] = '';
+            }
+        } catch (PDOException) {
+            // Still ship a minimal, valid llms.txt below even without a DB.
+        }
+
+        $lines[] = '## Pages';
+        $lines[] = '- [À propos](' . Config::url('/a-propos') . ')';
+        $lines[] = '- [Contact](' . Config::url('/contact') . ')';
+        $lines[] = '- [Flux RSS](' . Config::url('/feed.xml') . ')';
+        $lines[] = '- [Mentions légales](' . Config::url('/mentions-legales') . ')';
+        $lines[] = '- [Politique de confidentialité](' . Config::url('/confidentialite') . ')';
+
+        header('Content-Type: text/markdown; charset=utf-8');
+        echo implode("\n", $lines) . "\n";
     }
 
     public function rss(): void
