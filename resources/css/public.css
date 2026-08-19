@@ -62,6 +62,18 @@ details[open] .mega-panel {
   animation: mega-backdrop-enter 180ms ease-out both;
 }
 
+[data-consent-scrim] {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 40;
+  height: 50vh;
+  pointer-events: none;
+  background-image: linear-gradient(to bottom, transparent, rgb(2 6 23 / 0.7));
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
 @keyframes mega-menu-exit {
   from {
     opacity: 1;

@@ -222,19 +222,16 @@ if ($categoryTree === []) {
   <script type="module" src="/assets/public.js"></script>
   <script type="module" src="/assets/islands.js"></script>
   <?php if ($needsConsent): ?>
-    <div id="cookie-consent" class="fixed inset-x-0 bottom-0 z-50 hidden border-t border-slate-200 bg-white p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] sm:p-6" role="dialog" aria-modal="false" aria-labelledby="cookie-consent-title">
-      <div class="mx-auto max-w-5xl">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div class="max-w-2xl">
-            <p id="cookie-consent-title" class="font-bold text-slate-900">Respect de votre vie privée</p>
-            <p class="mt-1 text-sm text-slate-600">
-              Nous utilisons des cookies pour mesurer notre audience et afficher des publicités personnalisées. Accédez au site gratuitement en les acceptant, ou optez pour un abonnement sans publicité ni suivi. Vous pouvez modifier votre choix à tout moment via « Gérer les cookies » en pied de page.
-            </p>
-          </div>
-          <div class="flex shrink-0 flex-wrap items-center gap-2">
-            <button type="button" data-consent-pay class="rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Payer pour ne pas être suivi</button>
-            <button type="button" data-consent-accept class="rounded bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Tout accepter</button>
-          </div>
+    <div id="cookie-consent-scrim" data-consent-scrim class="hidden"></div>
+    <div id="cookie-consent" class="fixed inset-x-0 bottom-0 z-50 hidden h-[50vh] overflow-y-auto border-t border-slate-200 bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.12)]" role="dialog" aria-modal="false" aria-labelledby="cookie-consent-title">
+      <div class="mx-auto flex h-full max-w-lg flex-col items-center justify-center gap-4 p-6 text-center sm:p-8">
+        <p id="cookie-consent-title" class="text-xl font-bold text-slate-900">Respect de votre vie privée</p>
+        <p class="text-sm text-slate-600">
+          Nous utilisons des cookies pour mesurer notre audience et afficher des publicités personnalisées. Accédez au site gratuitement en les acceptant, ou optez pour un accès sans suivi ni publicité. Vous pouvez modifier votre choix à tout moment via « Gérer les cookies » en pied de page.
+        </p>
+        <div class="mt-2 flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <button type="button" data-consent-pay class="px-5 py-2.5 text-sm font-semibold text-red-600 hover:text-red-700">Sans accepter 1€</button>
+          <button type="button" data-consent-accept class="rounded bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">Tout accepter</button>
         </div>
       </div>
     </div>

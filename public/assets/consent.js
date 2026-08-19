@@ -39,13 +39,16 @@
   document.addEventListener('DOMContentLoaded', function () {
     var banner = document.getElementById('cookie-consent');
     if (!banner) return;
+    var scrim = document.getElementById('cookie-consent-scrim');
 
     function open() {
       banner.classList.remove('hidden');
+      if (scrim) scrim.classList.remove('hidden');
     }
 
     function close() {
       banner.classList.add('hidden');
+      if (scrim) scrim.classList.add('hidden');
     }
 
     var existing = readConsent();
