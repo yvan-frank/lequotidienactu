@@ -191,6 +191,19 @@ export const FaqEmbed = Node.create({
           return true;
         },
         ignoreMutation: () => true,
+        // The real fix for the "block vanishes on the first keystroke" bug:
+        // stopPropagation() on the inputs alone isn't reliable here because
+        // ProseMirror's own key/selection handling can still run before
+        // that (it doesn't strictly depend on DOM bubbling order). stopEvent
+        // is the NodeView-level escape hatch ProseMirror checks first for
+        // any event inside this node — returning true for our form controls
+        // tells it outright "don't touch this, let the browser handle it",
+        // which is what actually stops it from treating a keystroke as
+        // "replace the selected node with the typed character".
+        stopEvent: (event) => {
+          const target = event.target as HTMLElement | null;
+          return !!target && ['INPUT', 'TEXTAREA', 'BUTTON'].includes(target.tagName);
+        },
       };
     };
   },
