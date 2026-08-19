@@ -10,6 +10,20 @@ declare module '@tiptap/core' {
   }
 }
 
+/**
+ * Without this, keydown/keypress events from typing inside the nested
+ * input/textarea bubble up to ProseMirror's own view-level key handling.
+ * Since this node is atom+selectable, ProseMirror treats a keystroke while
+ * it holds a NodeSelection on this node as "replace the selected node with
+ * the typed character" — which deletes the whole FAQ block on the very
+ * first keystroke. Stopping propagation keeps typing local to the field.
+ */
+function isolateFromEditor(element: HTMLElement): void {
+  ['keydown', 'keypress', 'keyup', 'beforeinput'].forEach((type) => {
+    element.addEventListener(type, (event) => event.stopPropagation());
+  });
+}
+
 function parseItems(raw: string | null): FaqItem[] {
   if (!raw) return [{ question: '', answer: '' }];
   try {
@@ -109,6 +123,7 @@ export const FaqEmbed = Node.create({
             items = items.map((current, i) => (i === index ? { ...current, question: questionInput.value } : current));
             commit();
           });
+          isolateFromEditor(questionInput);
 
           const removeItem = document.createElement('button');
           removeItem.type = 'button';
@@ -134,6 +149,7 @@ export const FaqEmbed = Node.create({
             items = items.map((current, i) => (i === index ? { ...current, answer: answerTextarea.value } : current));
             commit();
           });
+          isolateFromEditor(answerTextarea);
 
           row.append(rowHeader, answerTextarea);
           list.append(row);
