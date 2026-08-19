@@ -70,7 +70,7 @@ export function MediaPicker({ onClose, onSelect, selectedId }: MediaPickerProps)
       aria-labelledby="media-picker-title"
       onMouseDown={(event) => event.currentTarget === event.target && onClose()}
     >
-      <section className="flex max-h-[min(760px,calc(100vh-2rem))] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <section className="flex h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <header className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
           <div>
             <p className="text-xs font-bold tracking-widest text-orange-700 uppercase">
