@@ -1,6 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
-import { Database, Download, HardDrive, Image as ImageIcon } from 'lucide-react';
+import React from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Database, Download, HardDrive, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { api } from './api';
+import { Toast } from './components/Toast';
 
 type BackupFile = { filename: string; bytes: number; created_at: string };
 type BackupGroup = { timestamp: string; database: BackupFile | null; uploads: BackupFile | null };
@@ -34,9 +36,27 @@ function FileCell({ file }: { file: BackupFile | null }) {
 }
 
 export function Backups() {
+  const queryClient = useQueryClient();
+  const [confirmTimestamp, setConfirmTimestamp] = React.useState<string | null>(null);
+  const [toast, setToast] = React.useState<{ message: string; tone: 'error' | 'success' } | null>(null);
   const backups = useQuery({
     queryKey: ['admin-backups'],
     queryFn: async () => (await api.get<{ data: BackupGroup[] }>('/admin/backups')).data.data,
+  });
+  const remove = useMutation({
+    mutationFn: (timestamp: string) => api.delete(`/admin/backups/${encodeURIComponent(timestamp)}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-backups'] });
+      setToast({ tone: 'success', message: 'Sauvegarde supprimée.' });
+      setConfirmTimestamp(null);
+    },
+    onError: (error: any) => {
+      setToast({
+        tone: 'error',
+        message: error?.response?.data?.message ?? 'Impossible de supprimer cette sauvegarde.',
+      });
+      setConfirmTimestamp(null);
+    },
   });
 
   return (
@@ -61,7 +81,7 @@ export function Backups() {
       )}
       {backups.data && backups.data.length > 0 && (
         <section className="mt-6 max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white contain-layout">
-          <table className="w-full min-w-[520px] text-left text-sm">
+          <table className="w-full min-w-[600px] text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wider text-slate-500 uppercase">
               <tr>
                 <th className="px-5 py-3">Date</th>
@@ -75,6 +95,9 @@ export function Backups() {
                     <ImageIcon size={13} /> Médias
                   </span>
                 </th>
+                <th className="px-5 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -87,12 +110,53 @@ export function Backups() {
                   <td className="px-5 py-3">
                     <FileCell file={group.uploads} />
                   </td>
+                  <td className="px-5 py-3">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmTimestamp(group.timestamp)}
+                      className="rounded p-2 text-red-700 hover:bg-red-50"
+                      aria-label={`Supprimer la sauvegarde du ${formatTimestamp(group.timestamp)}`}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </section>
       )}
+
+      {confirmTimestamp && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4" role="dialog" aria-modal="true">
+          <section className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <p className="text-sm font-bold tracking-widest text-red-700 uppercase">Confirmation</p>
+            <h3 className="mt-2 text-xl font-extrabold">Supprimer cette sauvegarde ?</h3>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              La sauvegarde du {formatTimestamp(confirmTimestamp)} (base de données et médias) sera supprimée
+              définitivement du serveur. Cette action est irréversible.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                disabled={remove.isPending}
+                onClick={() => setConfirmTimestamp(null)}
+                className="rounded px-4 py-2 text-sm font-semibold hover:bg-slate-100"
+              >
+                Annuler
+              </button>
+              <button
+                disabled={remove.isPending}
+                onClick={() => remove.mutate(confirmTimestamp)}
+                className="rounded bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800 disabled:opacity-50"
+              >
+                {remove.isPending ? 'Suppression…' : 'Supprimer'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {toast && <Toast message={toast.message} tone={toast.tone} onClose={() => setToast(null)} />}
     </>
   );
 }

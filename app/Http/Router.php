@@ -144,6 +144,7 @@ final class Router
         if ($method === 'GET' && $path === '/api/admin/audit-logs') { $adminAuditLog->index(); return; }
         if ($method === 'GET' && $path === '/api/admin/backups') { $adminBackups->index(); return; }
         if ($method === 'GET' && preg_match('#^/api/admin/backups/([a-zA-Z0-9_.-]+)$#', $path, $m)) { $adminBackups->download($m[1]); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/backups/(\d{4}-\d{2}-\d{2}_\d{6})$#', $path, $m)) { $adminBackups->delete($m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/comments') { $adminComments->index(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/comments/(\d+)$#', $path, $m)) { $adminComments->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/comments/(\d+)$#', $path, $m)) { $adminComments->delete((int) $m[1]); return; }

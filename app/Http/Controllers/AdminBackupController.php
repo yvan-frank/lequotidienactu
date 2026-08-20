@@ -74,6 +74,44 @@ final class AdminBackupController
         readfile($realPath);
     }
 
+    /**
+     * Deletes both files of a backup pair (database dump + uploads archive)
+     * sharing the same timestamp — a backup row in the admin table always
+     * represents that pair, so there is no single-file delete.
+     */
+    public function delete(string $timestamp): void
+    {
+        AdminAuthController::requireStaff(['admin']);
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}_\d{6}$/', $timestamp)) {
+            $this->notFound();
+            return;
+        }
+
+        $dir = self::backupDir();
+        $realDir = realpath($dir);
+        if ($realDir === false) {
+            $this->notFound();
+            return;
+        }
+
+        $deleted = [];
+        foreach (['db-' . $timestamp . '.sql.gz', 'uploads-' . $timestamp . '.tar.gz'] as $filename) {
+            $realPath = realpath($dir . '/' . $filename);
+            if ($realPath !== false && str_starts_with($realPath, $realDir . DIRECTORY_SEPARATOR) && is_file($realPath) && unlink($realPath)) {
+                $deleted[] = $filename;
+            }
+        }
+
+        if ($deleted === []) {
+            $this->notFound();
+            return;
+        }
+
+        AuditLog::record('backup.delete', 'backup', null, ['timestamp' => $timestamp, 'files' => $deleted]);
+        $this->json(['message' => 'Sauvegarde supprimée.']);
+    }
+
     private static function backupDir(): string
     {
         return dirname(__DIR__, 3) . '/backups';
