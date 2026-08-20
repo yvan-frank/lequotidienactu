@@ -103,9 +103,9 @@ final class Router
         if ($method === 'POST' && $path === '/api/admin/password/reset') { $adminAuth->resetPassword(); return; }
         if ($method === 'GET' && $path === '/api/admin/media') { $adminMedia->index(); return; }
         if ($method === 'POST' && $path === '/api/admin/media') { $adminMedia->upload(); return; }
-        if ($method === 'POST' && $path === '/api/admin/media/compress-existing') { $adminMedia->compressExisting(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/media/(\d+)$#', $path, $m)) { $adminMedia->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/media/(\d+)$#', $path, $m)) { $adminMedia->delete((int) $m[1]); return; }
+        if ($method === 'POST' && preg_match('#^/api/admin/media/(\d+)/compress$#', $path, $m)) { $adminMedia->compressOne((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/articles') { $adminArticles->index(); return; }
         if ($method === 'GET' && $path === '/api/admin/taxonomy') { $adminArticles->taxonomy(); return; }
         if ($method === 'POST' && $path === '/api/admin/articles') { $adminArticles->create(); return; }

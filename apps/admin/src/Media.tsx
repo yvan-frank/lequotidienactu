@@ -28,12 +28,18 @@ function MediaCard({
   item,
   onSave,
   onDelete,
+  onCompress,
   saving,
+  compressing,
+  compressResult,
 }: {
   item: MediaItem;
   onSave: (patch: { alt_text: string; credit: string }) => void;
   onDelete: () => void;
+  onCompress: () => void;
   saving: boolean;
+  compressing: boolean;
+  compressResult: { bytes_before: number; bytes_after: number; bytes_saved: number } | null;
 }) {
   const [altText, setAltText] = React.useState(item.alt_text ?? '');
   const [credit, setCredit] = React.useState(item.credit ?? '');
@@ -51,10 +57,29 @@ function MediaCard({
         loading="lazy"
       />
       <div className="p-4">
-        <p className="text-xs font-mono text-slate-500">
-          {item.width && item.height ? `${item.width}×${item.height} · ` : ''}
-          {formatBytes(item.bytes)} · {item.mime_type.replace('image/', '')}
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-mono text-slate-500">
+            {item.width && item.height ? `${item.width}×${item.height} · ` : ''}
+            {formatBytes(item.bytes)} · {item.mime_type.replace('image/', '')}
+          </p>
+          <button
+            type="button"
+            disabled={compressing}
+            onClick={onCompress}
+            title="Recompresser cette image"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-50"
+          >
+            {compressing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+            Compresser
+          </button>
+        </div>
+        {compressResult && (
+          <p className="mt-1.5 text-xs text-emerald-700">
+            {compressResult.bytes_saved > 0
+              ? `${formatBytes(compressResult.bytes_before)} → ${formatBytes(compressResult.bytes_after)} (-${Math.round((compressResult.bytes_saved / compressResult.bytes_before) * 100)}%)`
+              : 'Déjà optimisée, rien à gagner.'}
+          </p>
+        )}
         <label className="mt-3 block text-xs font-semibold text-slate-700">
           Texte alternatif
           <input
@@ -116,16 +141,15 @@ function MediaCard({
   );
 }
 
+type CompressResult = { bytes_before: number; bytes_after: number; bytes_saved: number };
+
 export function Media() {
   const queryClient = useQueryClient();
   const [query, setQuery] = React.useState('');
   const [toast, setToast] = React.useState<{ message: string; tone: 'error' | 'success' } | null>(null);
-  const [compressResult, setCompressResult] = React.useState<{
-    compressed: number;
-    skipped: number;
-    bytes_saved: number;
-  } | null>(null);
   const [savingId, setSavingId] = React.useState<number | null>(null);
+  const [compressingId, setCompressingId] = React.useState<number | null>(null);
+  const [compressResults, setCompressResults] = React.useState<Record<number, CompressResult>>({});
   const input = React.useRef<HTMLInputElement>(null);
 
   const media = useQuery({
@@ -172,19 +196,16 @@ export function Media() {
       setToast({ tone: 'error', message: error.response?.data?.message ?? 'Impossible de supprimer cette image.' }),
   });
 
-  const compressExisting = useMutation({
-    mutationFn: async () =>
-      (
-        await api.post<{ data: { compressed: number; skipped: number; bytes_saved: number } }>(
-          '/admin/media/compress-existing',
-        )
-      ).data.data,
-    onSuccess: (result) => {
+  const compress = useMutation({
+    mutationFn: async (id: number) => (await api.post<{ data: CompressResult }>(`/admin/media/${id}/compress`)).data.data,
+    onMutate: (id) => setCompressingId(id),
+    onSuccess: (result, id) => {
       queryClient.invalidateQueries({ queryKey: ['media-library'] });
-      setCompressResult(result);
+      setCompressResults((current) => ({ ...current, [id]: result }));
     },
     onError: (error: any) =>
-      setToast({ tone: 'error', message: error.response?.data?.message ?? 'Impossible de compresser les images existantes.' }),
+      setToast({ tone: 'error', message: error.response?.data?.message ?? 'Impossible de compresser cette image.' }),
+    onSettled: () => setCompressingId(null),
   });
 
   const filtered = React.useMemo(
@@ -210,19 +231,6 @@ export function Media() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={compressExisting.isPending}
-            onClick={() => {
-              setCompressResult(null);
-              compressExisting.mutate();
-            }}
-            title="Recompresse toutes les images de la médiathèque avec le pipeline actuel"
-            className="inline-flex items-center gap-2 rounded border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-50"
-          >
-            {compressExisting.isPending ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-            Compresser les images existantes
-          </button>
-          <button
-            type="button"
             disabled={upload.isPending}
             onClick={() => input.current?.click()}
             className="inline-flex items-center gap-2 rounded bg-orange-700 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-800 disabled:opacity-50"
@@ -243,13 +251,6 @@ export function Media() {
           />
         </div>
       </header>
-
-      {compressResult && (
-        <p className="mt-4 rounded-lg bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700">
-          {compressResult.compressed} image(s) compressée(s), {formatBytes(compressResult.bytes_saved)} économisés
-          {compressResult.skipped > 0 ? ` (${compressResult.skipped} ignorée(s))` : ''}.
-        </p>
-      )}
 
       <div
         className="mt-6 grid min-h-40 place-items-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center transition hover:border-orange-500 hover:bg-orange-50"
@@ -292,8 +293,11 @@ export function Media() {
               key={item.id}
               item={item}
               saving={savingId === item.id}
+              compressing={compressingId === item.id}
+              compressResult={compressResults[item.id] ?? null}
               onSave={(patch) => save.mutate({ id: item.id, patch })}
               onDelete={() => remove.mutate(item.id)}
+              onCompress={() => compress.mutate(item.id)}
             />
           ))}
         </div>

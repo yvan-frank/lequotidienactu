@@ -12,9 +12,9 @@ final class AdminMediaController
 {
     private const MAX_BYTES = 8_000_000;
     private const MAX_DIMENSION = 1920;
-    private const JPEG_QUALITY = 82;
-    private const WEBP_QUALITY = 82;
-    private const PNG_COMPRESSION = 6;
+    private const WEBP_QUALITY = 72;
+    private const JPEG_QUALITY = 78;
+    private const PNG_COMPRESSION = 9;
 
     public function index(): void
     {
@@ -25,63 +25,6 @@ final class AdminMediaController
         } catch (PDOException) {
             $this->json(['message' => 'Base de données indisponible.'], 503);
         }
-    }
-
-    /**
-     * Retroactively compresses every already-stored image through the same
-     * GD pipeline as new uploads — for images stored before GD was enabled,
-     * or before this endpoint existed. Skips anything GD can't decode (or a
-     * file already missing from disk) rather than failing the whole batch.
-     */
-    public function compressExisting(): void
-    {
-        AdminAuthController::requireStaff(['admin', 'editor']);
-        if (!extension_loaded('gd')) {
-            $this->json(['message' => 'L’extension GD n’est pas disponible sur ce serveur.'], 503);
-            return;
-        }
-
-        $pdo = $this->pdo();
-        $rows = $pdo->query('SELECT id, path, mime_type, bytes FROM media WHERE mime_type LIKE "image/%"')->fetchAll(PDO::FETCH_ASSOC);
-        $publicRoot = dirname(__DIR__, 3) . '/public';
-        $update = $pdo->prepare('UPDATE media SET bytes = :bytes, width = :width, height = :height WHERE id = :id');
-
-        $compressed = 0;
-        $skipped = 0;
-        $bytesBefore = 0;
-        $bytesAfter = 0;
-
-        foreach ($rows as $row) {
-            $absolute = $publicRoot . $row['path'];
-            $originalBytes = (int) $row['bytes'];
-            $size = is_file($absolute) ? @getimagesize($absolute) : false;
-            if ($size === false) {
-                $skipped++;
-                continue;
-            }
-            $result = $this->compress($absolute, $absolute, $row['mime_type'], $size[0], $size[1]);
-            if ($result === null) {
-                $skipped++;
-                continue;
-            }
-            [$width, $height] = $result;
-            // filesize() caches by path; without clearing it here it would still
-            // report the pre-compression size we just overwrote on disk.
-            clearstatcache(true, $absolute);
-            $newBytes = @filesize($absolute) ?: $originalBytes;
-            $update->execute(['bytes' => $newBytes, 'width' => $width, 'height' => $height, 'id' => $row['id']]);
-            $compressed++;
-            $bytesBefore += $originalBytes;
-            $bytesAfter += $newBytes;
-        }
-
-        $this->json(['data' => [
-            'compressed' => $compressed,
-            'skipped' => $skipped,
-            'bytes_before' => $bytesBefore,
-            'bytes_after' => $bytesAfter,
-            'bytes_saved' => max(0, $bytesBefore - $bytesAfter),
-        ]]);
     }
 
     public function upload(): void
@@ -113,55 +56,125 @@ final class AdminMediaController
             $this->json(['message' => 'Le dossier de médias est indisponible.'], 500);
             return;
         }
-        $extension = image_type_to_extension($size[2], false) ?: 'img';
         $altText = trim((string) ($_POST['alt_text'] ?? ''));
         $keywordSlug = $altText !== '' ? mb_substr(Slug::make($altText), 0, 60) : '';
         $filenamePrefix = $keywordSlug !== '' ? $keywordSlug : 'image';
-        $filename = $filenamePrefix . '-' . bin2hex(random_bytes(4)) . '.' . $extension;
-        $destination = $directory . '/' . $filename;
+        $filenameBase = $filenamePrefix . '-' . bin2hex(random_bytes(4));
 
-        $compressed = $this->compress($file['tmp_name'], $destination, $mime, $size[0], $size[1]);
+        $compressed = $this->compress($file['tmp_name'], $mime, $size[0], $size[1], $directory, $filenameBase);
         if ($compressed !== null) {
-            [$finalWidth, $finalHeight] = $compressed;
-        } elseif (move_uploaded_file($file['tmp_name'], $destination)) {
-            [$finalWidth, $finalHeight] = [$size[0], $size[1]];
+            $path = $compressed['path'];
+            $finalMime = $compressed['mime_type'];
+            $finalWidth = $compressed['width'];
+            $finalHeight = $compressed['height'];
+            $bytes = $compressed['bytes'];
         } else {
-            $this->json(['message' => 'Impossible d’enregistrer cette image.'], 500);
-            return;
+            $extension = image_type_to_extension($size[2], false) ?: 'img';
+            $path = '/uploads/' . $filenameBase . '.' . $extension;
+            $destination = $directory . '/' . $filenameBase . '.' . $extension;
+            if (!move_uploaded_file($file['tmp_name'], $destination)) {
+                $this->json(['message' => 'Impossible d’enregistrer cette image.'], 500);
+                return;
+            }
+            $finalMime = $mime;
+            $finalWidth = $size[0];
+            $finalHeight = $size[1];
+            $bytes = @filesize($destination) ?: (int) $file['size'];
         }
 
         try {
-            $path = '/uploads/' . $filename;
-            $bytes = @filesize($destination) ?: (int) $file['size'];
             $pdo = $this->pdo();
             $statement = $pdo->prepare('INSERT INTO media (disk, path, mime_type, bytes, width, height, alt_text, credit) VALUES ("local", :path, :mime_type, :bytes, :width, :height, :alt_text, :credit)');
-            $statement->execute(['path' => $path, 'mime_type' => $mime, 'bytes' => $bytes, 'width' => $finalWidth, 'height' => $finalHeight, 'alt_text' => trim((string) ($_POST['alt_text'] ?? '')) ?: null, 'credit' => trim((string) ($_POST['credit'] ?? '')) ?: null]);
+            $statement->execute(['path' => $path, 'mime_type' => $finalMime, 'bytes' => $bytes, 'width' => $finalWidth, 'height' => $finalHeight, 'alt_text' => $altText ?: null, 'credit' => trim((string) ($_POST['credit'] ?? '')) ?: null]);
             $this->json(['data' => ['id' => (int) $pdo->lastInsertId(), 'url' => $path, 'width' => $finalWidth, 'height' => $finalHeight]], 201);
         } catch (PDOException) {
-            @unlink($destination);
+            @unlink(dirname(__DIR__, 3) . '/public' . $path);
             $this->json(['message' => 'Base de données indisponible.'], 503);
         }
     }
 
     /**
-     * Resizes down to MAX_DIMENSION and re-encodes at a lossy quality to
-     * shrink file size, writing straight to $destination. Returns null (and
-     * leaves $destination untouched) whenever GD or the source format isn't
-     * supported, so the caller falls back to a plain move_uploaded_file —
-     * compression is a nice-to-have, never a reason to fail an upload.
-     *
-     * @return array{0: int, 1: int}|null [width, height] actually written
+     * Recompresses one already-stored image in place, through the same
+     * WebP-first pipeline as new uploads — for images uploaded before GD
+     * was enabled, before this endpoint existed, or that simply deserve a
+     * second pass (e.g. a lossless PNG that only shrinks a little).
      */
-    private function compress(string $tmpPath, string $destination, string $mime, int $width, int $height): ?array
+    public function compressOne(int $id): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        if (!extension_loaded('gd')) {
+            $this->json(['message' => 'L’extension GD n’est pas disponible sur ce serveur.'], 503);
+            return;
+        }
+
+        $pdo = $this->pdo();
+        $statement = $pdo->prepare('SELECT path, mime_type, bytes FROM media WHERE id = :id');
+        $statement->execute(['id' => $id]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            $this->json(['message' => 'Média introuvable.'], 404);
+            return;
+        }
+
+        $publicRoot = dirname(__DIR__, 3) . '/public';
+        $absolute = $publicRoot . $row['path'];
+        $size = is_file($absolute) ? @getimagesize($absolute) : false;
+        if ($size === false) {
+            $this->json(['message' => 'Le fichier de cette image est introuvable sur le serveur.'], 404);
+            return;
+        }
+
+        $directory = dirname($absolute);
+        $filenameBase = pathinfo($row['path'], PATHINFO_FILENAME);
+        $result = $this->compress($absolute, $row['mime_type'], $size[0], $size[1], $directory, $filenameBase);
+        if ($result === null) {
+            $this->json(['message' => 'Impossible de compresser cette image.'], 500);
+            return;
+        }
+
+        $originalBytes = (int) $row['bytes'];
+        if ($result['path'] !== $row['path'] && is_file($absolute)) {
+            @unlink($absolute);
+        }
+
+        $update = $pdo->prepare('UPDATE media SET path = :path, mime_type = :mime_type, bytes = :bytes, width = :width, height = :height WHERE id = :id');
+        $update->execute(['path' => $result['path'], 'mime_type' => $result['mime_type'], 'bytes' => $result['bytes'], 'width' => $result['width'], 'height' => $result['height'], 'id' => $id]);
+
+        $this->json(['data' => [
+            'id' => $id,
+            'url' => $result['path'],
+            'mime_type' => $result['mime_type'],
+            'width' => $result['width'],
+            'height' => $result['height'],
+            'bytes_before' => $originalBytes,
+            'bytes_after' => $result['bytes'],
+            'bytes_saved' => max(0, $originalBytes - $result['bytes']),
+        ], 'message' => 'Image compressée.']);
+    }
+
+    /**
+     * Resizes down to MAX_DIMENSION and re-encodes as lossy WebP — the
+     * single biggest win over the source format, since a lossless PNG of a
+     * photo barely shrinks no matter how hard it's squeezed, while WebP at
+     * this quality is routinely 3-5x smaller than the same shot as PNG and
+     * meaningfully smaller than an equivalent JPEG. Falls back to
+     * re-encoding in the original format if WebP isn't available, and to
+     * null (caller keeps the untouched upload) if GD or the source format
+     * isn't supported at all — compression is a nice-to-have, never a
+     * reason to fail an upload.
+     *
+     * @return array{path: string, mime_type: string, width: int, height: int, bytes: int}|null
+     */
+    private function compress(string $sourcePath, string $mimeType, int $width, int $height, string $directory, string $filenameBase): ?array
     {
         if (!extension_loaded('gd')) {
             return null;
         }
 
-        $image = match ($mime) {
-            'image/jpeg' => @imagecreatefromjpeg($tmpPath),
-            'image/png' => @imagecreatefrompng($tmpPath),
-            'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($tmpPath) : false,
+        $image = match ($mimeType) {
+            'image/jpeg' => @imagecreatefromjpeg($sourcePath),
+            'image/png' => @imagecreatefrompng($sourcePath),
+            'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($sourcePath) : false,
             default => false,
         };
         if ($image === false) {
@@ -173,10 +186,8 @@ final class AdminMediaController
             $targetWidth = max(1, (int) round($width * $ratio));
             $targetHeight = max(1, (int) round($height * $ratio));
             $resized = imagecreatetruecolor($targetWidth, $targetHeight);
-            if ($mime === 'image/png' || $mime === 'image/webp') {
-                imagealphablending($resized, false);
-                imagesavealpha($resized, true);
-            }
+            imagealphablending($resized, false);
+            imagesavealpha($resized, true);
             imagecopyresampled($resized, $image, 0, 0, 0, 0, $targetWidth, $targetHeight, $width, $height);
             imagedestroy($image);
             $image = $resized;
@@ -184,15 +195,33 @@ final class AdminMediaController
             $height = $targetHeight;
         }
 
-        $saved = match ($mime) {
-            'image/jpeg' => imagejpeg($image, $destination, self::JPEG_QUALITY),
-            'image/png' => imagepng($image, $destination, self::PNG_COMPRESSION),
-            'image/webp' => function_exists('imagewebp') ? imagewebp($image, $destination, self::WEBP_QUALITY) : false,
-            default => false,
-        };
-        imagedestroy($image);
+        $useWebp = function_exists('imagewebp');
+        $extension = $useWebp ? 'webp' : ($mimeType === 'image/png' ? 'png' : 'jpg');
+        $outMime = $useWebp ? 'image/webp' : ($mimeType === 'image/png' ? 'image/png' : 'image/jpeg');
+        $destination = $directory . '/' . $filenameBase . '.' . $extension;
 
-        return $saved ? [$width, $height] : null;
+        if ($useWebp) {
+            imagealphablending($image, false);
+            imagesavealpha($image, true);
+            $saved = imagewebp($image, $destination, self::WEBP_QUALITY);
+        } elseif ($mimeType === 'image/png') {
+            $saved = imagepng($image, $destination, self::PNG_COMPRESSION);
+        } else {
+            $saved = imagejpeg($image, $destination, self::JPEG_QUALITY);
+        }
+        imagedestroy($image);
+        if (!$saved) {
+            return null;
+        }
+
+        clearstatcache(true, $destination);
+        return [
+            'path' => '/uploads/' . $filenameBase . '.' . $extension,
+            'mime_type' => $outMime,
+            'width' => $width,
+            'height' => $height,
+            'bytes' => filesize($destination) ?: 0,
+        ];
     }
 
     public function update(int $id): void
