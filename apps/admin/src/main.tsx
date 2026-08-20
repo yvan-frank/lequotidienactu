@@ -23,7 +23,9 @@ import {
   ExternalLink,
   Eye,
   FilePlus2,
+  Files as FilesIcon,
   FileText,
+  Image as ImageIcon,
   LayoutDashboard,
   List,
   LogOut,
@@ -47,6 +49,9 @@ import {
   X,
 } from 'lucide-react';
 import { ArticleEditor } from './ArticleEditor';
+import { Pages } from './Pages';
+import { PageEditor } from './PageEditor';
+import { Media } from './Media';
 import { Ads } from './Ads';
 import { Newsletter } from './Newsletter';
 import { Taxonomy } from './Taxonomy';
@@ -283,6 +288,8 @@ const SIDEBAR_STORAGE_KEY = 'lqa-admin-sidebar-collapsed';
 const navItems = [
   { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, exact: true },
   { to: '/articles', label: 'Articles', icon: FileText, exact: false },
+  { to: '/pages', label: 'Pages', icon: FilesIcon, exact: false },
+  { to: '/media', label: 'Médiathèque', icon: ImageIcon, exact: false },
   { to: '/taxonomy', label: 'Rubriques & tags', icon: Tags, exact: false },
   { to: '/redirects', label: 'Redirections', icon: RouteIcon, exact: false },
   { to: '/comments', label: 'Commentaires', icon: MessageSquare, exact: false },
@@ -1160,6 +1167,30 @@ const articleEditRoute = new Route({
   path: '/articles/$articleId',
   component: EditArticle,
 });
+const pagesRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/pages',
+  component: Pages,
+});
+const pageNewRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/pages/new',
+  component: PageEditor,
+});
+const EditPage = () => {
+  const { pageId } = useParams({ from: '/pages/$pageId' });
+  return <PageEditor pageId={Number(pageId)} />;
+};
+const pageEditRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/pages/$pageId',
+  component: EditPage,
+});
+const mediaRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/media',
+  component: Media,
+});
 const loginRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/login',
@@ -1212,6 +1243,10 @@ const router = createRouter({
     articlesRoute,
     articleNewRoute,
     articleEditRoute,
+    pagesRoute,
+    pageNewRoute,
+    pageEditRoute,
+    mediaRoute,
     loginRoute,
     taxonomyRoute,
     redirectsRoute,

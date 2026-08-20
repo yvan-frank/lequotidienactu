@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Support\AuditLog;
 use App\Support\Slug;
 use PDO;
 use PDOException;
@@ -24,6 +25,63 @@ final class AdminMediaController
         } catch (PDOException) {
             $this->json(['message' => 'Base de données indisponible.'], 503);
         }
+    }
+
+    /**
+     * Retroactively compresses every already-stored image through the same
+     * GD pipeline as new uploads — for images stored before GD was enabled,
+     * or before this endpoint existed. Skips anything GD can't decode (or a
+     * file already missing from disk) rather than failing the whole batch.
+     */
+    public function compressExisting(): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        if (!extension_loaded('gd')) {
+            $this->json(['message' => 'L’extension GD n’est pas disponible sur ce serveur.'], 503);
+            return;
+        }
+
+        $pdo = $this->pdo();
+        $rows = $pdo->query('SELECT id, path, mime_type, bytes FROM media WHERE mime_type LIKE "image/%"')->fetchAll(PDO::FETCH_ASSOC);
+        $publicRoot = dirname(__DIR__, 3) . '/public';
+        $update = $pdo->prepare('UPDATE media SET bytes = :bytes, width = :width, height = :height WHERE id = :id');
+
+        $compressed = 0;
+        $skipped = 0;
+        $bytesBefore = 0;
+        $bytesAfter = 0;
+
+        foreach ($rows as $row) {
+            $absolute = $publicRoot . $row['path'];
+            $originalBytes = (int) $row['bytes'];
+            $size = is_file($absolute) ? @getimagesize($absolute) : false;
+            if ($size === false) {
+                $skipped++;
+                continue;
+            }
+            $result = $this->compress($absolute, $absolute, $row['mime_type'], $size[0], $size[1]);
+            if ($result === null) {
+                $skipped++;
+                continue;
+            }
+            [$width, $height] = $result;
+            // filesize() caches by path; without clearing it here it would still
+            // report the pre-compression size we just overwrote on disk.
+            clearstatcache(true, $absolute);
+            $newBytes = @filesize($absolute) ?: $originalBytes;
+            $update->execute(['bytes' => $newBytes, 'width' => $width, 'height' => $height, 'id' => $row['id']]);
+            $compressed++;
+            $bytesBefore += $originalBytes;
+            $bytesAfter += $newBytes;
+        }
+
+        $this->json(['data' => [
+            'compressed' => $compressed,
+            'skipped' => $skipped,
+            'bytes_before' => $bytesBefore,
+            'bytes_after' => $bytesAfter,
+            'bytes_saved' => max(0, $bytesBefore - $bytesAfter),
+        ]]);
     }
 
     public function upload(): void
@@ -155,6 +213,30 @@ final class AdminMediaController
                 }
             }
             $this->json(['message' => 'Texte alternatif mis à jour.']);
+        } catch (PDOException) {
+            $this->json(['message' => 'Base de données indisponible.'], 503);
+        }
+    }
+
+    public function delete(int $id): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        try {
+            $pdo = $this->pdo();
+            $statement = $pdo->prepare('SELECT path FROM media WHERE id = :id');
+            $statement->execute(['id' => $id]);
+            $path = $statement->fetchColumn();
+            if ($path === false) {
+                $this->json(['message' => 'Média introuvable.'], 404);
+                return;
+            }
+            $pdo->prepare('DELETE FROM media WHERE id = :id')->execute(['id' => $id]);
+            $absolute = dirname(__DIR__, 3) . '/public' . $path;
+            if (is_file($absolute)) {
+                @unlink($absolute);
+            }
+            AuditLog::record('media.delete', 'media', $id);
+            $this->json(['message' => 'Média supprimé.']);
         } catch (PDOException) {
             $this->json(['message' => 'Base de données indisponible.'], 503);
         }

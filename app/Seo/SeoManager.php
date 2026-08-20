@@ -97,6 +97,26 @@ final class SeoManager
         ]);
     }
 
+    public function forPage(array $page): array
+    {
+        $path = '/' . $page['slug'];
+        $title = ($page['meta_title'] ?? null) ?: $page['title'] . ' - Le Quotidien Actu';
+        $description = ($page['meta_description'] ?? null) ?: '';
+
+        $document = $this->document($title, $description, $path, 'website', [
+            $this->breadcrumbs([
+                ['name' => 'Accueil', 'path' => '/'],
+                ['name' => $page['title'], 'path' => $path],
+            ]),
+        ]);
+
+        if (!empty($page['robots'])) {
+            $document['robots'] = $page['robots'];
+        }
+
+        return $document;
+    }
+
     private function document(string $title, string $description, string $path, string $type, array $jsonLd): array
     {
         return [

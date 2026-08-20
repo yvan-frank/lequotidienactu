@@ -153,7 +153,23 @@ final class SeoController
      */
     public function pagesSitemap(): void
     {
-        $urls = ['/' => date(DATE_ATOM)];
+        $urls = [
+            '/' => date(DATE_ATOM),
+            '/a-propos' => date(DATE_ATOM),
+            '/contact' => date(DATE_ATOM),
+            '/mentions-legales' => date(DATE_ATOM),
+            '/confidentialite' => date(DATE_ATOM),
+        ];
+        try {
+            $rows = $this->pdo()
+                ->query("SELECT slug, updated_at FROM pages WHERE status = 'published'")
+                ->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException) {
+            $rows = [];
+        }
+        foreach ($rows as $row) {
+            $urls['/' . $row['slug']] = date(DATE_ATOM, strtotime((string) $row['updated_at']));
+        }
         $this->xml($this->urlSet($urls));
     }
 

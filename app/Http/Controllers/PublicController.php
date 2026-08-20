@@ -149,6 +149,31 @@ final class PublicController
         require __DIR__ . '/../../Views/layout.php';
     }
 
+    public function pageExists(string $slug): bool
+    {
+        try {
+            $statement = $this->pdo()->prepare("SELECT 1 FROM pages WHERE slug = :slug AND status = 'published' LIMIT 1");
+            $statement->execute(['slug' => $slug]);
+            return (bool) $statement->fetchColumn();
+        } catch (PDOException) {
+            return false;
+        }
+    }
+
+    public function page(string $slug): void
+    {
+        $statement = $this->pdo()->prepare("SELECT * FROM pages WHERE slug = :slug AND status = 'published' LIMIT 1");
+        $statement->execute(['slug' => $slug]);
+        $cmsPage = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!$cmsPage) {
+            throw new \LogicException('Page introuvable.');
+        }
+        $title = $cmsPage['title'] . ' - Le Quotidien Actu';
+        $page = 'page';
+        $seo = (new SeoManager())->forPage($cmsPage);
+        require __DIR__ . '/../../Views/layout.php';
+    }
+
     public function contact(): void
     {
         $title = 'Contact - Le Quotidien Actu';

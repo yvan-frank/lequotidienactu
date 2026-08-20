@@ -12,6 +12,7 @@ use App\Http\Controllers\AdminCommentController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminMediaController;
 use App\Http\Controllers\AdminNewsletterController;
+use App\Http\Controllers\AdminPageController;
 use App\Http\Controllers\AdminRedirectController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminTaxonomyController;
@@ -32,6 +33,7 @@ final class Router
         $public = new PublicController();
         $api = new ApiController();
         $adminArticles = new AdminArticleController();
+        $adminPages = new AdminPageController();
         $adminAuth = new AdminAuthController();
         $adminMedia = new AdminMediaController();
         $adminTaxonomy = new AdminTaxonomyController();
@@ -101,7 +103,9 @@ final class Router
         if ($method === 'POST' && $path === '/api/admin/password/reset') { $adminAuth->resetPassword(); return; }
         if ($method === 'GET' && $path === '/api/admin/media') { $adminMedia->index(); return; }
         if ($method === 'POST' && $path === '/api/admin/media') { $adminMedia->upload(); return; }
+        if ($method === 'POST' && $path === '/api/admin/media/compress-existing') { $adminMedia->compressExisting(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/media/(\d+)$#', $path, $m)) { $adminMedia->update((int) $m[1]); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/media/(\d+)$#', $path, $m)) { $adminMedia->delete((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/articles') { $adminArticles->index(); return; }
         if ($method === 'GET' && $path === '/api/admin/taxonomy') { $adminArticles->taxonomy(); return; }
         if ($method === 'POST' && $path === '/api/admin/articles') { $adminArticles->create(); return; }
@@ -110,6 +114,11 @@ final class Router
         if ($method === 'DELETE' && preg_match('#^/api/admin/articles/(\d+)$#', $path, $m)) { $adminArticles->delete((int) $m[1]); return; }
         if ($method === 'POST' && preg_match('#^/api/admin/articles/(\d+)/transition$#', $path, $m)) { $adminArticles->transition((int) $m[1]); return; }
         if ($method === 'POST' && preg_match('#^/api/admin/articles/(\d+)/featured$#', $path, $m)) { $adminArticles->toggleFeatured((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/pages') { $adminPages->index(); return; }
+        if ($method === 'POST' && $path === '/api/admin/pages') { $adminPages->create(); return; }
+        if ($method === 'GET' && preg_match('#^/api/admin/pages/(\d+)$#', $path, $m)) { $adminPages->show((int) $m[1]); return; }
+        if ($method === 'PUT' && preg_match('#^/api/admin/pages/(\d+)$#', $path, $m)) { $adminPages->update((int) $m[1]); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/pages/(\d+)$#', $path, $m)) { $adminPages->delete((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/categories') { $adminTaxonomy->categories(); return; }
         if ($method === 'POST' && $path === '/api/admin/categories') { $adminTaxonomy->createCategory(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/categories/(\d+)$#', $path, $m)) { $adminTaxonomy->updateCategory((int) $m[1]); return; }
@@ -186,6 +195,11 @@ final class Router
         if ($method === 'GET' && preg_match('#^/([a-z0-9-]+)$#', $path, $m)) {
             if ($public->categoryExists($m[1])) {
                 $public->category($m[1]);
+                return;
+            }
+
+            if ($public->pageExists($m[1])) {
+                $public->page($m[1]);
                 return;
             }
 
