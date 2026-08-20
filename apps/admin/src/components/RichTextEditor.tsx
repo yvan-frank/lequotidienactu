@@ -1,8 +1,9 @@
-import { EditorContent, useEditor, type Editor } from '@tiptap/react';
+import { EditorContent, useEditor } from '@tiptap/react';
+import { TextSelection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import TiptapLink from '@tiptap/extension-link';
 import TiptapImage from '@tiptap/extension-image';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   Bold,
   Heading2,
@@ -15,9 +16,9 @@ import {
   Quote,
   Redo2,
   Strikethrough,
-  Trash2,
   Undo2,
 } from 'lucide-react';
+import { LinkPopover } from './LinkPopover';
 import { MediaPicker, type Media } from './MediaPicker';
 
 function ToolbarButton({
@@ -50,101 +51,26 @@ function ToolbarButton({
   );
 }
 
-function useClickOutside(onClose: () => void) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const closeOutside = (event: MouseEvent) => {
-      if (!ref.current?.contains(event.target as Node)) onClose();
-    };
-    const closeEscape = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
-    document.addEventListener('mousedown', closeOutside);
-    document.addEventListener('keydown', closeEscape);
-    return () => {
-      document.removeEventListener('mousedown', closeOutside);
-      document.removeEventListener('keydown', closeEscape);
-    };
-  }, [onClose]);
-  return ref;
-}
-
-function LinkPopover({ editor, onClose }: { editor: Editor | null; onClose: () => void }) {
-  const existingHref = (editor?.getAttributes('link').href as string | undefined) ?? '';
-  const [url, setUrl] = useState(existingHref);
-  const containerRef = useClickOutside(onClose);
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, []);
-
-  const apply = () => {
-    const trimmed = url.trim();
-    if (trimmed === '') {
-      editor?.chain().focus().extendMarkRange('link').unsetLink().run();
-    } else {
-      editor?.chain().focus().extendMarkRange('link').setLink({ href: trimmed }).run();
-    }
-    onClose();
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      className="absolute top-full left-0 z-30 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-2xl"
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          apply();
-        }
-      }}
-    >
-      <p className="text-xs font-bold tracking-widest text-slate-500 uppercase">
-        {existingHref ? 'Modifier le lien' : 'Insérer un lien'}
-      </p>
-      <label className="mt-3 block text-sm font-semibold text-slate-700">
-        Adresse (URL)
-        <input
-          ref={inputRef}
-          className="mt-1.5 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-orange-600 focus:outline-none"
-          value={url}
-          onChange={(event) => setUrl(event.target.value)}
-          placeholder="https://exemple.fr/page"
-        />
-      </label>
-      <div className="mt-4 flex items-center justify-between gap-2">
-        {existingHref ? (
-          <button
-            type="button"
-            onClick={() => {
-              editor?.chain().focus().extendMarkRange('link').unsetLink().run();
-              onClose();
-            }}
-            className="inline-flex items-center gap-1.5 rounded px-2 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
-          >
-            <Trash2 size={14} /> Retirer le lien
-          </button>
-        ) : (
-          <span />
-        )}
-        <div className="flex gap-2">
-          <button type="button" onClick={onClose} className="rounded px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">
-            Annuler
-          </button>
-          <button type="button" onClick={apply} className="rounded bg-orange-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-800">
-            Appliquer
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function RichTextEditor({ value, onChange }: { value: string; onChange: (html: string) => void }) {
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [linkClickAnchor, setLinkClickAnchor] = useState<HTMLAnchorElement | null>(null);
   const editor = useEditor({
     extensions: [StarterKit, TiptapLink.configure({ openOnClick: false }), TiptapImage],
     content: value,
+    editorProps: {
+      handleClick: (view, pos, event) => {
+        const link = (event.target as HTMLElement).closest('a');
+        if (link) {
+          const { state } = view;
+          view.dispatch(state.tr.setSelection(TextSelection.near(state.doc.resolve(pos))));
+          setLinkClickAnchor(link);
+        } else {
+          setLinkClickAnchor(null);
+        }
+        return false;
+      },
+    },
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
   });
 
@@ -209,6 +135,13 @@ export function RichTextEditor({ value, onChange }: { value: string; onChange: (
           className="prose prose-slate max-w-none focus:outline-none [&_.ProseMirror]:min-h-[320px] [&_.ProseMirror]:focus:outline-none"
         />
       </div>
+      {linkClickAnchor && (
+        <LinkPopover
+          editor={editor}
+          anchorElement={linkClickAnchor}
+          onClose={() => setLinkClickAnchor(null)}
+        />
+      )}
       {mediaPickerOpen && (
         <MediaPicker
           onClose={() => setMediaPickerOpen(false)}

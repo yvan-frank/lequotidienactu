@@ -9,6 +9,7 @@ use App\Http\Controllers\AdminArticleController;
 use App\Http\Controllers\AdminAuditLogController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminCommentController;
+use App\Http\Controllers\AdminContentSearchController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminMediaController;
 use App\Http\Controllers\AdminNewsletterController;
@@ -39,6 +40,7 @@ final class Router
         $adminTaxonomy = new AdminTaxonomyController();
         $adminRedirects = new AdminRedirectController();
         $adminComments = new AdminCommentController();
+        $adminContentSearch = new AdminContentSearchController();
         $adminDashboard = new AdminDashboardController();
         $adminAuditLog = new AdminAuditLogController();
         $adminSettings = new AdminSettingsController();
@@ -114,6 +116,7 @@ final class Router
         if ($method === 'DELETE' && preg_match('#^/api/admin/articles/(\d+)$#', $path, $m)) { $adminArticles->delete((int) $m[1]); return; }
         if ($method === 'POST' && preg_match('#^/api/admin/articles/(\d+)/transition$#', $path, $m)) { $adminArticles->transition((int) $m[1]); return; }
         if ($method === 'POST' && preg_match('#^/api/admin/articles/(\d+)/featured$#', $path, $m)) { $adminArticles->toggleFeatured((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/content-search') { $adminContentSearch->search(); return; }
         if ($method === 'GET' && $path === '/api/admin/pages') { $adminPages->index(); return; }
         if ($method === 'POST' && $path === '/api/admin/pages') { $adminPages->create(); return; }
         if ($method === 'GET' && preg_match('#^/api/admin/pages/(\d+)$#', $path, $m)) { $adminPages->show((int) $m[1]); return; }

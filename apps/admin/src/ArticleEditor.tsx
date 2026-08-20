@@ -7,7 +7,7 @@ import TiptapImage from '@tiptap/extension-image';
 import TiptapTextStyle from '@tiptap/extension-text-style';
 import TiptapColor from '@tiptap/extension-color';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   Bold,
@@ -31,11 +31,11 @@ import {
   Quote,
   Redo2,
   Strikethrough,
-  Trash2,
   Undo2,
 } from 'lucide-react';
 import { api } from './api';
 import { ArticlePicker, type ArticleSummary } from './components/ArticlePicker';
+import { LinkPopover } from './components/LinkPopover';
 import { MediaPicker, type Media } from './components/MediaPicker';
 import { Toast } from './components/Toast';
 import { CategoryCombobox, TagsInput } from './components/TaxonomyPicker';
@@ -158,143 +158,6 @@ function useClickOutside(onClose: () => void) {
     };
   }, [onClose]);
   return ref;
-}
-
-function LinkPopover({
-  editor,
-  onClose,
-  anchorRect,
-}: {
-  editor: Editor | null;
-  onClose: () => void;
-  /** When set, the popover is positioned near this rect (e.g. a link clicked in the content)
-   * instead of hanging below the toolbar button. */
-  anchorRect?: DOMRect;
-}) {
-  const existingHref = (editor?.getAttributes('link').href as string | undefined) ?? '';
-  const existingTarget = editor?.getAttributes('link').target as string | undefined;
-  const [url, setUrl] = useState(existingHref);
-  const [newTab, setNewTab] = useState(existingTarget === '_blank');
-  const containerRef = useClickOutside(onClose);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [fixedPosition, setFixedPosition] = useState<{ top: number; left: number } | null>(null);
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, []);
-  useLayoutEffect(() => {
-    if (!anchorRect) return;
-    const el = containerRef.current;
-    if (!el) return;
-    const margin = 8;
-    let left = anchorRect.left;
-    let top = anchorRect.bottom + margin;
-    if (left + el.offsetWidth > window.innerWidth - margin) {
-      left = window.innerWidth - margin - el.offsetWidth;
-    }
-    if (left < margin) left = margin;
-    if (top + el.offsetHeight > window.innerHeight - margin) {
-      top = anchorRect.top - el.offsetHeight - margin;
-    }
-    setFixedPosition({ top, left });
-  }, [anchorRect, containerRef]);
-
-  const apply = () => {
-    const trimmed = url.trim();
-    if (trimmed === '') {
-      editor?.chain().focus().extendMarkRange('link').unsetLink().run();
-    } else {
-      editor
-        ?.chain()
-        .focus()
-        .extendMarkRange('link')
-        .setLink({ href: trimmed, target: newTab ? '_blank' : null })
-        .run();
-    }
-    onClose();
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      className={
-        anchorRect
-          ? 'z-40 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-2xl'
-          : 'absolute top-full left-0 z-30 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-2xl'
-      }
-      style={
-        anchorRect
-          ? {
-              position: 'fixed',
-              top: fixedPosition?.top ?? anchorRect.bottom + 8,
-              left: fixedPosition?.left ?? anchorRect.left,
-              visibility: fixedPosition ? 'visible' : 'hidden',
-            }
-          : undefined
-      }
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          apply();
-        }
-      }}
-    >
-      <p className="text-xs font-bold tracking-widest text-slate-500 uppercase">
-        {existingHref ? 'Modifier le lien' : 'Insérer un lien'}
-      </p>
-      <label className="mt-3 block text-sm font-semibold text-slate-700">
-        Adresse (URL)
-        <input
-          ref={inputRef}
-          className="mt-1.5 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-orange-600 focus:outline-none"
-          value={url}
-          onChange={(event) => setUrl(event.target.value)}
-          placeholder="https://exemple.fr/page"
-        />
-      </label>
-      <label className="mt-3 flex items-center gap-2 text-sm text-slate-600">
-        <input
-          type="checkbox"
-          className="rounded border-slate-300"
-          checked={newTab}
-          onChange={(event) => setNewTab(event.target.checked)}
-        />
-        Ouvrir dans un nouvel onglet
-      </label>
-      <div className="mt-4 flex items-center justify-between gap-2">
-        {existingHref ? (
-          <button
-            type="button"
-            onClick={() => {
-              editor?.chain().focus().extendMarkRange('link').unsetLink().run();
-              onClose();
-            }}
-            className="inline-flex items-center gap-1.5 rounded px-2 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
-          >
-            <Trash2 size={14} /> Retirer le lien
-          </button>
-        ) : (
-          <span />
-        )}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
-          >
-            Annuler
-          </button>
-          <button
-            type="button"
-            onClick={apply}
-            className="rounded bg-orange-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-800"
-          >
-            Appliquer
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function ColorPopover({ editor, onClose }: { editor: Editor | null; onClose: () => void }) {
@@ -502,7 +365,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
     window.setTimeout(() => setContentExpanded(false), 250);
   };
   const markDirty = () => setIsDirty(true);
-  const [linkClickAnchor, setLinkClickAnchor] = useState<DOMRect | null>(null);
+  const [linkClickAnchor, setLinkClickAnchor] = useState<HTMLAnchorElement | null>(null);
   const taxonomy = useQuery({
     queryKey: ['taxonomy'],
     queryFn: async () => (await api.get<Taxonomy>('/admin/taxonomy')).data,
@@ -539,7 +402,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
         if (link) {
           const { state } = view;
           view.dispatch(state.tr.setSelection(TextSelection.near(state.doc.resolve(pos))));
-          setLinkClickAnchor(link.getBoundingClientRect());
+          setLinkClickAnchor(link);
         } else {
           setLinkClickAnchor(null);
         }
@@ -1206,7 +1069,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
       {linkClickAnchor && (
         <LinkPopover
           editor={editor}
-          anchorRect={linkClickAnchor}
+          anchorElement={linkClickAnchor}
           onClose={() => setLinkClickAnchor(null)}
         />
       )}
