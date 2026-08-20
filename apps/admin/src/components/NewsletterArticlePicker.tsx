@@ -51,7 +51,7 @@ export function NewsletterArticlePicker({ onClose, onConfirm, alreadySelectedIds
       aria-labelledby="newsletter-article-picker-title"
       onMouseDown={(event) => event.currentTarget === event.target && onClose()}
     >
-      <section className="flex max-h-[min(640px,calc(100vh-2rem))] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <section className="flex max-h-[min(760px,calc(100vh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <header className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
           <div>
             <p className="text-xs font-bold tracking-widest text-orange-700 uppercase">Newsletter</p>
@@ -89,11 +89,11 @@ export function NewsletterArticlePicker({ onClose, onConfirm, alreadySelectedIds
             {filtered.map((article) => {
               const picked = pickedIds.includes(article.id);
               return (
-                <li key={article.id}>
+                <li key={article.id} className="min-w-0">
                   <button
                     type="button"
                     onClick={() => toggle(article.id)}
-                    className={`flex w-full items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left ${
+                    className={`flex w-full min-w-0 items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left ${
                       picked ? 'border-orange-400 bg-orange-50' : 'border-slate-200 hover:border-orange-300 hover:bg-orange-50/50'
                     }`}
                   >

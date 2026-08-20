@@ -122,7 +122,7 @@ final class AdminNewsletterController
                 'title' => $row['title'],
                 'excerpt' => $row['excerpt'],
                 'url' => Config::url('/' . $row['category_slug'] . '/' . $row['slug']),
-                'hero_image' => $row['hero_image'],
+                'hero_image' => Config::url($row['hero_image']),
                 'category_name' => $row['category_name'],
             ];
         }

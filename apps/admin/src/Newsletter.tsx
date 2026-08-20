@@ -315,7 +315,7 @@ function CampaignForm({
               {articles.map((article, index) => (
                 <li
                   key={article.id}
-                  className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                  className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
                 >
                   <GripVertical size={14} className="shrink-0 text-slate-300" aria-hidden="true" />
                   <span className="min-w-0 flex-1">
