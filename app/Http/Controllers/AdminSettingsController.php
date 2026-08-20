@@ -20,6 +20,8 @@ final class AdminSettingsController
         'linkedin_url' => '',
     ];
     private const REVENUE_DEFAULTS = ['cpm' => 0, 'cpc' => 0];
+    private const HEAD_CODE_DEFAULTS = ['head_html' => ''];
+    private const HEAD_CODE_MAX_LENGTH = 20000;
 
     public function seo(): void
     {
@@ -112,6 +114,31 @@ final class AdminSettingsController
             Settings::set('seo', $data);
             AuditLog::record('settings.update', 'settings', null, ['group' => 'seo']);
             return ['data' => $data, 'message' => 'Paramètres SEO enregistrés.'];
+        });
+    }
+
+    public function headCode(): void
+    {
+        AdminAuthController::requireStaff();
+        $this->respond(function (): array {
+            return ['data' => Settings::get('head_code', self::HEAD_CODE_DEFAULTS)];
+        });
+    }
+
+    public function updateHeadCode(): void
+    {
+        AdminAuthController::requireStaff(['admin']);
+        $this->respond(function (): array {
+            $input = json_decode(file_get_contents('php://input') ?: '[]', true, 512, JSON_THROW_ON_ERROR);
+            $headHtml = trim((string) ($input['head_html'] ?? ''));
+            if (mb_strlen($headHtml) > self::HEAD_CODE_MAX_LENGTH) {
+                throw new \InvalidArgumentException('Le code dépasse la taille maximale autorisée (' . self::HEAD_CODE_MAX_LENGTH . ' caractères).');
+            }
+
+            $data = ['head_html' => $headHtml];
+            Settings::set('head_code', $data);
+            AuditLog::record('settings.update', 'settings', null, ['group' => 'head_code']);
+            return ['data' => $data, 'message' => 'Code personnalisé enregistré.'];
         });
     }
 

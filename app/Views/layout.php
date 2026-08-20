@@ -79,6 +79,10 @@ if ($categoryTree === []) {
     <meta name="google-adsense-account" content="<?= htmlspecialchars($seoSettings['adsense_client']) ?>">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=<?= htmlspecialchars($seoSettings['adsense_client']) ?>" crossorigin="anonymous"></script>
   <?php endif; ?>
+  <?php $headCode = \App\Support\Settings::get('head_code', ['head_html' => '']); ?>
+  <?php if (!empty($headCode['head_html']) && empty($isPreview)): ?>
+    <?= $headCode['head_html'] ?>
+  <?php endif; ?>
 </head>
 <body class="overflow-x-hidden bg-stone-50 font-sans text-slate-900 antialiased">
   <header data-site-header class="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur transition-all duration-300">

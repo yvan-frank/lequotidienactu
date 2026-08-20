@@ -1,6 +1,6 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Building2, CheckCircle2, DollarSign, ExternalLink, Mail, Search, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Building2, CheckCircle2, Code2, DollarSign, ExternalLink, Mail, Search, TrendingUp } from 'lucide-react';
 import { api } from './api';
 import { Toast } from './components/Toast';
 
@@ -14,6 +14,7 @@ type GeneralSettings = {
   linkedin_url: string;
 };
 type RevenueSettings = { cpm: number; cpc: number };
+type HeadCodeSettings = { head_html: string };
 type ToastState = { message: string; tone: 'error' | 'success' } | null;
 
 const inputClass =
@@ -27,6 +28,7 @@ function apiErrorMessage(error: any, fallback: string): string {
 const TABS = [
   { id: 'general', label: 'Général', icon: Building2 },
   { id: 'seo', label: 'SEO & Analytics', icon: Search },
+  { id: 'head-code', label: 'Code personnalisé', icon: Code2 },
   { id: 'mail', label: 'E-mail (SMTP)', icon: Mail },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
@@ -71,6 +73,7 @@ export function Settings() {
       <div className="mt-6">
         {activeTab === 'general' && <GeneralPanel setToast={setToast} />}
         {activeTab === 'seo' && <SeoPanel setToast={setToast} />}
+        {activeTab === 'head-code' && <HeadCodePanel setToast={setToast} />}
         {activeTab === 'mail' && <MailPanel />}
       </div>
 
@@ -440,6 +443,101 @@ function SeoPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
               >
                 Ouvrir AdSense <ExternalLink size={12} />
               </a>
+            </p>
+          </section>
+
+          <div className="flex justify-end">
+            <button
+              disabled={save.isPending}
+              className="rounded bg-orange-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-800 disabled:opacity-50"
+            >
+              {save.isPending ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+          </div>
+        </form>
+      )}
+    </>
+  );
+}
+
+const HEAD_CODE_MAX_LENGTH = 20000;
+
+function HeadCodePanel({ setToast }: { setToast: (toast: ToastState) => void }) {
+  const queryClient = useQueryClient();
+  const [headHtml, setHeadHtml] = React.useState('');
+  const [loaded, setLoaded] = React.useState(false);
+
+  const settings = useQuery({
+    queryKey: ['admin-settings-head-code'],
+    queryFn: async () => (await api.get<{ data: HeadCodeSettings }>('/admin/settings/head-code')).data.data,
+  });
+
+  React.useEffect(() => {
+    if (settings.data && !loaded) {
+      setHeadHtml(settings.data.head_html);
+      setLoaded(true);
+    }
+  }, [settings.data, loaded]);
+
+  const save = useMutation({
+    mutationFn: () => api.put<{ data: HeadCodeSettings }>('/admin/settings/head-code', { head_html: headHtml }),
+    onSuccess: (response) => {
+      queryClient.setQueryData(['admin-settings-head-code'], response.data.data);
+      setToast({ tone: 'success', message: 'Code personnalisé enregistré.' });
+    },
+    onError: (error) =>
+      setToast({ tone: 'error', message: apiErrorMessage(error, "Impossible d'enregistrer ce code.") }),
+  });
+
+  return (
+    <>
+      {settings.isLoading && <p className="rounded-xl bg-white p-6 text-slate-500">Chargement…</p>}
+      {settings.isError && (
+        <p className="rounded-xl bg-white p-6 text-red-700">Impossible de charger les paramètres.</p>
+      )}
+      {loaded && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            save.mutate();
+          }}
+          className="grid grid-cols-1 gap-6"
+        >
+          <section className="rounded-xl border border-slate-200 bg-white p-6">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-lg bg-orange-50 text-orange-700">
+                <Code2 size={20} />
+              </span>
+              <div>
+                <h3 className="font-bold">Balises &lt;head&gt; personnalisées</h3>
+                <p className="text-sm text-slate-500">
+                  Scripts, balises meta ou liens insérés tels quels juste avant{' '}
+                  <code className="rounded bg-slate-100 px-1">&lt;/head&gt;</code> sur chaque page du
+                  site public.
+                </p>
+              </div>
+            </div>
+            <label className="mt-5 block text-sm font-semibold text-slate-700">
+              Code HTML
+              <textarea
+                className="mt-1 min-h-56 w-full rounded border border-slate-300 px-3 py-2 font-mono text-xs focus:border-orange-600 focus:outline-none"
+                placeholder={'<meta name="facebook-domain-verification" content="..." />\n<script>\n  // ...\n</script>'}
+                value={headHtml}
+                maxLength={HEAD_CODE_MAX_LENGTH}
+                onChange={(event) => setHeadHtml(event.target.value)}
+                spellCheck={false}
+              />
+            </label>
+            <p className="mt-2 text-right text-xs text-slate-400">
+              {headHtml.length.toLocaleString('fr-FR')} / {HEAD_CODE_MAX_LENGTH.toLocaleString('fr-FR')}
+            </p>
+            <p className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
+              <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+              Ce code s'exécute tel quel sur le site public, pour tous les visiteurs. Une erreur de
+              syntaxe ou un script mal formé peut casser l'affichage des pages ou dégrader les
+              performances. Ne collez que du code venant d'une source de confiance (Meta Pixel,
+              vérification de domaine, etc.) — les scripts Analytics/AdSense/Search Console ont leur
+              propre onglet dédié.
             </p>
           </section>
 
