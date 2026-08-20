@@ -236,7 +236,7 @@ final class PublicController
     private function searchArticles(string $query): array
     {
         try {
-            $statement = $this->pdo()->prepare('SELECT a.title, a.slug, a.excerpt, a.published_at, c.slug AS category, c.name AS category_name, m.path AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN media m ON m.id = a.hero_media_id WHERE a.status = "published" AND a.published_at <= NOW() AND (a.title LIKE :q OR a.excerpt LIKE :q) ORDER BY a.published_at DESC LIMIT 20');
+            $statement = $this->pdo()->prepare('SELECT a.title, a.slug, a.excerpt, a.published_at, c.slug AS category, c.name AS category_name, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE a.status = "published" AND a.published_at <= NOW() AND (a.title LIKE :q OR a.excerpt LIKE :q) ORDER BY a.published_at DESC LIMIT 20');
             $statement->execute(['q' => '%' . $query . '%']);
             return array_map(static function (array $item): array {
                 $item['published_at'] = (new \DateTimeImmutable($item['published_at']))->format('d/m/Y');
@@ -299,7 +299,7 @@ final class PublicController
             if (is_array($category) && $category === []) {
                 return [];
             }
-            $sql = 'SELECT a.id, a.category_id, a.title, a.slug, a.excerpt, a.body, a.status, a.published_at, a.updated_at, a.meta_title, a.meta_description, a.canonical_url, a.robots, a.is_sponsored, a.is_featured, c.slug AS category, c.name AS category_name, au.display_name AS author, au.slug AS author_slug, au.bio AS author_bio, m.path AS hero_image, m.credit AS hero_credit, m.alt_text AS hero_alt FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN authors au ON au.id = a.author_id INNER JOIN media m ON m.id = a.hero_media_id WHERE 1 = 1';
+            $sql = 'SELECT a.id, a.category_id, a.title, a.slug, a.excerpt, a.body, a.status, a.published_at, a.updated_at, a.meta_title, a.meta_description, a.canonical_url, a.robots, a.is_sponsored, a.is_featured, c.slug AS category, c.name AS category_name, au.display_name AS author, au.slug AS author_slug, au.bio AS author_bio, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image, m.credit AS hero_credit, m.alt_text AS hero_alt FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN authors au ON au.id = a.author_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE 1 = 1';
             $params = [];
             if (is_array($category)) {
                 $placeholders = [];
@@ -409,7 +409,7 @@ final class PublicController
             return [];
         }
         try {
-            $statement = $this->pdo()->prepare('SELECT a.title, a.slug, a.excerpt, a.published_at, c.slug AS category, c.name AS category_name, m.path AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN media m ON m.id = a.hero_media_id WHERE a.category_id = :category_id AND a.id != :id AND a.status = "published" AND a.published_at <= NOW() ORDER BY a.published_at DESC LIMIT 3');
+            $statement = $this->pdo()->prepare('SELECT a.title, a.slug, a.excerpt, a.published_at, c.slug AS category, c.name AS category_name, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE a.category_id = :category_id AND a.id != :id AND a.status = "published" AND a.published_at <= NOW() ORDER BY a.published_at DESC LIMIT 3');
             $statement->execute(['category_id' => $article['category_id'], 'id' => $article['id']]);
             return array_map(static function (array $item): array {
                 $item['published_at'] = (new \DateTimeImmutable($item['published_at']))->format('d/m/Y');
@@ -426,7 +426,7 @@ final class PublicController
             return null;
         }
         try {
-            $statement = $this->pdo()->prepare('SELECT a.title, a.slug, a.excerpt, c.slug AS category, c.name AS category_name, m.path AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN media m ON m.id = a.hero_media_id WHERE a.category_id = :category_id AND a.id != :id AND a.status = "published" AND a.published_at <= NOW() AND a.published_at < :published_at ORDER BY a.published_at DESC LIMIT 1');
+            $statement = $this->pdo()->prepare('SELECT a.title, a.slug, a.excerpt, c.slug AS category, c.name AS category_name, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE a.category_id = :category_id AND a.id != :id AND a.status = "published" AND a.published_at <= NOW() AND a.published_at < :published_at ORDER BY a.published_at DESC LIMIT 1');
             $statement->execute([
                 'category_id' => $article['category_id'],
                 'id' => $article['id'],
@@ -442,7 +442,7 @@ final class PublicController
     private function latestArticles(?int $excludeId, int $limit): array
     {
         try {
-            $sql = 'SELECT a.title, a.slug, a.published_at, c.slug AS category, c.name AS category_name, m.path AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN media m ON m.id = a.hero_media_id WHERE a.status = "published" AND a.published_at <= NOW()';
+            $sql = 'SELECT a.title, a.slug, a.published_at, c.slug AS category, c.name AS category_name, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE a.status = "published" AND a.published_at <= NOW()';
             $params = [];
             if ($excludeId !== null) {
                 $sql .= ' AND a.id != :id';

@@ -78,12 +78,12 @@ final class AdminArticleController
                 throw new \InvalidArgumentException('Statut éditorial invalide.');
             }
             if (in_array($status, ['published', 'scheduled'], true)) {
-                $article = $pdo->prepare('SELECT title, body, category_id, author_id, hero_media_id FROM articles WHERE id = :id');
+                $article = $pdo->prepare('SELECT title, body, category_id, author_id FROM articles WHERE id = :id');
                 $article->execute(['id' => $id]);
                 $row = $article->fetch(PDO::FETCH_ASSOC);
                 if (!$row) throw new \InvalidArgumentException('Article introuvable.');
-                if (trim((string) $row['title']) === '' || trim((string) $row['body']) === '' || $row['category_id'] === null || $row['author_id'] === null || $row['hero_media_id'] === null) {
-                    throw new \InvalidArgumentException('Complétez le titre, le contenu, la rubrique, l’auteur et l’image de couverture avant de publier ou programmer.');
+                if (trim((string) $row['title']) === '' || trim((string) $row['body']) === '' || $row['category_id'] === null || $row['author_id'] === null) {
+                    throw new \InvalidArgumentException('Complétez le titre, le contenu, la rubrique et l’auteur avant de publier ou programmer.');
                 }
             }
             $publishedAt = $status === 'published' ? date('Y-m-d H:i:s') : ($input['published_at'] ?? null);
@@ -206,8 +206,8 @@ final class AdminArticleController
         $heroMediaId = !empty($input['hero_media_id']) ? (int) $input['hero_media_id'] : null;
 
         $requiresComplete = in_array($status, ['published', 'scheduled'], true);
-        if ($requiresComplete && ($title === '' || $body === '' || $categoryId === null || $authorId === null || $heroMediaId === null)) {
-            throw new \InvalidArgumentException('Titre, contenu, image de couverture, rubrique et auteur sont obligatoires pour publier ou programmer un article.');
+        if ($requiresComplete && ($title === '' || $body === '' || $categoryId === null || $authorId === null)) {
+            throw new \InvalidArgumentException('Titre, contenu, rubrique et auteur sont obligatoires pour publier ou programmer un article.');
         }
 
         $slug = trim((string) ($input['slug'] ?? ''));

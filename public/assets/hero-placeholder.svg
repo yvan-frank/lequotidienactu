@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="1200" height="675" role="img" aria-label="Le Quotidien Actu">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1c1917"/>
+      <stop offset="1" stop-color="#431407"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <g opacity="0.5" stroke="#fdba74" stroke-width="3" fill="none">
+    <rect x="470" y="247" width="260" height="180" rx="12"/>
+    <circle cx="524" cy="303" r="18"/>
+    <path d="M470 388 L560 320 L620 360 L680 300 L730 340 L730 405 L470 405 Z" fill="#fdba74" stroke="none" opacity="0.6"/>
+  </g>
+  <text x="600" y="470" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="700" letter-spacing="0.08em" fill="#fed7aa" text-anchor="middle">LE QUOTIDIEN ACTU</text>
+</svg>

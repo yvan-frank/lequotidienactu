@@ -681,7 +681,6 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
       if (!form.body.trim()) missing.push('le contenu');
       if (!form.category_id) missing.push('la rubrique');
       if (!form.author_id) missing.push('l’auteur');
-      if (!heroMedia) missing.push('l’image de couverture');
       if (missing.length > 0) {
         setNoticeTone('error');
         setNotice(`Complétez ${missing.join(', ')} avant de publier ou programmer cet article.`);
@@ -985,11 +984,10 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
         </section>
         <aside className="space-y-5 lg:sticky lg:top-6 lg:h-fit lg:self-start">
           <details open className="rounded-lg border border-slate-200 bg-white p-5">
-            <summary className="cursor-pointer font-bold">
-              Image de couverture <span className="text-orange-700">*</span>
-            </summary>
+            <summary className="cursor-pointer font-bold">Image de couverture</summary>
             <p className="mt-2 text-sm text-slate-500">
-              Choisissez une image existante ou téléversez-en une nouvelle.
+              Choisissez une image existante ou téléversez-en une nouvelle. Facultatif — une image
+              par défaut est utilisée si vous n’en choisissez pas.
             </p>
             {heroMedia && heroPreviewUrl ? (
               <img
