@@ -203,38 +203,44 @@ if ($categoryTree === []) {
         <form class="mt-6 grid gap-2" data-island="newsletter">
           <label class="text-xs font-bold tracking-widest text-slate-400 uppercase" for="newsletter-email">Newsletter</label>
           <div class="flex gap-2">
-            <input class="min-w-0 flex-1 rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-brand-600 focus:outline-none" id="newsletter-email" type="email" name="email" placeholder="vous@exemple.fr" required>
-            <button class="shrink-0 rounded bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">S’inscrire</button>
+            <input class="min-w-0 flex-1 rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-brand-600 focus:outline-none disabled:opacity-60" id="newsletter-email" type="email" name="email" placeholder="vous@exemple.fr" required>
+            <button type="submit" data-newsletter-submit class="inline-flex shrink-0 items-center gap-2 rounded bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60">
+              <svg data-newsletter-spinner class="hidden size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4Z"/></svg>
+              <span data-newsletter-label>S’inscrire</span>
+            </button>
           </div>
+          <p data-newsletter-message class="hidden text-sm" role="status" aria-live="polite"></p>
         </form>
       </div>
 
-      <nav class="grid grid-cols-2 gap-8 sm:grid-cols-3" aria-label="Rubriques (pied de page)">
-        <?php foreach ($categoryTree as $navItem): ?>
-          <div>
-            <a class="text-xs font-bold tracking-widest text-white uppercase hover:text-brand-400" href="/<?= htmlspecialchars($navItem['slug']) ?>"><?= htmlspecialchars($navItem['name']) ?></a>
-            <?php if (!empty($navItem['children'])): ?>
-              <ul class="mt-3 grid gap-2">
-                <?php foreach (array_slice($navItem['children'], 0, 5) as $child): ?>
-                  <li><a class="text-sm text-slate-400 hover:text-white" href="/<?= htmlspecialchars($child['slug']) ?>"><?= htmlspecialchars($child['name']) ?></a></li>
-                <?php endforeach; ?>
-              </ul>
-            <?php endif; ?>
-          </div>
-        <?php endforeach; ?>
-      </nav>
+      <div class="grid gap-10 lg:contents">
+        <nav class="grid grid-cols-2 gap-8 sm:grid-cols-3" aria-label="Rubriques (pied de page)">
+          <?php foreach ($categoryTree as $navItem): ?>
+            <div>
+              <a class="text-xs font-bold tracking-widest text-white uppercase hover:text-brand-400" href="/<?= htmlspecialchars($navItem['slug']) ?>"><?= htmlspecialchars($navItem['name']) ?></a>
+              <?php if (!empty($navItem['children'])): ?>
+                <ul class="mt-3 grid gap-2">
+                  <?php foreach (array_slice($navItem['children'], 0, 5) as $child): ?>
+                    <li><a class="text-sm text-slate-400 hover:text-white" href="/<?= htmlspecialchars($child['slug']) ?>"><?= htmlspecialchars($child['name']) ?></a></li>
+                  <?php endforeach; ?>
+                </ul>
+              <?php endif; ?>
+            </div>
+          <?php endforeach; ?>
+        </nav>
 
-      <div>
-        <p class="text-xs font-bold tracking-widest text-white uppercase">Ressources</p>
-        <ul class="mt-3 grid gap-2 text-sm">
-          <li><a class="text-slate-400 hover:text-white" href="/recherche">Recherche</a></li>
-          <li><a class="text-slate-400 hover:text-white" href="/feed.xml">Flux RSS</a></li>
-          <li><a class="text-slate-400 hover:text-white" href="/sitemap.xml">Plan du site</a></li>
-          <li><a class="text-slate-400 hover:text-white" href="/a-propos">À propos</a></li>
-          <li><a class="text-slate-400 hover:text-white" href="/contact">Contact</a></li>
-          <li><a class="text-slate-400 hover:text-white" href="/mentions-legales">Mentions légales</a></li>
-          <li><a class="text-slate-400 hover:text-white" href="/confidentialite">Politique de confidentialité</a></li>
-        </ul>
+        <div>
+          <p class="text-xs font-bold tracking-widest text-white uppercase">Ressources</p>
+          <ul class="mt-3 grid gap-2 text-sm">
+            <li><a class="text-slate-400 hover:text-white" href="/recherche">Recherche</a></li>
+            <li><a class="text-slate-400 hover:text-white" href="/feed.xml">Flux RSS</a></li>
+            <li><a class="text-slate-400 hover:text-white" href="/sitemap.xml">Plan du site</a></li>
+            <li><a class="text-slate-400 hover:text-white" href="/a-propos">À propos</a></li>
+            <li><a class="text-slate-400 hover:text-white" href="/contact">Contact</a></li>
+            <li><a class="text-slate-400 hover:text-white" href="/mentions-legales">Mentions légales</a></li>
+            <li><a class="text-slate-400 hover:text-white" href="/confidentialite">Politique de confidentialité</a></li>
+          </ul>
+        </div>
       </div>
     </div>
 

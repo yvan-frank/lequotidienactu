@@ -1,13 +1,57 @@
 document.querySelectorAll('[data-island="newsletter"]').forEach((form) => {
+  const input = form.querySelector('input[name="email"]');
+  const submitButton = form.querySelector('[data-newsletter-submit]');
+  const spinner = form.querySelector('[data-newsletter-spinner]');
+  const label = form.querySelector('[data-newsletter-label]');
+  const message = form.querySelector('[data-newsletter-message]');
+  const submitLabel = label ? label.textContent : '';
+
+  const setMessage = (text, tone) => {
+    if (input) {
+      input.classList.toggle('border-red-500', tone === 'error');
+      input.classList.toggle('border-slate-700', tone !== 'error');
+    }
+    if (!message) return;
+    message.textContent = text;
+    message.classList.remove('hidden', 'text-emerald-400', 'text-red-400', 'text-slate-400');
+    message.classList.add(tone === 'error' ? 'text-red-400' : tone === 'success' ? 'text-emerald-400' : 'text-slate-400');
+  };
+
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const email = new FormData(event.currentTarget).get('email');
-    await fetch('/api/newsletter/subscribe', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-    event.currentTarget.reset();
+    // event.currentTarget is cleared by the browser once the synchronous part
+    // of event dispatch finishes, which happens before this `await` resolves —
+    // use the closed-over `form` reference instead of the event afterward.
+    const email = new FormData(form).get('email');
+    submitButton?.setAttribute('disabled', 'true');
+    input?.setAttribute('disabled', 'true');
+    spinner?.classList.remove('hidden');
+    if (label) label.textContent = 'Envoi…';
+    if (message) message.classList.add('hidden');
+    input?.classList.remove('border-red-500');
+    input?.classList.add('border-slate-700');
+
+    try {
+      const response = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        setMessage(data.message || 'Inscription envoyée.', 'success');
+        form.reset();
+      } else {
+        setMessage(data.message || 'Impossible de finaliser l’inscription. Réessayez.', 'error');
+      }
+    } catch {
+      setMessage('Erreur réseau. Vérifiez votre connexion et réessayez.', 'error');
+    } finally {
+      submitButton?.removeAttribute('disabled');
+      input?.removeAttribute('disabled');
+      spinner?.classList.add('hidden');
+      if (label) label.textContent = submitLabel;
+    }
   });
 });
 
