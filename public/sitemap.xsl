@@ -96,7 +96,6 @@
             </main>
           </xsl:otherwise>
         </xsl:choose>
-        <footer>Généré automatiquement pour les moteurs de recherche — ce fichier reste un XML valide (cette mise en forme n’apparaît qu’au chargement dans un navigateur).</footer>
       </body>
     </html>
   </xsl:template>
