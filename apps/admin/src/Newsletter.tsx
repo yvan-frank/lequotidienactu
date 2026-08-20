@@ -348,6 +348,7 @@ function CampaignForm({
   const [intro, setIntro] = React.useState('');
   const [articles, setArticles] = React.useState<NewsletterArticleSummary[]>([]);
   const [featuredCount, setFeaturedCount] = React.useState(0);
+  const [layout, setLayout] = React.useState<'cards' | 'list'>('cards');
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const clampedFeaturedCount = Math.min(featuredCount, articles.length);
@@ -365,6 +366,7 @@ function CampaignForm({
         article_ids: articles.map((article) => article.id),
         subscriber_ids: selectedSubscriberIds,
         featured_count: clampedFeaturedCount,
+        layout,
       }),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['admin-newsletter-campaigns'] });
@@ -373,6 +375,7 @@ function CampaignForm({
       setIntro('');
       setArticles([]);
       setFeaturedCount(0);
+      setLayout('cards');
       setConfirmOpen(false);
     },
     onError: (error) => {
@@ -434,6 +437,36 @@ function CampaignForm({
         </label>
 
         <div>
+          <span className={labelClass}>Mise en page</span>
+          <div className="mt-1 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setLayout('cards')}
+              className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                layout === 'cards'
+                  ? 'border-orange-600 bg-orange-50 text-orange-800'
+                  : 'border-slate-200 text-slate-600 hover:border-slate-300'
+              }`}
+            >
+              Cartes
+              <span className="mt-0.5 block font-normal text-slate-400">Grille d'images, un article en avant</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setLayout('list')}
+              className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                layout === 'list'
+                  ? 'border-orange-600 bg-orange-50 text-orange-800'
+                  : 'border-slate-200 text-slate-600 hover:border-slate-300'
+              }`}
+            >
+              Liste
+              <span className="mt-0.5 block font-normal text-slate-400">Titres compacts avec vignette, style bulletin</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
           <div className="flex items-center justify-between">
             <span className={labelClass}>Articles à inclure</span>
             <button
@@ -460,13 +493,15 @@ function CampaignForm({
                     <span className="block truncate text-sm font-semibold text-slate-900">{article.title}</span>
                     <span className="text-xs text-slate-500">{article.category_name ?? 'Sans rubrique'}</span>
                   </span>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
-                      index < clampedFeaturedCount ? 'bg-orange-100 text-orange-700' : 'bg-slate-200 text-slate-600'
-                    }`}
-                  >
-                    {index < clampedFeaturedCount ? 'En avant' : 'Grille'}
-                  </span>
+                  {layout === 'cards' && (
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
+                        index < clampedFeaturedCount ? 'bg-orange-100 text-orange-700' : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {index < clampedFeaturedCount ? 'En avant' : 'Grille'}
+                    </span>
+                  )}
                   <div className="flex shrink-0 items-center gap-1">
                     <button
                       type="button"
@@ -499,7 +534,7 @@ function CampaignForm({
               ))}
             </ul>
           )}
-          {articles.length > 1 && (
+          {layout === 'cards' && articles.length > 1 && (
             <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-slate-600">
               Articles « en avant » (cartes horizontales)
               <input
@@ -514,9 +549,10 @@ function CampaignForm({
             </label>
           )}
           <p className="mt-2 text-xs text-slate-400">
-            Les articles « en avant » (les {clampedFeaturedCount || 0} premiers de la liste) s'affichent en
-            grande carte horizontale ; le reste en grille 2 colonnes. Un seul article s'affiche toujours en
-            pleine largeur. Un lien de désinscription est ajouté automatiquement en bas.
+            {layout === 'cards'
+              ? `Les articles « en avant » (les ${clampedFeaturedCount || 0} premiers de la liste) s'affichent en grande carte horizontale ; le reste en grille 2 colonnes. Un seul article s'affiche toujours en pleine largeur.`
+              : "Chaque article s'affiche en ligne compacte avec une vignette, dans l'ordre de la liste."}{' '}
+            Un lien de désinscription est ajouté automatiquement en bas.
           </p>
         </div>
 

@@ -194,6 +194,126 @@ final class MailTemplate
     }
 
     /**
+     * Renders a compact "list digest" alternative to {@see renderDigest()}:
+     * a dark title bar, then each article as a single row (title + short
+     * excerpt on the left, a small square thumbnail on the right) separated
+     * by hairlines, a CTA banner, and a dark footer — the newsletter-house
+     * style popularized by outlets like CIC News, as opposed to the
+     * image-card grid the other renderer produces.
+     *
+     * @param array<int, array{title: string, excerpt: ?string, url: string, hero_image: string, category_name: string}> $articles
+     */
+    public static function renderListDigest(string $heading, ?string $intro, array $articles, string $unsubscribeLink): string
+    {
+        $appName = htmlspecialchars($_ENV['APP_NAME'] ?? 'Le Quotidien Actu', ENT_QUOTES, 'UTF-8');
+        $logoUrl = htmlspecialchars(Config::url('/assets/logo-header.png'), ENT_QUOTES, 'UTF-8');
+        $siteUrl = htmlspecialchars(Config::url('/'), ENT_QUOTES, 'UTF-8');
+        $headingSafe = htmlspecialchars($heading, ENT_QUOTES, 'UTF-8');
+        $preheaderSafe = htmlspecialchars($intro !== null && $intro !== '' ? $intro : $heading, ENT_QUOTES, 'UTF-8');
+        $unsubscribeSafe = htmlspecialchars($unsubscribeLink, ENT_QUOTES, 'UTF-8');
+        $year = date('Y');
+
+        $introHtml = $intro !== null && $intro !== ''
+            ? '<p style="margin:0 0 20px;padding:0 20px;font-size:14px;line-height:1.6;color:#334155;">' . nl2br(htmlspecialchars($intro, ENT_QUOTES, 'UTF-8')) . '</p>'
+            : '';
+
+        $rowsHtml = implode('', array_map(
+            static fn (array $article): string => self::renderListRow($article),
+            $articles,
+        ));
+
+        return <<<HTML
+        <!doctype html>
+        <html lang="fr">
+        <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>{$appName}</title>
+        </head>
+        <body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+        <span style="display:none;max-height:0;overflow:hidden;opacity:0;">{$preheaderSafe}</span>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 16px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" style="max-width:560px;" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background:#0f172a;border-radius:12px 12px 0 0;padding:18px 20px;">
+                    <img src="{$logoUrl}" alt="{$appName}" height="24" style="height:24px;width:auto;display:block;margin:0 0 10px;">
+                    <p style="margin:0;font-size:13px;font-weight:800;letter-spacing:.04em;color:#ffffff;text-transform:uppercase;">{$headingSafe}</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="background:#ffffff;padding:20px 0 4px;">
+                    {$introHtml}
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      {$rowsHtml}
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="background:#fff7ed;padding:28px 24px;text-align:center;">
+                    <p style="margin:0 0 14px;font-size:16px;font-weight:800;color:#0f172a;">Découvrez toute l&rsquo;actualité sur {$appName}</p>
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                      <tr>
+                        <td style="border-radius:8px;background:#c2410c;">
+                          <a href="{$siteUrl}" style="display:inline-block;padding:11px 26px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">Voir le site</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="background:#0f172a;border-radius:0 0 12px 12px;padding:24px 20px;text-align:center;">
+                    <img src="{$logoUrl}" alt="{$appName}" height="20" style="height:20px;width:auto;display:block;margin:0 auto 10px;filter:brightness(0) invert(1);opacity:.9;">
+                    <p style="margin:0 0 10px;font-size:11px;line-height:1.6;color:#94a3b8;">La voix de l&rsquo;actualité. &copy; {$year} {$appName}. Tous droits réservés.</p>
+                    <p style="margin:0;font-size:11px;color:#64748b;">
+                      <a href="{$siteUrl}" style="color:#cbd5e1;text-decoration:none;">Nous contacter</a>
+                      &nbsp;&middot;&nbsp;
+                      <a href="{$unsubscribeSafe}" style="color:#cbd5e1;text-decoration:none;">Se désinscrire</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+        </body>
+        </html>
+        HTML;
+    }
+
+    /**
+     * @param array{title: string, excerpt: ?string, url: string, hero_image: string, category_name: string} $article
+     */
+    private static function renderListRow(array $article): string
+    {
+        $url = htmlspecialchars($article['url'], ENT_QUOTES, 'UTF-8');
+        $title = htmlspecialchars($article['title'], ENT_QUOTES, 'UTF-8');
+        $category = htmlspecialchars($article['category_name'], ENT_QUOTES, 'UTF-8');
+        $image = htmlspecialchars($article['hero_image'], ENT_QUOTES, 'UTF-8');
+
+        return <<<HTML
+        <tr>
+          <td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;" valign="top">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td valign="top">
+                  <p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:.06em;color:#c2410c;text-transform:uppercase;">{$category}</p>
+                  <a href="{$url}" style="display:block;font-size:15px;line-height:1.4;font-weight:700;color:#7f1d1d;text-decoration:none;">{$title}</a>
+                </td>
+                <td width="72" valign="top" style="padding-left:14px;">
+                  <a href="{$url}" style="display:block;text-decoration:none;">
+                    <img src="{$image}" width="72" height="72" alt="" style="display:block;width:72px;height:72px;object-fit:cover;border-radius:8px;">
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        HTML;
+    }
+
+    /**
      * Renders a branded HTML email shell around a heading, a list of
      * paragraphs (raw HTML allowed for inline emphasis), an optional
      * call-to-action button, and an optional smaller footnote.

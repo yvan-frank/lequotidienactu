@@ -51,6 +51,7 @@ final class AdminNewsletterController
             $articleIds = array_values(array_unique(array_map('intval', (array) ($input['article_ids'] ?? []))));
             $subscriberIds = array_values(array_unique(array_map('intval', (array) ($input['subscriber_ids'] ?? []))));
             $featuredCount = max(0, (int) ($input['featured_count'] ?? 0));
+            $layout = ($input['layout'] ?? 'cards') === 'list' ? 'list' : 'cards';
 
             if ($subject === '') {
                 throw new \InvalidArgumentException('Le sujet est obligatoire.');
@@ -104,7 +105,9 @@ final class AdminNewsletterController
             $sent = 0;
             foreach ($recipients as $recipient) {
                 $unsubscribeLink = Config::url('/api/newsletter/unsubscribe') . '?token=' . urlencode((string) $recipient['token']);
-                $html = MailTemplate::renderDigest($subject, $intro !== '' ? $intro : null, $trackedArticles, $featuredCount, $unsubscribeLink);
+                $html = $layout === 'list'
+                    ? MailTemplate::renderListDigest($subject, $intro !== '' ? $intro : null, $trackedArticles, $unsubscribeLink)
+                    : MailTemplate::renderDigest($subject, $intro !== '' ? $intro : null, $trackedArticles, $featuredCount, $unsubscribeLink);
                 $text = $this->renderPlainText($subject, $intro, $trackedArticles, $unsubscribeLink);
                 if (Mailer::sendHtml($recipient['email'], $recipient['email'], $subject, $html, $text, null, 'NEWSLETTER')['success']) {
                     $sent++;
