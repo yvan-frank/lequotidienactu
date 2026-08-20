@@ -110,7 +110,7 @@ export function ActivityLog() {
         </p>
       )}
       {logs.data && logs.data.length > 0 && (
-        <section className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <section className="mt-6 max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white contain-layout">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wider text-slate-500 uppercase">
               <tr>

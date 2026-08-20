@@ -82,9 +82,9 @@ $articleBody = \App\Support\ArticleEmbeds::render($article['body'] ?? '<p>' . ht
   </div>
 
   <?php if (!empty($tags)): ?>
-    <div class="mt-8 flex flex-wrap gap-2">
+    <div class="mt-8 flex flex-wrap gap-2.5">
       <?php foreach ($tags as $tag): ?>
-        <a class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-brand-50 hover:text-brand-700" href="/recherche?q=<?= urlencode($tag['name']) ?>">#<?= htmlspecialchars($tag['name']) ?></a>
+        <a class="touch-manipulation inline-flex items-center rounded-full bg-slate-100 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-brand-50 hover:text-brand-700" href="/recherche?q=<?= urlencode($tag['name']) ?>">#<?= htmlspecialchars($tag['name']) ?></a>
       <?php endforeach; ?>
     </div>
   <?php endif; ?>

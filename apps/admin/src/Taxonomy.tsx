@@ -252,7 +252,7 @@ function CategoriesPanel({ setToast }: { setToast: (toast: ToastState) => void }
         <p className="p-6 text-slate-500">Aucune rubrique pour le moment.</p>
       )}
       {categories.data && categories.data.length > 0 && (
-        <div className="overflow-x-auto p-6 pt-4">
+        <div className="max-w-full overflow-x-auto p-6 pt-4 contain-layout">
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead className="border-b border-slate-200 text-xs tracking-wider text-slate-500 uppercase">
               <tr>
@@ -499,27 +499,29 @@ function TagsPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
       {tags.isError && <p className="p-6 text-red-700">Impossible de charger les tags.</p>}
       {tags.data && tags.data.length === 0 && <p className="p-6 text-slate-500">Aucun tag pour le moment.</p>}
       {tags.data && tags.data.length > 0 && (
-        <div className="flex flex-wrap gap-2 p-6 pt-4">
+        <div className="flex flex-wrap gap-3 p-6 pt-4">
           {tags.data.map((tag) => (
             <span
               key={tag.id}
-              className="inline-flex items-center gap-2 rounded-full bg-slate-100 py-1.5 pr-2 pl-3 text-sm font-semibold text-slate-700"
+              className="inline-flex items-center gap-1 rounded-full bg-slate-100 py-1 pr-1 pl-3 text-sm font-semibold text-slate-700"
             >
               {tag.name}
               <span className="text-xs font-normal text-slate-400">({tag.articles_count})</span>
               <button
+                type="button"
                 onClick={() => openEdit(tag)}
-                className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+                className="touch-manipulation rounded-full p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
                 aria-label={`Modifier ${tag.name}`}
               >
-                <Pencil size={13} />
+                <Pencil size={14} />
               </button>
               <button
+                type="button"
                 onClick={() => setDeleteTarget(tag)}
-                className="rounded p-1 text-red-600 hover:bg-red-50"
+                className="touch-manipulation rounded-full p-2 text-red-600 hover:bg-red-50"
                 aria-label={`Supprimer ${tag.name}`}
               >
-                <Trash2 size={13} />
+                <Trash2 size={14} />
               </button>
             </span>
           ))}
@@ -639,7 +641,7 @@ function AuthorsPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
       {authors.isError && <p className="p-6 text-red-700">Impossible de charger les auteurs.</p>}
       {authors.data && authors.data.length === 0 && <p className="p-6 text-slate-500">Aucun auteur pour le moment.</p>}
       {authors.data && authors.data.length > 0 && (
-        <div className="overflow-x-auto p-6 pt-4">
+        <div className="max-w-full overflow-x-auto p-6 pt-4 contain-layout">
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead className="border-b border-slate-200 text-xs tracking-wider text-slate-500 uppercase">
               <tr>

@@ -152,6 +152,21 @@ details[open].is-closing .mega-panel {
   display: none;
 }
 
+/*
+ * Ad creatives are admin-pasted raw HTML (often a fixed-width iframe or a
+ * `<div style="width:728px">` banner) with no built-in responsiveness, so
+ * the slot itself has to clamp them instead of trusting the markup.
+ */
+.ad-slot {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.ad-slot img,
+.ad-slot iframe {
+  max-width: 100%;
+}
+
 [data-lightbox-close] {
   position: absolute;
   top: 1rem;

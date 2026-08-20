@@ -105,7 +105,7 @@ export function Newsletter() {
             </p>
           )}
           {subscribers.data && subscribers.data.data.length > 0 && (
-            <div className="max-h-[32rem] overflow-y-auto p-6">
+            <div className="max-h-[32rem] max-w-full overflow-x-auto overflow-y-auto p-6 contain-layout">
               <table className="w-full min-w-[420px] text-left text-sm">
                 <thead className="border-b border-slate-200 text-xs tracking-wider text-slate-500 uppercase">
                   <tr>

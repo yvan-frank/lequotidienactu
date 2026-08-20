@@ -12,9 +12,9 @@
     <p class="mt-3 max-w-2xl text-slate-600"><?= htmlspecialchars($categoryDetails['description']) ?></p>
   <?php endif; ?>
   <?php if (!empty($subcategories)): ?>
-    <div class="mt-5 flex flex-wrap gap-2">
+    <div class="mt-5 flex flex-wrap gap-2.5">
       <?php foreach ($subcategories as $sub): ?>
-        <a class="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:border-brand-600 hover:text-brand-600" href="/<?= htmlspecialchars($sub['slug']) ?>"><?= htmlspecialchars($sub['name']) ?></a>
+        <a class="touch-manipulation inline-flex items-center rounded-full border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-600 hover:border-brand-600 hover:text-brand-600" href="/<?= htmlspecialchars($sub['slug']) ?>"><?= htmlspecialchars($sub['name']) ?></a>
       <?php endforeach; ?>
     </div>
   <?php endif; ?>

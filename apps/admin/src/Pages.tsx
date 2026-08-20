@@ -67,7 +67,7 @@ export function Pages() {
           <p className="p-6 text-slate-500">Aucune page pour le moment.</p>
         )}
         {pages.data && pages.data.length > 0 && (
-          <div className="overflow-x-auto p-6">
+          <div className="max-w-full overflow-x-auto p-6 contain-layout">
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="border-b border-slate-200 text-xs tracking-wider text-slate-500 uppercase">
                 <tr>

@@ -104,7 +104,7 @@ export function Users() {
           </p>
         )}
         {users.data && users.data.length > 0 && (
-          <div className="overflow-x-auto p-6">
+          <div className="max-w-full overflow-x-auto p-6 contain-layout">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b border-slate-200 text-xs tracking-wider text-slate-500 uppercase">
                 <tr>

@@ -5,7 +5,7 @@
   </h1>
   <form class="mt-6 flex max-w-xl gap-2" action="/recherche" method="get">
     <label class="sr-only" for="search-query">Votre recherche</label>
-    <input class="w-full rounded border border-slate-300 px-4 py-2.5 text-base" id="search-query" type="search" name="q" value="<?= htmlspecialchars($searchQuery) ?>" placeholder="Rechercher un article…" autofocus>
+    <input class="min-w-0 w-full flex-1 rounded border border-slate-300 px-4 py-2.5 text-base" id="search-query" type="search" name="q" value="<?= htmlspecialchars($searchQuery) ?>" placeholder="Rechercher un article…" autofocus>
     <button class="shrink-0 rounded bg-brand-600 px-5 py-2.5 font-semibold text-white hover:bg-brand-700">Rechercher</button>
   </form>
 </header>

@@ -174,7 +174,7 @@ export function TagsInput({
             <button
               type="button"
               onClick={() => removeTag(tag.id)}
-              className="rounded-full p-0.5 hover:bg-orange-100"
+              className="touch-manipulation rounded-full p-2 hover:bg-orange-100"
               aria-label={`Retirer ${tag.name}`}
             >
               <X size={13} />

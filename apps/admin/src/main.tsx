@@ -598,7 +598,7 @@ const Dashboard = () => {
                         <Link
                           to="/articles/$articleId"
                           params={{ articleId: String(article.id) }}
-                          className="truncate font-semibold text-slate-900 hover:text-orange-700"
+                          className="block truncate font-semibold text-slate-900 hover:text-orange-700"
                         >
                           {article.title}
                         </Link>
@@ -629,7 +629,7 @@ const Dashboard = () => {
                         <Link
                           to="/articles/$articleId"
                           params={{ articleId: String(article.id) }}
-                          className="truncate font-semibold text-slate-900 hover:text-orange-700"
+                          className="block truncate font-semibold text-slate-900 hover:text-orange-700"
                         >
                           {article.title}
                         </Link>
@@ -953,7 +953,7 @@ const Articles = () => {
       {articles.data &&
         articles.data.length > 0 &&
         (view === 'table' ? (
-          <section className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <section className="mt-6 max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white contain-layout">
             <table className="w-full min-w-[920px] text-left">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wider text-slate-500 uppercase">
                 <tr>
