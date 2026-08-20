@@ -8,6 +8,7 @@ use App\Http\Controllers\AdminAdsController;
 use App\Http\Controllers\AdminArticleController;
 use App\Http\Controllers\AdminAuditLogController;
 use App\Http\Controllers\AdminAuthController;
+use App\Http\Controllers\AdminBackupController;
 use App\Http\Controllers\AdminCommentController;
 use App\Http\Controllers\AdminContentSearchController;
 use App\Http\Controllers\AdminDashboardController;
@@ -43,6 +44,7 @@ final class Router
         $adminContentSearch = new AdminContentSearchController();
         $adminDashboard = new AdminDashboardController();
         $adminAuditLog = new AdminAuditLogController();
+        $adminBackups = new AdminBackupController();
         $adminSettings = new AdminSettingsController();
         $adminAds = new AdminAdsController();
         $adminUsers = new AdminUserController();
@@ -140,6 +142,8 @@ final class Router
         if ($method === 'DELETE' && preg_match('#^/api/admin/redirects/(\d+)$#', $path, $m)) { $adminRedirects->delete((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/dashboard') { $adminDashboard->stats(); return; }
         if ($method === 'GET' && $path === '/api/admin/audit-logs') { $adminAuditLog->index(); return; }
+        if ($method === 'GET' && $path === '/api/admin/backups') { $adminBackups->index(); return; }
+        if ($method === 'GET' && preg_match('#^/api/admin/backups/([a-zA-Z0-9_.-]+)$#', $path, $m)) { $adminBackups->download($m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/comments') { $adminComments->index(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/comments/(\d+)$#', $path, $m)) { $adminComments->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/comments/(\d+)$#', $path, $m)) { $adminComments->delete((int) $m[1]); return; }
@@ -152,6 +156,7 @@ final class Router
         if ($method === 'PUT' && preg_match('#^/api/admin/users/(\d+)$#', $path, $m)) { $adminUsers->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/users/(\d+)$#', $path, $m)) { $adminUsers->delete((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/newsletter') { $adminNewsletter->index(); return; }
+        if ($method === 'GET' && $path === '/api/admin/newsletter/campaigns') { $adminNewsletter->campaigns(); return; }
         if ($method === 'POST' && $path === '/api/admin/newsletter/send') { $adminNewsletter->send(); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/newsletter/(\d+)$#', $path, $m)) { $adminNewsletter->delete((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/settings/seo') { $adminSettings->seo(); return; }
@@ -180,6 +185,7 @@ final class Router
         }
         if ($method === 'GET' && $path === '/api/newsletter/confirm') { $api->confirmNewsletter(); return; }
         if ($method === 'GET' && $path === '/api/newsletter/unsubscribe') { $api->unsubscribeNewsletter(); return; }
+        if ($method === 'GET' && $path === '/api/newsletter/click') { $api->newsletterClick(); return; }
         if ($method === 'GET' && preg_match('#^/api/articles/(\d+)/reactions$#', $path, $m)) { $api->reactions((int) $m[1]); return; }
         if ($method === 'POST' && preg_match('#^/api/articles/(\d+)/reactions$#', $path, $m)) { $api->react((int) $m[1]); return; }
         if ($method === 'GET' && preg_match('#^/api/articles/(\d+)/comments$#', $path, $m)) { $api->comments((int) $m[1]); return; }

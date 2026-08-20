@@ -22,6 +22,7 @@ final class RateLimits
         'comment' => ['label' => 'Publication de commentaires', 'description' => 'Nouveaux commentaires postés sur les articles.', 'max_attempts' => 5, 'window_seconds' => 600],
         'comment-report' => ['label' => 'Signalement de commentaires', 'description' => 'Signalements de commentaires envoyés par les visiteurs.', 'max_attempts' => 10, 'window_seconds' => 600],
         'ad-click' => ['label' => 'Clics publicitaires', 'description' => 'Clics enregistrés sur les encarts publicitaires.', 'max_attempts' => 30, 'window_seconds' => 60],
+        'newsletter-click' => ['label' => 'Clics newsletter', 'description' => 'Clics sur les liens d’articles dans les e-mails de campagne.', 'max_attempts' => 30, 'window_seconds' => 60],
         'contact' => ['label' => 'Formulaire de contact', 'description' => 'Envois du formulaire de contact public.', 'max_attempts' => 5, 'window_seconds' => 600],
     ];
 

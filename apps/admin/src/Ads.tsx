@@ -142,7 +142,7 @@ export function Ads() {
         )}
         {ads.data && ads.data.length > 0 && (
           <div className="max-w-full overflow-x-auto p-6 contain-layout">
-            <table className="w-full min-w-[840px] text-left text-sm">
+            <table className="w-full min-w-[920px] text-left text-sm">
               <thead className="border-b border-slate-200 text-xs tracking-wider text-slate-500 uppercase">
                 <tr>
                   <th className="py-3 pr-4">Campagne</th>
@@ -150,6 +150,7 @@ export function Ads() {
                   <th className="py-3 pr-4">Statut</th>
                   <th className="py-3 pr-4">Impressions</th>
                   <th className="py-3 pr-4">Clics</th>
+                  <th className="py-3 pr-4">CTR</th>
                   <th className="py-3 pr-4">
                     <span className="sr-only">Actions</span>
                   </th>
@@ -178,6 +179,9 @@ export function Ads() {
                       <span className="inline-flex items-center gap-1.5">
                         <MousePointerClick size={14} className="text-slate-400" /> {ad.clicks}
                       </span>
+                    </td>
+                    <td className="py-3 pr-4 font-semibold text-slate-700">
+                      {ad.impressions > 0 ? `${((ad.clicks / ad.impressions) * 100).toFixed(2)} %` : '—'}
                     </td>
                     <td className="py-3 pr-4">
                       <div className="flex justify-end gap-2">

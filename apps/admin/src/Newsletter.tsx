@@ -1,6 +1,6 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Clock, GripVertical, Mail, Newspaper, Send, Trash2, UserX, X } from 'lucide-react';
+import { CheckCircle2, Clock, GripVertical, History, Mail, Newspaper, Send, Trash2, UserX, X } from 'lucide-react';
 import { api } from './api';
 import { NewsletterArticlePicker, type NewsletterArticleSummary } from './components/NewsletterArticlePicker';
 import { Toast } from './components/Toast';
@@ -33,11 +33,14 @@ const inputClass =
   'mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-orange-600 focus:outline-none';
 const labelClass = 'block text-sm font-semibold text-slate-700';
 
+type Tab = 'compose' | 'history';
+
 export function Newsletter() {
   const queryClient = useQueryClient();
   const [toast, setToast] = React.useState<{ message: string; tone: 'error' | 'success' } | null>(
     null,
   );
+  const [tab, setTab] = React.useState<Tab>('compose');
   const [selectedSubscriberIds, setSelectedSubscriberIds] = React.useState<number[]>([]);
   const subscribers = useQuery({
     queryKey: ['admin-newsletter'],
@@ -111,6 +114,12 @@ export function Newsletter() {
         </div>
       )}
 
+      <div className="mt-6 flex gap-1 border-b border-slate-200">
+        <TabButton active={tab === 'compose'} onClick={() => setTab('compose')} icon={<Send size={15} />} label="Nouvelle campagne" />
+        <TabButton active={tab === 'history'} onClick={() => setTab('history')} icon={<History size={15} />} label="Campagnes envoyées" />
+      </div>
+
+      {tab === 'compose' && (
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
         <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
@@ -193,9 +202,136 @@ export function Newsletter() {
           setToast={setToast}
         />
       </div>
+      )}
+
+      {tab === 'history' && (
+        <div className="mt-6">
+          <CampaignHistory />
+        </div>
+      )}
 
       {toast && <Toast message={toast.message} tone={toast.tone} onClose={() => setToast(null)} />}
     </>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+        active
+          ? 'border-orange-700 text-orange-700'
+          : 'border-transparent text-slate-500 hover:text-slate-800'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+type CampaignArticleStat = { title: string; url: string; clicks: number };
+type Campaign = {
+  id: number;
+  subject: string;
+  sent_at: string;
+  recipients_count: number;
+  sent_count: number;
+  total_clicks: number;
+  articles: CampaignArticleStat[];
+};
+
+function ctrLabel(clicks: number, recipients: number): string {
+  return recipients > 0 ? `${((clicks / recipients) * 100).toFixed(1)} %` : '—';
+}
+
+function CampaignHistory() {
+  const [expandedId, setExpandedId] = React.useState<number | null>(null);
+  const campaigns = useQuery({
+    queryKey: ['admin-newsletter-campaigns'],
+    queryFn: async () => (await api.get<{ data: Campaign[] }>('/admin/newsletter/campaigns')).data.data,
+  });
+
+  if (campaigns.isLoading || (campaigns.data && campaigns.data.length === 0)) {
+    return null;
+  }
+
+  return (
+    <section className="max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white contain-layout">
+      <header className="border-b border-slate-100 px-6 py-4">
+        <h3 className="font-bold">Campagnes envoyées</h3>
+        <p className="text-sm text-slate-500">Taux de clic = clics sur les articles ÷ destinataires.</p>
+      </header>
+      {campaigns.isError && <p className="p-6 text-red-700">Impossible de charger les campagnes.</p>}
+      {campaigns.data && campaigns.data.length > 0 && (
+        <table className="w-full min-w-[720px] text-left text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wider text-slate-500 uppercase">
+            <tr>
+              <th className="px-5 py-3">Sujet</th>
+              <th className="px-5 py-3">Envoyée</th>
+              <th className="px-5 py-3">Destinataires</th>
+              <th className="px-5 py-3">Clics</th>
+              <th className="px-5 py-3">Taux de clic</th>
+            </tr>
+          </thead>
+          <tbody>
+            {campaigns.data.map((campaign) => {
+              const expanded = expandedId === campaign.id;
+              return (
+                <React.Fragment key={campaign.id}>
+                  <tr
+                    className="cursor-pointer border-b border-slate-100 hover:bg-slate-50"
+                    onClick={() => setExpandedId(expanded ? null : campaign.id)}
+                  >
+                    <td className="px-5 py-3 font-semibold text-slate-900">{campaign.subject}</td>
+                    <td className="px-5 py-3 text-slate-500">
+                      {new Date(campaign.sent_at).toLocaleString('fr-FR')}
+                    </td>
+                    <td className="px-5 py-3 text-slate-500">{campaign.recipients_count}</td>
+                    <td className="px-5 py-3 text-slate-500">{campaign.total_clicks}</td>
+                    <td className="px-5 py-3 font-semibold text-slate-700">
+                      {ctrLabel(campaign.total_clicks, campaign.recipients_count)}
+                    </td>
+                  </tr>
+                  {expanded && (
+                    <tr className="border-b border-slate-100 bg-slate-50/60">
+                      <td colSpan={5} className="px-5 py-4">
+                        <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+                          Détail par article
+                        </p>
+                        <ul className="mt-2 grid gap-1.5">
+                          {campaign.articles.map((article) => (
+                            <li key={article.url} className="flex items-center justify-between gap-3 text-sm">
+                              <span className="min-w-0 truncate text-slate-700">{article.title}</span>
+                              <span className="shrink-0 font-semibold text-slate-900">
+                                {article.clicks} clic{article.clicks > 1 ? 's' : ''} ·{' '}
+                                {ctrLabel(article.clicks, campaign.recipients_count)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </section>
   );
 }
 
@@ -215,6 +351,7 @@ function CampaignForm({
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const clampedFeaturedCount = Math.min(featuredCount, articles.length);
+  const queryClient = useQueryClient();
 
   const recipientCount = selectedSubscriberIds.length > 0 ? selectedSubscriberIds.length : activeCount;
   const recipientLabel =
@@ -230,6 +367,7 @@ function CampaignForm({
         featured_count: clampedFeaturedCount,
       }),
     onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-newsletter-campaigns'] });
       setToast({ tone: 'success', message: response.data.message });
       setSubject('');
       setIntro('');

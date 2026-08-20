@@ -25,6 +25,7 @@ import {
   FilePlus2,
   Files as FilesIcon,
   FileText,
+  HardDrive,
   Image as ImageIcon,
   LayoutDashboard,
   List,
@@ -60,6 +61,7 @@ import { Redirects } from './Redirects';
 import { Comments } from './Comments';
 import { Settings as SettingsPage } from './Settings';
 import { ActivityLog } from './ActivityLog';
+import { Backups } from './Backups';
 import { api, setCsrfToken } from './api';
 import { Toast } from './components/Toast';
 import './styles.css';
@@ -297,6 +299,7 @@ const navItems = [
   { to: '/newsletter', label: 'Newsletter', icon: Mail, exact: false },
   { to: '/users', label: 'Utilisateurs', icon: Users, exact: false },
   { to: '/activity', label: 'Journal d’activité', icon: ScrollText, exact: false },
+  { to: '/backups', label: 'Sauvegardes', icon: HardDrive, exact: false },
   { to: '/settings', label: 'Paramètres', icon: Settings, exact: false },
 ] as const;
 
@@ -1236,6 +1239,11 @@ const activityRoute = new Route({
   path: '/activity',
   component: ActivityLog,
 });
+const backupsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/backups',
+  component: Backups,
+});
 const router = createRouter({
   basepath: '/u/admin',
   routeTree: rootRoute.addChildren([
@@ -1256,6 +1264,7 @@ const router = createRouter({
     usersRoute,
     settingsRoute,
     activityRoute,
+    backupsRoute,
   ]),
 });
 declare module '@tanstack/react-router' {

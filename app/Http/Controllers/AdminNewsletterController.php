@@ -50,7 +50,7 @@ final class AdminNewsletterController
             $intro = trim((string) ($input['intro'] ?? ''));
             $articleIds = array_values(array_unique(array_map('intval', (array) ($input['article_ids'] ?? []))));
             $subscriberIds = array_values(array_unique(array_map('intval', (array) ($input['subscriber_ids'] ?? []))));
-            $featuredCount = (int) ($input['featured_count'] ?? 0);
+            $featuredCount = max(0, (int) ($input['featured_count'] ?? 0));
 
             if ($subject === '') {
                 throw new \InvalidArgumentException('Le sujet est obligatoire.');
@@ -76,17 +76,44 @@ final class AdminNewsletterController
                 throw new \InvalidArgumentException('Aucun destinataire actif ne correspond à cette sélection.');
             }
 
+            // A campaign row gives this send an identity to key click tracking
+            // on; newsletter_campaign_articles snapshots each article's title
+            // and real URL (so the report still makes sense if the article is
+            // later edited or deleted) and gets its own row id, which becomes
+            // the `a` param every tracked link redirects through.
+            $pdo->prepare('INSERT INTO newsletter_campaigns (subject, intro, featured_count, recipients_count) VALUES (:subject, :intro, :featured_count, :recipients_count)')
+                ->execute(['subject' => $subject, 'intro' => $intro !== '' ? $intro : null, 'featured_count' => $featuredCount, 'recipients_count' => count($recipients)]);
+            $campaignId = (int) $pdo->lastInsertId();
+
+            $insertArticle = $pdo->prepare('INSERT INTO newsletter_campaign_articles (campaign_id, article_id, position, title, url) VALUES (:campaign_id, :article_id, :position, :title, :url)');
+            $trackedArticles = [];
+            foreach (array_values($articles) as $position => $article) {
+                $insertArticle->execute([
+                    'campaign_id' => $campaignId,
+                    'article_id' => $article['id'],
+                    'position' => $position,
+                    'title' => $article['title'],
+                    'url' => $article['url'],
+                ]);
+                $trackedArticles[] = [
+                    ...$article,
+                    'url' => Config::url('/api/newsletter/click') . '?a=' . (int) $pdo->lastInsertId(),
+                ];
+            }
+
             $sent = 0;
             foreach ($recipients as $recipient) {
                 $unsubscribeLink = Config::url('/api/newsletter/unsubscribe') . '?token=' . urlencode((string) $recipient['token']);
-                $html = MailTemplate::renderDigest($subject, $intro !== '' ? $intro : null, $articles, $featuredCount, $unsubscribeLink);
-                $text = $this->renderPlainText($subject, $intro, $articles, $unsubscribeLink);
-                if (Mailer::sendHtml($recipient['email'], $recipient['email'], $subject, $html, $text)['success']) {
+                $html = MailTemplate::renderDigest($subject, $intro !== '' ? $intro : null, $trackedArticles, $featuredCount, $unsubscribeLink);
+                $text = $this->renderPlainText($subject, $intro, $trackedArticles, $unsubscribeLink);
+                if (Mailer::sendHtml($recipient['email'], $recipient['email'], $subject, $html, $text, null, 'NEWSLETTER')['success']) {
                     $sent++;
                 }
             }
 
-            AuditLog::record('newsletter.send', null, null, [
+            $pdo->prepare('UPDATE newsletter_campaigns SET sent_count = :sent WHERE id = :id')->execute(['sent' => $sent, 'id' => $campaignId]);
+
+            AuditLog::record('newsletter.send', 'newsletter_campaign', $campaignId, [
                 'subject' => $subject,
                 'article_ids' => array_column($articles, 'id'),
                 'audience' => $subscriberIds !== [] ? 'selection' : 'all_active',
@@ -94,6 +121,46 @@ final class AdminNewsletterController
                 'total' => count($recipients),
             ]);
             return ['message' => "Campagne envoyée à {$sent}/" . count($recipients) . ' destinataire(s).'];
+        });
+    }
+
+    public function campaigns(): void
+    {
+        AdminAuthController::requireStaff();
+        $this->respond(function (PDO $pdo): array {
+            $campaigns = $pdo->query('SELECT id, subject, sent_at, recipients_count, sent_count FROM newsletter_campaigns ORDER BY sent_at DESC LIMIT 100')->fetchAll(PDO::FETCH_ASSOC);
+            if ($campaigns === []) {
+                return ['data' => []];
+            }
+
+            $ids = array_column($campaigns, 'id');
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $statement = $pdo->prepare("SELECT campaign_id, title, url, clicks FROM newsletter_campaign_articles WHERE campaign_id IN ($placeholders) ORDER BY position ASC");
+            $statement->execute($ids);
+            $articlesByCampaign = [];
+            foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $articlesByCampaign[(int) $row['campaign_id']][] = [
+                    'title' => $row['title'],
+                    'url' => $row['url'],
+                    'clicks' => (int) $row['clicks'],
+                ];
+            }
+
+            $data = [];
+            foreach ($campaigns as $campaign) {
+                $campaignId = (int) $campaign['id'];
+                $campaignArticles = $articlesByCampaign[$campaignId] ?? [];
+                $data[] = [
+                    'id' => $campaignId,
+                    'subject' => $campaign['subject'],
+                    'sent_at' => $campaign['sent_at'],
+                    'recipients_count' => (int) $campaign['recipients_count'],
+                    'sent_count' => (int) $campaign['sent_count'],
+                    'total_clicks' => array_sum(array_column($campaignArticles, 'clicks')),
+                    'articles' => $campaignArticles,
+                ];
+            }
+            return ['data' => $data];
         });
     }
 

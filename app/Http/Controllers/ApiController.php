@@ -164,6 +164,43 @@ final class ApiController
         }
     }
 
+    /**
+     * Redirect target for links inside a newsletter campaign — `a` is the
+     * id of a newsletter_campaign_articles row (not the article itself,
+     * so the same article can appear in several campaigns without clicks
+     * bleeding together). Always redirects somewhere sensible even if the
+     * click can't be counted (rate-limited or the link is stale), since a
+     * reader clicking from their inbox should never see a bare error page.
+     */
+    public function newsletterClick(): void
+    {
+        $campaignArticleId = (int) ($_GET['a'] ?? 0);
+        if ($campaignArticleId <= 0) {
+            header('Location: ' . Config::url('/'));
+            return;
+        }
+
+        try {
+            $pdo = $this->pdo();
+            $statement = $pdo->prepare('SELECT url FROM newsletter_campaign_articles WHERE id = :id');
+            $statement->execute(['id' => $campaignArticleId]);
+            $url = $statement->fetchColumn();
+            if ($url === false) {
+                header('Location: ' . Config::url('/'));
+                return;
+            }
+
+            [$max, $window] = RateLimits::resolve('newsletter-click');
+            if (!(new RateLimiter($pdo))->tooManyAttempts('newsletter-click', $max, $window)) {
+                $pdo->prepare('UPDATE newsletter_campaign_articles SET clicks = clicks + 1 WHERE id = :id')->execute(['id' => $campaignArticleId]);
+            }
+
+            header('Location: ' . $url);
+        } catch (PDOException) {
+            header('Location: ' . Config::url('/'));
+        }
+    }
+
     private function sendConfirmationEmail(string $email, string $token): void
     {
         $appName = $_ENV['APP_NAME'] ?? 'Le Quotidien Actu';
@@ -183,7 +220,7 @@ final class ApiController
             . "Confirmez votre inscription en cliquant sur ce lien :\n{$link}\n\n"
             . "Si vous n’êtes pas à l’origine de cette inscription, ignorez cet e-mail.\n";
 
-        Mailer::sendHtml($email, $email, 'Confirmez votre inscription — ' . $appName, $html, $text);
+        Mailer::sendHtml($email, $email, 'Confirmez votre inscription — ' . $appName, $html, $text, null, 'NEWSLETTER');
     }
 
     private function renderNewsletterPage(string $title, string $message): void
