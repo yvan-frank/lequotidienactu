@@ -1,6 +1,18 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Building2, CheckCircle2, Code2, DollarSign, ExternalLink, Mail, Search, TrendingUp } from 'lucide-react';
+import {
+  AlertTriangle,
+  Building2,
+  CheckCircle2,
+  Code2,
+  DollarSign,
+  ExternalLink,
+  Gauge,
+  Mail,
+  RotateCcw,
+  Search,
+  TrendingUp,
+} from 'lucide-react';
 import { api } from './api';
 import { Toast } from './components/Toast';
 
@@ -15,6 +27,16 @@ type GeneralSettings = {
 };
 type RevenueSettings = { cpm: number; cpc: number };
 type HeadCodeSettings = { head_html: string };
+type RateLimitRow = {
+  bucket: string;
+  label: string;
+  description: string;
+  max_attempts: number;
+  window_seconds: number;
+  default_max_attempts: number;
+  default_window_seconds: number;
+  is_overridden: boolean;
+};
 type ToastState = { message: string; tone: 'error' | 'success' } | null;
 
 const inputClass =
@@ -29,6 +51,7 @@ const TABS = [
   { id: 'general', label: 'Général', icon: Building2 },
   { id: 'seo', label: 'SEO & Analytics', icon: Search },
   { id: 'head-code', label: 'Code personnalisé', icon: Code2 },
+  { id: 'rate-limits', label: 'Anti-abus', icon: Gauge },
   { id: 'mail', label: 'E-mail (SMTP)', icon: Mail },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
@@ -74,6 +97,7 @@ export function Settings() {
         {activeTab === 'general' && <GeneralPanel setToast={setToast} />}
         {activeTab === 'seo' && <SeoPanel setToast={setToast} />}
         {activeTab === 'head-code' && <HeadCodePanel setToast={setToast} />}
+        {activeTab === 'rate-limits' && <RateLimitsPanel setToast={setToast} />}
         {activeTab === 'mail' && <MailPanel />}
       </div>
 
@@ -542,6 +566,159 @@ function HeadCodePanel({ setToast }: { setToast: (toast: ToastState) => void }) 
           </section>
 
           <div className="flex justify-end">
+            <button
+              disabled={save.isPending}
+              className="rounded bg-orange-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-800 disabled:opacity-50"
+            >
+              {save.isPending ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+          </div>
+        </form>
+      )}
+    </>
+  );
+}
+
+function formatWindow(seconds: number): string {
+  if (seconds >= 3600 && seconds % 3600 === 0) return `${seconds / 3600} h`;
+  if (seconds >= 60 && seconds % 60 === 0) return `${seconds / 60} min`;
+  return `${seconds} s`;
+}
+
+function RateLimitsPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
+  const queryClient = useQueryClient();
+  const [meta, setMeta] = React.useState<RateLimitRow[]>([]);
+  const [rows, setRows] = React.useState<Record<string, { max_attempts: number; window_seconds: number }>>({});
+  const [loaded, setLoaded] = React.useState(false);
+
+  const settings = useQuery({
+    queryKey: ['admin-settings-rate-limits'],
+    queryFn: async () => (await api.get<{ data: RateLimitRow[] }>('/admin/settings/rate-limits')).data.data,
+  });
+
+  React.useEffect(() => {
+    if (settings.data && !loaded) {
+      setMeta(settings.data);
+      const initial: Record<string, { max_attempts: number; window_seconds: number }> = {};
+      settings.data.forEach((row) => {
+        initial[row.bucket] = { max_attempts: row.max_attempts, window_seconds: row.window_seconds };
+      });
+      setRows(initial);
+      setLoaded(true);
+    }
+  }, [settings.data, loaded]);
+
+  const save = useMutation({
+    mutationFn: () => api.put('/admin/settings/rate-limits', { buckets: rows }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-settings-rate-limits'] });
+      setToast({ tone: 'success', message: 'Limites de requêtes enregistrées.' });
+    },
+    onError: (error) =>
+      setToast({ tone: 'error', message: apiErrorMessage(error, "Impossible d'enregistrer ces limites.") }),
+  });
+
+  const updateRow = (bucket: string, field: 'max_attempts' | 'window_seconds', value: number) => {
+    setRows((current) => ({ ...current, [bucket]: { ...current[bucket], [field]: value } }));
+  };
+
+  const resetRow = (row: RateLimitRow) => {
+    setRows((current) => ({
+      ...current,
+      [row.bucket]: { max_attempts: row.default_max_attempts, window_seconds: row.default_window_seconds },
+    }));
+  };
+
+  return (
+    <>
+      {settings.isLoading && <p className="rounded-xl bg-white p-6 text-slate-500">Chargement…</p>}
+      {settings.isError && (
+        <p className="rounded-xl bg-white p-6 text-red-700">Impossible de charger les paramètres.</p>
+      )}
+      {loaded && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            save.mutate();
+          }}
+        >
+          <section className="rounded-xl border border-slate-200 bg-white p-6">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-lg bg-orange-50 text-orange-700">
+                <Gauge size={20} />
+              </span>
+              <div>
+                <h3 className="font-bold">Limites anti-abus</h3>
+                <p className="text-sm text-slate-500">
+                  Nombre maximal de tentatives autorisées par adresse IP, sur une fenêtre glissante,
+                  pour chaque action publique ou d'administration sensible.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 divide-y divide-slate-100">
+              {meta.map((row) => {
+                const current = rows[row.bucket] ?? {
+                  max_attempts: row.max_attempts,
+                  window_seconds: row.window_seconds,
+                };
+                const isDefault =
+                  current.max_attempts === row.default_max_attempts &&
+                  current.window_seconds === row.default_window_seconds;
+                return (
+                  <div
+                    key={row.bucket}
+                    className="grid grid-cols-1 gap-3 py-4 sm:grid-cols-[1fr_auto_auto_auto] sm:items-start sm:gap-4"
+                  >
+                    <div>
+                      <p className="font-semibold text-slate-900">{row.label}</p>
+                      <p className="text-xs text-slate-500">{row.description}</p>
+                    </div>
+                    <label className="text-xs font-semibold text-slate-600">
+                      Tentatives
+                      <input
+                        type="number"
+                        min={1}
+                        max={100000}
+                        className={`${inputClass} w-24`}
+                        value={current.max_attempts}
+                        onChange={(event) =>
+                          updateRow(row.bucket, 'max_attempts', Number(event.target.value))
+                        }
+                      />
+                    </label>
+                    <label className="text-xs font-semibold text-slate-600">
+                      Fenêtre (secondes)
+                      <input
+                        type="number"
+                        min={1}
+                        max={604800}
+                        className={`${inputClass} w-28`}
+                        value={current.window_seconds}
+                        onChange={(event) =>
+                          updateRow(row.bucket, 'window_seconds', Number(event.target.value))
+                        }
+                      />
+                      <span className="mt-1 block text-[11px] font-normal text-slate-400">
+                        ≈ {formatWindow(current.window_seconds)}
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      disabled={isDefault}
+                      onClick={() => resetRow(row)}
+                      title="Revenir à la valeur par défaut"
+                      className="mt-4 inline-flex items-center gap-1.5 rounded px-2 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30 sm:mt-5"
+                    >
+                      <RotateCcw size={13} /> Réinitialiser
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <div className="mt-6 flex justify-end">
             <button
               disabled={save.isPending}
               className="rounded bg-orange-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-800 disabled:opacity-50"

@@ -3,6 +3,7 @@ import { StrictMode, type ComponentType } from 'react';
 import { SearchModal } from './components/SearchModal';
 import { ReactionWidget } from './components/ReactionWidget';
 import { CommentsWidget } from './components/CommentsWidget';
+import { InfiniteArticles } from './components/InfiniteArticles';
 
 function mount<P extends object>(
   selector: string,
@@ -24,4 +25,11 @@ mount('[data-island="reactions"]', ReactionWidget, (el) => ({
 }));
 mount('[data-island="comments"]', CommentsWidget, (el) => ({
   articleId: Number(el.dataset.articleId),
+}));
+mount('[data-island="infinite-articles"]', InfiniteArticles, (el) => ({
+  category: el.dataset.category || undefined,
+  query: el.dataset.query || undefined,
+  currentCategory: el.dataset.currentCategory || undefined,
+  page: Number(el.dataset.page) || 1,
+  hasMore: el.dataset.hasMore === '1',
 }));

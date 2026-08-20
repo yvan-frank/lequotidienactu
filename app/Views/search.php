@@ -31,4 +31,10 @@
       </article>
     <?php endforeach; ?>
   </div>
+  <div
+    data-island="infinite-articles"
+    data-query="<?= htmlspecialchars($searchQuery) ?>"
+    data-page="1"
+    data-has-more="<?= $hasMoreArticles ? '1' : '0' ?>"
+  ></div>
 <?php endif; ?>

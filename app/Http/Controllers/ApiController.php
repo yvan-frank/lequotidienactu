@@ -7,6 +7,7 @@ use App\Support\Config;
 use App\Support\Mailer;
 use App\Support\MailTemplate;
 use App\Support\RateLimiter;
+use App\Support\RateLimits;
 use App\Support\TooManyAttemptsException;
 use PDO;
 use PDOException;
@@ -15,24 +16,61 @@ final class ApiController
 {
     private const REACTION_TYPES = ['like', 'love', 'clap', 'insightful'];
 
+    /**
+     * Backs InfiniteArticles on category and search-results pages — the
+     * page's own PHP render supplies the first batch, this endpoint fetches
+     * every batch after that. `category` accepts a comma-separated list of
+     * slugs so a parent category page (which shows its own articles plus
+     * its subcategories') can continue scrolling the same combined set.
+     */
     public function articles(): void
     {
         $this->respond(function (PDO $pdo): array {
             $page = max(1, (int) ($_GET['page'] ?? 1));
             $perPage = 12;
             $offset = ($page - 1) * $perPage;
-            $statement = $pdo->prepare('SELECT a.id, a.title, a.slug, a.excerpt, c.slug AS category, c.name AS category_name, m.path AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE a.status = "published" AND a.published_at <= NOW() ORDER BY a.published_at DESC LIMIT :limit OFFSET :offset');
-            $statement->bindValue(':limit', $perPage, PDO::PARAM_INT);
-            $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
-            $statement->execute();
-            return ['data' => $statement->fetchAll(PDO::FETCH_ASSOC), 'meta' => ['page' => $page, 'per_page' => $perPage]];
+            $categorySlugs = array_values(array_filter(array_map('trim', explode(',', (string) ($_GET['category'] ?? '')))));
+            $query = trim((string) ($_GET['q'] ?? ''));
+
+            [$searchMax, $searchWindow] = RateLimits::resolve('search');
+            if ($query !== '' && (new RateLimiter($pdo))->tooManyAttempts('search', $searchMax, $searchWindow)) {
+                throw new TooManyAttemptsException('Trop de recherches. Réessayez dans un instant.');
+            }
+
+            $sql = 'SELECT a.title, a.slug, a.excerpt, a.published_at, c.slug AS category, c.name AS category_name, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE a.status = "published" AND a.published_at <= NOW()';
+            $params = [];
+            if ($categorySlugs !== []) {
+                $placeholders = [];
+                foreach ($categorySlugs as $index => $categorySlug) {
+                    $key = 'category' . $index;
+                    $placeholders[] = ':' . $key;
+                    $params[$key] = $categorySlug;
+                }
+                $sql .= ' AND c.slug IN (' . implode(',', $placeholders) . ')';
+            }
+            if ($query !== '') {
+                $sql .= ' AND (a.title LIKE :q OR a.excerpt LIKE :q)';
+                $params['q'] = '%' . $query . '%';
+            }
+            $sql .= ' ORDER BY a.published_at DESC LIMIT ' . ($perPage + 1) . ' OFFSET ' . $offset;
+            $statement = $pdo->prepare($sql);
+            $statement->execute($params);
+            $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+            $hasMore = count($rows) > $perPage;
+            $rows = array_map(static function (array $item): array {
+                $item['published_at'] = (new \DateTimeImmutable($item['published_at']))->format('d/m/Y');
+                return $item;
+            }, array_slice($rows, 0, $perPage));
+
+            return ['data' => $rows, 'meta' => ['page' => $page, 'per_page' => $perPage, 'has_more' => $hasMore]];
         });
     }
 
     public function search(): void
     {
         $this->respond(function (PDO $pdo): array {
-            if ((new RateLimiter($pdo))->tooManyAttempts('search', 30, 60)) {
+            [$searchMax, $searchWindow] = RateLimits::resolve('search');
+            if ((new RateLimiter($pdo))->tooManyAttempts('search', $searchMax, $searchWindow)) {
                 throw new TooManyAttemptsException('Trop de recherches. Réessayez dans un instant.');
             }
             $query = trim((string) ($_GET['q'] ?? ''));
@@ -48,7 +86,8 @@ final class ApiController
     public function subscribe(): void
     {
         $this->respond(function (PDO $pdo): array {
-            if ((new RateLimiter($pdo))->tooManyAttempts('newsletter', 5, 3600)) {
+            [$newsletterMax, $newsletterWindow] = RateLimits::resolve('newsletter');
+            if ((new RateLimiter($pdo))->tooManyAttempts('newsletter', $newsletterMax, $newsletterWindow)) {
                 throw new TooManyAttemptsException('Trop de tentatives. Réessayez dans quelques minutes.');
             }
             $input = $this->input();
@@ -171,7 +210,8 @@ final class ApiController
     public function react(int $articleId): void
     {
         $this->respond(function (PDO $pdo) use ($articleId): array {
-            if ((new RateLimiter($pdo))->tooManyAttempts('reaction', 20, 300)) {
+            [$reactionMax, $reactionWindow] = RateLimits::resolve('reaction');
+            if ((new RateLimiter($pdo))->tooManyAttempts('reaction', $reactionMax, $reactionWindow)) {
                 throw new TooManyAttemptsException('Trop de réactions envoyées. Réessayez dans quelques minutes.');
             }
             $input = $this->input();
@@ -198,7 +238,8 @@ final class ApiController
     public function postComment(int $articleId): void
     {
         $this->respond(function (PDO $pdo) use ($articleId): array {
-            if ((new RateLimiter($pdo))->tooManyAttempts('comment', 5, 600)) {
+            [$commentMax, $commentWindow] = RateLimits::resolve('comment');
+            if ((new RateLimiter($pdo))->tooManyAttempts('comment', $commentMax, $commentWindow)) {
                 throw new TooManyAttemptsException('Trop de commentaires envoyés. Réessayez dans quelques minutes.');
             }
             $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
@@ -226,7 +267,8 @@ final class ApiController
     public function reportComment(int $commentId): void
     {
         $this->respond(function (PDO $pdo) use ($commentId): array {
-            if ((new RateLimiter($pdo))->tooManyAttempts('comment-report', 10, 600)) {
+            [$reportMax, $reportWindow] = RateLimits::resolve('comment-report');
+            if ((new RateLimiter($pdo))->tooManyAttempts('comment-report', $reportMax, $reportWindow)) {
                 throw new TooManyAttemptsException('Trop de signalements. Réessayez plus tard.');
             }
             $statement = $pdo->prepare('UPDATE comments SET reported_count = reported_count + 1 WHERE id = :id');
@@ -241,7 +283,8 @@ final class ApiController
     public function adClick(int $adId): void
     {
         $this->respond(function (PDO $pdo) use ($adId): array {
-            if ((new RateLimiter($pdo))->tooManyAttempts('ad-click', 30, 60)) {
+            [$adClickMax, $adClickWindow] = RateLimits::resolve('ad-click');
+            if ((new RateLimiter($pdo))->tooManyAttempts('ad-click', $adClickMax, $adClickWindow)) {
                 throw new TooManyAttemptsException('Trop de requêtes. Réessayez dans un instant.');
             }
             $statement = $pdo->prepare('UPDATE advertisements SET clicks = clicks + 1 WHERE id = :id');

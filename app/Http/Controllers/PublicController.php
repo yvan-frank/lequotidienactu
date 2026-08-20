@@ -9,6 +9,7 @@ use App\Support\Config;
 use App\Support\Mailer;
 use App\Support\MailTemplate;
 use App\Support\RateLimiter;
+use App\Support\RateLimits;
 use App\Support\Settings;
 use App\Support\TooManyAttemptsException;
 use PDO;
@@ -84,7 +85,11 @@ final class PublicController
         $categorySlugs = $categoryRow
             ? array_merge([$slug], array_column($subcategories, 'slug'))
             : $slug;
-        $articles = $this->publishedArticles($categorySlugs);
+        $perPage = 12;
+        $articlesPlusOne = $this->publishedArticles($categorySlugs, null, false, $perPage + 1);
+        $hasMoreArticles = count($articlesPlusOne) > $perPage;
+        $articles = array_slice($articlesPlusOne, 0, $perPage);
+        $infiniteScrollCategory = implode(',', (array) $categorySlugs);
         $seo = (new SeoManager())->forCategory($categoryName, $slug);
         require __DIR__ . '/../../Views/layout.php';
     }
@@ -119,8 +124,12 @@ final class PublicController
         $searchQuery = trim((string) ($_GET['q'] ?? ''));
         $title = ($searchQuery !== '' ? '« ' . $searchQuery . ' » - ' : '') . 'Recherche - Le Quotidien Actu';
         $page = 'search';
-        $searchRateLimited = $searchQuery !== '' && (new RateLimiter($this->pdo()))->tooManyAttempts('search', 30, 60);
-        $articles = ($searchQuery !== '' && !$searchRateLimited) ? $this->searchArticles($searchQuery) : [];
+        [$searchMax, $searchWindow] = RateLimits::resolve('search');
+        $searchRateLimited = $searchQuery !== '' && (new RateLimiter($this->pdo()))->tooManyAttempts('search', $searchMax, $searchWindow);
+        $perPage = 12;
+        $articlesPlusOne = ($searchQuery !== '' && !$searchRateLimited) ? $this->searchArticles($searchQuery, $perPage + 1) : [];
+        $hasMoreArticles = count($articlesPlusOne) > $perPage;
+        $articles = array_slice($articlesPlusOne, 0, $perPage);
         $seo = (new SeoManager())->forSearch();
         require __DIR__ . '/../../Views/layout.php';
     }
@@ -187,7 +196,8 @@ final class PublicController
     {
         try {
             $pdo = $this->pdo();
-            if ((new RateLimiter($pdo))->tooManyAttempts('contact', 5, 600)) {
+            [$contactMax, $contactWindow] = RateLimits::resolve('contact');
+            if ((new RateLimiter($pdo))->tooManyAttempts('contact', $contactMax, $contactWindow)) {
                 throw new TooManyAttemptsException('Trop de tentatives. Réessayez plus tard.');
             }
 
@@ -233,10 +243,10 @@ final class PublicController
         }
     }
 
-    private function searchArticles(string $query): array
+    private function searchArticles(string $query, int $limit = 20, int $offset = 0): array
     {
         try {
-            $statement = $this->pdo()->prepare('SELECT a.title, a.slug, a.excerpt, a.published_at, c.slug AS category, c.name AS category_name, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE a.status = "published" AND a.published_at <= NOW() AND (a.title LIKE :q OR a.excerpt LIKE :q) ORDER BY a.published_at DESC LIMIT 20');
+            $statement = $this->pdo()->prepare('SELECT a.title, a.slug, a.excerpt, a.published_at, c.slug AS category, c.name AS category_name, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE a.status = "published" AND a.published_at <= NOW() AND (a.title LIKE :q OR a.excerpt LIKE :q) ORDER BY a.published_at DESC LIMIT ' . max(1, $limit) . ' OFFSET ' . max(0, $offset));
             $statement->execute(['q' => '%' . $query . '%']);
             return array_map(static function (array $item): array {
                 $item['published_at'] = (new \DateTimeImmutable($item['published_at']))->format('d/m/Y');
@@ -293,7 +303,7 @@ final class PublicController
         return isset($_SESSION['admin_user']);
     }
 
-    private function publishedArticles(string|array|null $category = null, ?string $slug = null, bool $includeUnpublished = false): array
+    private function publishedArticles(string|array|null $category = null, ?string $slug = null, bool $includeUnpublished = false, int $limit = 30, int $offset = 0): array
     {
         try {
             if (is_array($category) && $category === []) {
@@ -320,7 +330,7 @@ final class PublicController
                 $sql .= ' AND a.slug = :slug';
                 $params['slug'] = $slug;
             }
-            $sql .= ' ORDER BY a.published_at DESC LIMIT 30';
+            $sql .= ' ORDER BY a.published_at DESC LIMIT ' . max(1, $limit) . ' OFFSET ' . max(0, $offset);
             $statement = $this->pdo()->prepare($sql);
             $statement->execute($params);
             return array_map(static function (array $article): array {

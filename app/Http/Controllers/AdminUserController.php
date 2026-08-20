@@ -8,6 +8,7 @@ use App\Support\Config;
 use App\Support\Mailer;
 use App\Support\MailTemplate;
 use App\Support\RateLimiter;
+use App\Support\RateLimits;
 use PDO;
 use PDOException;
 
@@ -28,7 +29,8 @@ final class AdminUserController
     {
         AdminAuthController::requireStaff(['admin']);
         $this->respond(function (PDO $pdo): array {
-            if ((new RateLimiter($pdo))->tooManyAttempts('admin-invite', 10, 900)) {
+            [$maxAttempts, $windowSeconds] = RateLimits::resolve('admin-invite');
+            if ((new RateLimiter($pdo))->tooManyAttempts('admin-invite', $maxAttempts, $windowSeconds)) {
                 throw new \InvalidArgumentException('Trop d’invitations envoyées. Réessayez dans quelques minutes.');
             }
 

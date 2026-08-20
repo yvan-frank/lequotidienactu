@@ -9,6 +9,7 @@ use App\Support\Logger;
 use App\Support\Mailer;
 use App\Support\MailTemplate;
 use App\Support\RateLimiter;
+use App\Support\RateLimits;
 use PDO;
 use PDOException;
 
@@ -42,7 +43,8 @@ final class AdminAuthController
         }
 
         try {
-            if ((new RateLimiter($this->pdo()))->tooManyAttempts('admin-login', 5, 900)) {
+            [$maxAttempts, $windowSeconds] = RateLimits::resolve('admin-login');
+            if ((new RateLimiter($this->pdo()))->tooManyAttempts('admin-login', $maxAttempts, $windowSeconds)) {
                 $this->json(['message' => 'Trop de tentatives de connexion. Réessayez dans quelques minutes.'], 429);
                 return;
             }
@@ -82,7 +84,8 @@ final class AdminAuthController
 
         try {
             $pdo = $this->pdo();
-            if ((new RateLimiter($pdo))->tooManyAttempts('admin-forgot-password', 5, 900)) {
+            [$maxAttempts, $windowSeconds] = RateLimits::resolve('admin-forgot-password');
+            if ((new RateLimiter($pdo))->tooManyAttempts('admin-forgot-password', $maxAttempts, $windowSeconds)) {
                 $this->json(['message' => 'Trop de tentatives. Réessayez dans quelques minutes.'], 429);
                 return;
             }
@@ -123,7 +126,8 @@ final class AdminAuthController
 
         try {
             $pdo = $this->pdo();
-            if ((new RateLimiter($pdo))->tooManyAttempts('admin-reset-password', 10, 900)) {
+            [$maxAttempts, $windowSeconds] = RateLimits::resolve('admin-reset-password');
+            if ((new RateLimiter($pdo))->tooManyAttempts('admin-reset-password', $maxAttempts, $windowSeconds)) {
                 $this->json(['message' => 'Trop de tentatives. Réessayez dans quelques minutes.'], 429);
                 return;
             }

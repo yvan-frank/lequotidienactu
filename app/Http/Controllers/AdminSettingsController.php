@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Support\AuditLog;
 use App\Support\Mailer;
+use App\Support\RateLimits;
 use App\Support\Settings;
 use PDOException;
 
@@ -114,6 +115,62 @@ final class AdminSettingsController
             Settings::set('seo', $data);
             AuditLog::record('settings.update', 'settings', null, ['group' => 'seo']);
             return ['data' => $data, 'message' => 'Paramètres SEO enregistrés.'];
+        });
+    }
+
+    public function rateLimits(): void
+    {
+        AdminAuthController::requireStaff();
+        $this->respond(function (): array {
+            $overrides = Settings::get('rate_limits', []);
+            $data = [];
+            foreach (RateLimits::DEFAULTS as $bucket => $meta) {
+                $override = $overrides[$bucket] ?? null;
+                $isOverridden = is_array($override) && !empty($override['max_attempts']) && !empty($override['window_seconds']);
+                $data[] = [
+                    'bucket' => $bucket,
+                    'label' => $meta['label'],
+                    'description' => $meta['description'],
+                    'max_attempts' => $isOverridden ? (int) $override['max_attempts'] : $meta['max_attempts'],
+                    'window_seconds' => $isOverridden ? (int) $override['window_seconds'] : $meta['window_seconds'],
+                    'default_max_attempts' => $meta['max_attempts'],
+                    'default_window_seconds' => $meta['window_seconds'],
+                    'is_overridden' => $isOverridden,
+                ];
+            }
+            return ['data' => $data];
+        });
+    }
+
+    public function updateRateLimits(): void
+    {
+        AdminAuthController::requireStaff(['admin']);
+        $this->respond(function (): array {
+            $input = json_decode(file_get_contents('php://input') ?: '[]', true, 512, JSON_THROW_ON_ERROR);
+            $buckets = is_array($input['buckets'] ?? null) ? $input['buckets'] : [];
+            $overrides = [];
+            foreach ($buckets as $bucket => $values) {
+                if (!array_key_exists($bucket, RateLimits::DEFAULTS) || !is_array($values)) {
+                    continue;
+                }
+                $maxAttempts = (int) ($values['max_attempts'] ?? 0);
+                $windowSeconds = (int) ($values['window_seconds'] ?? 0);
+                if ($maxAttempts < 1 || $maxAttempts > 100000) {
+                    throw new \InvalidArgumentException(RateLimits::DEFAULTS[$bucket]['label'] . ' : le nombre de tentatives doit être compris entre 1 et 100 000.');
+                }
+                if ($windowSeconds < 1 || $windowSeconds > 604800) {
+                    throw new \InvalidArgumentException(RateLimits::DEFAULTS[$bucket]['label'] . ' : la fenêtre doit être comprise entre 1 seconde et 7 jours (604 800 s).');
+                }
+                $default = RateLimits::DEFAULTS[$bucket];
+                if ($maxAttempts === $default['max_attempts'] && $windowSeconds === $default['window_seconds']) {
+                    continue; // matches the default — no need to store an override for it
+                }
+                $overrides[$bucket] = ['max_attempts' => $maxAttempts, 'window_seconds' => $windowSeconds];
+            }
+
+            Settings::set('rate_limits', $overrides);
+            AuditLog::record('settings.update', 'settings', null, ['group' => 'rate_limits']);
+            return ['message' => 'Limites de requêtes enregistrées.'];
         });
     }
 
