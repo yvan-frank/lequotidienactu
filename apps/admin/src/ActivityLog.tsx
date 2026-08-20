@@ -1,7 +1,9 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ScrollText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ScrollText } from 'lucide-react';
 import { api } from './api';
+
+const PAGE_SIZE = 25;
 
 type AuditEntry = {
   id: number;
@@ -69,12 +71,19 @@ function actionLabel(action: string): string {
 
 export function ActivityLog() {
   const [filter, setFilter] = React.useState<(typeof actionFilters)[number][0]>('');
+  const [page, setPage] = React.useState(1);
   const logs = useQuery({
     queryKey: ['admin-audit-logs', filter],
     queryFn: async () =>
       (await api.get<{ data: AuditEntry[] }>('/admin/audit-logs', { params: { action: filter } })).data
         .data,
   });
+
+  React.useEffect(() => setPage(1), [filter]);
+
+  const pageCount = logs.data ? Math.max(1, Math.ceil(logs.data.length / PAGE_SIZE)) : 1;
+  const currentPage = Math.min(page, pageCount);
+  const pagedLogs = logs.data?.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE) ?? [];
 
   return (
     <>
@@ -122,7 +131,7 @@ export function ActivityLog() {
               </tr>
             </thead>
             <tbody>
-              {logs.data.map((entry) => (
+              {pagedLogs.map((entry) => (
                 <tr key={entry.id} className="border-b border-slate-100 last:border-0">
                   <td className="px-5 py-3 font-semibold text-slate-900">{actionLabel(entry.action)}</td>
                   <td className="px-5 py-3 text-slate-600">{entry.user_name ?? '—'}</td>
@@ -138,6 +147,31 @@ export function ActivityLog() {
               ))}
             </tbody>
           </table>
+          {pageCount > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3">
+              <p className="text-xs text-slate-500">
+                Page {currentPage} sur {pageCount} &middot; {logs.data.length} entrée(s)
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  className="inline-flex items-center gap-1 rounded border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft size={14} /> Précédent
+                </button>
+                <button
+                  type="button"
+                  disabled={currentPage >= pageCount}
+                  onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+                  className="inline-flex items-center gap-1 rounded border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Suivant <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       )}
     </>
