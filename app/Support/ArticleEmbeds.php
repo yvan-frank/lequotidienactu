@@ -43,8 +43,61 @@ final class ArticleEmbeds
             },
             $rendered
         );
+        $rendered = $rendered ?? $bodyHtml;
+
+        $rendered = preg_replace_callback(
+            '/<div\b[^>]*\bdata-cta-button\b[^>]*><\/div>/i',
+            static function (array $matches): string {
+                $text = self::extractAttribute($matches[0], 'data-cta-text');
+                $url = self::extractAttribute($matches[0], 'data-cta-url');
+                $style = self::extractAttribute($matches[0], 'data-cta-style');
+                $fullWidth = self::extractAttribute($matches[0], 'data-cta-full') === '1';
+                return self::renderButton($text, $url, $style, $fullWidth);
+            },
+            $rendered
+        );
 
         return $rendered ?? $bodyHtml;
+    }
+
+    private static function extractAttribute(string $tag, string $name): string
+    {
+        if (!preg_match('/' . preg_quote($name, '/') . '="([^"]*)"/', $tag, $match)) {
+            return '';
+        }
+        return html_entity_decode($match[1], ENT_QUOTES, 'UTF-8');
+    }
+
+    /**
+     * Replaces the CTA button block inserted via the editor toolbar
+     * (<div data-cta-button data-cta-text="…" data-cta-url="…"
+     * data-cta-style="solid|outline|soft|link" data-cta-full="0|1"></div>)
+     * with a plain <a> tag in one of four configurable, dependency-free
+     * styles, optionally stretched to the full content width.
+     */
+    private static function renderButton(string $text, string $url, string $style, bool $fullWidth): string
+    {
+        $text = trim($text);
+        $url = trim($url);
+        if ($text === '' || $url === '') {
+            return '';
+        }
+
+        $classesByStyle = [
+            'solid' => 'bg-brand-600 text-white border border-transparent hover:bg-brand-700',
+            'outline' => 'border-2 border-brand-600 text-brand-700 bg-white hover:bg-brand-50',
+            'soft' => 'border border-transparent bg-brand-50 text-brand-700 hover:bg-brand-600/10',
+            'link' => 'text-brand-700 underline underline-offset-4 hover:text-brand-600 px-0 py-0',
+        ];
+        $classes = $classesByStyle[$style] ?? $classesByStyle['solid'];
+        $widthClasses = $fullWidth ? 'w-full justify-center text-center' : 'w-fit';
+
+        $safeText = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+        $safeUrl = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
+        $external = preg_match('#^https?://#i', $url) === 1;
+        $relAttr = $external ? ' rel="noopener noreferrer" target="_blank"' : '';
+
+        return '<p class="not-prose my-6"><a class="flex items-center rounded-full px-6 py-3 text-sm font-bold transition ' . $widthClasses . ' ' . $classes . '" href="' . $safeUrl . '"' . $relAttr . '>' . $safeText . '</a></p>';
     }
 
     /**

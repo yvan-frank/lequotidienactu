@@ -26,6 +26,7 @@ import {
   Maximize2,
   Megaphone,
   Minimize2,
+  MousePointerClick,
   Newspaper,
   Palette,
   Quote,
@@ -43,6 +44,7 @@ import { CategoryCombobox, TagsInput } from './components/TaxonomyPicker';
 import { ArticleEmbed } from './extensions/ArticleEmbed';
 import { AdEmbed } from './extensions/AdEmbed';
 import { FaqEmbed } from './extensions/FaqEmbed';
+import { ButtonEmbed } from './extensions/ButtonEmbed';
 
 type Taxonomy = {
   categories: { id: number; parent_id: number | null; name: string; slug: string }[];
@@ -213,6 +215,7 @@ function EditorToolbar({
 }) {
   const onInsertAdEmbed = () => editor?.chain().focus().insertAdEmbed().run();
   const onInsertFaqEmbed = () => editor?.chain().focus().insertFaqEmbed().run();
+  const onInsertButtonEmbed = () => editor?.chain().focus().insertButtonEmbed().run();
   const [linkOpen, setLinkOpen] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
 
@@ -314,6 +317,9 @@ function EditorToolbar({
       <ToolbarButton label="Bloc FAQ" onClick={onInsertFaqEmbed}>
         <HelpCircle size={16} />
       </ToolbarButton>
+      <ToolbarButton label="Bouton" onClick={onInsertButtonEmbed}>
+        <MousePointerClick size={16} />
+      </ToolbarButton>
       <span className="mx-1 h-5 w-px bg-slate-300" aria-hidden="true" />
       <div className="relative ml-auto">
         <ToolbarButton label="Couleur du texte" onClick={() => setColorOpen((current) => !current)}>
@@ -393,6 +399,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
       ArticleEmbed,
       AdEmbed,
       FaqEmbed,
+      ButtonEmbed,
     ],
     content: '',
     editorProps: {
