@@ -27,6 +27,8 @@ final class RateLimits
         'ai-assist' => ['label' => 'Assistant IA éditorial', 'description' => 'Sollicitations de l’assistant IA (titres, résumés, meta, correction, réseaux sociaux) depuis l’éditeur d’article.', 'max_attempts' => 30, 'window_seconds' => 600],
         'push-subscribe' => ['label' => 'Abonnement notifications push', 'description' => 'Activation ou mise à jour des préférences de notifications push par un visiteur.', 'max_attempts' => 10, 'window_seconds' => 600],
         'listing-submit' => ['label' => 'Dépôt d’annonces', 'description' => 'Soumissions d’offres d’emploi et de petites annonces depuis le site public.', 'max_attempts' => 5, 'window_seconds' => 3600],
+        'reader-register' => ['label' => 'Inscription lecteur', 'description' => 'Créations de compte lecteur depuis le site public.', 'max_attempts' => 5, 'window_seconds' => 900],
+        'reader-login' => ['label' => 'Connexion lecteur', 'description' => 'Tentatives de connexion à un compte lecteur.', 'max_attempts' => 8, 'window_seconds' => 900],
     ];
 
     /**

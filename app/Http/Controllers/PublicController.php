@@ -27,8 +27,47 @@ final class PublicController
         $articles = $this->publishedArticles();
         $featured = $this->featuredArticles($articles, 5);
         $categorySpotlights = $this->categorySpotlights();
+        $reader = $this->currentReader();
+        $forYouArticles = ($reader && !empty($reader['followed_categories']))
+            ? $this->publishedArticles($this->expandCategorySlugs($reader['followed_categories']), null, false, 6)
+            : [];
         $seo = (new SeoManager())->forHome();
         require __DIR__ . '/../../Views/layout.php';
+    }
+
+    /**
+     * Reads the reader session (distinct cookie/session name from the admin
+     * one) without forcing every page to pay for it — only home() actually
+     * needs it server-side, to build the "Pour vous" section before first
+     * paint. The header's account widget itself is client-rendered and
+     * hits /api/account/session directly, so it doesn't depend on this.
+     */
+    /**
+     * The category picker only offers top-level rubriques, but articles are
+     * usually filed under a subcategory (e.g. "Cameroun" under "Afrique") —
+     * so a followed top-level slug needs to pull in its children's slugs
+     * too, or "Pour vous" would stay empty for most readers.
+     */
+    private function expandCategorySlugs(array $slugs): array
+    {
+        $expanded = $slugs;
+        foreach (Categories::tree() as $category) {
+            if (in_array($category['slug'], $slugs, true)) {
+                foreach ($category['children'] ?? [] as $child) {
+                    $expanded[] = $child['slug'];
+                }
+            }
+        }
+        return array_values(array_unique($expanded));
+    }
+
+    private function currentReader(): ?array
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_name('lqa_reader');
+            session_start();
+        }
+        return $_SESSION['reader'] ?? null;
     }
 
     /**

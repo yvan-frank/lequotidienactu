@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { StrictMode, type ComponentType } from 'react';
 import { SearchModal } from './components/SearchModal';
+import { AccountWidget } from './components/AccountWidget';
 import { ReactionWidget } from './components/ReactionWidget';
 import { CommentsWidget } from './components/CommentsWidget';
 import { InfiniteArticles } from './components/InfiniteArticles';
@@ -20,6 +21,9 @@ function mount<P extends object>(
 }
 
 mount('[data-island="search-trigger"]', SearchModal);
+mount('[data-island="account"]', AccountWidget, (el) => ({
+  categories: JSON.parse(el.dataset.categories || '[]'),
+}));
 mount('[data-island="reactions"]', ReactionWidget, (el) => ({
   articleId: Number(el.dataset.articleId),
 }));

@@ -22,6 +22,7 @@ use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminTaxonomyController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\PublicController;
+use App\Http\Controllers\ReaderAuthController;
 use App\Http\Controllers\SeoController;
 use App\Seo\RedirectService;
 use App\Support\ScheduledPublisher;
@@ -53,6 +54,7 @@ final class Router
         $adminNewsletter = new AdminNewsletterController();
         $adminAi = new AdminAiController();
         $adminListings = new AdminListingController();
+        $readerAuth = new ReaderAuthController();
         $seo = new SeoController();
 
         if ($method === 'GET' && ($path === '/u/admin' || str_starts_with($path, '/u/admin/'))) {
@@ -204,6 +206,11 @@ final class Router
         if ($method === 'GET' && $path === '/api/admin/listings') { $adminListings->index(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/listings/(\d+)$#', $path, $m)) { $adminListings->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/listings/(\d+)$#', $path, $m)) { $adminListings->delete((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/account/session') { $readerAuth->session(); return; }
+        if ($method === 'POST' && $path === '/api/account/register') { $readerAuth->register(); return; }
+        if ($method === 'POST' && $path === '/api/account/login') { $readerAuth->login(); return; }
+        if ($method === 'POST' && $path === '/api/account/logout') { $readerAuth->logout(); return; }
+        if ($method === 'PUT' && $path === '/api/account/preferences') { $readerAuth->updatePreferences(); return; }
         if ($method === 'GET' && $path === '/') {
             $public->home();
             return;

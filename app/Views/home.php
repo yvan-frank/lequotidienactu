@@ -20,6 +20,29 @@ $latest = $remaining !== [] ? array_slice($remaining, 0, 3) : array_slice($artic
   <?php endif; ?>
 </section>
 
+<?php if (!empty($forYouArticles)): ?>
+  <section class="border-b border-slate-200 py-10 md:py-14">
+    <div class="flex items-end justify-between gap-4">
+      <div>
+        <p class="text-xs font-bold tracking-[0.18em] text-brand-600 uppercase">Pour vous</p>
+        <h2 class="mt-1 text-2xl font-extrabold tracking-tight">D’après vos rubriques suivies</h2>
+      </div>
+    </div>
+    <div class="mt-6 grid gap-5 md:grid-cols-3">
+      <?php foreach ($forYouArticles as $item): ?>
+        <article class="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <img class="h-36 w-full object-cover" src="<?= htmlspecialchars($item['hero_image']) ?>" alt="" width="640" height="360" loading="lazy">
+          <div class="p-5">
+            <p class="text-xs font-bold tracking-widest text-brand-600 uppercase"><?= htmlspecialchars($item['category_name']) ?></p>
+            <h3 class="mt-2 text-xl leading-snug font-bold"><a class="group-hover:text-brand-600" href="/<?= htmlspecialchars($item['category']) ?>/<?= htmlspecialchars($item['slug']) ?>"><?= htmlspecialchars($item['title']) ?></a></h3>
+            <p class="mt-3 text-sm text-slate-600"><?= htmlspecialchars($item['excerpt']) ?></p>
+          </div>
+        </article>
+      <?php endforeach; ?>
+    </div>
+  </section>
+<?php endif; ?>
+
 <section class="border-b border-slate-200 py-10 md:py-14"><div class="flex items-end justify-between gap-4"><h2 class="text-2xl font-extrabold tracking-tight">Dernières actualités</h2><a class="text-sm font-semibold text-brand-600 hover:text-brand-700" href="/recherche">Tout voir</a></div><div class="mt-6 grid gap-5 md:grid-cols-3"><?php foreach ($latest as $item): ?><article class="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><img class="h-36 w-full object-cover" src="<?= htmlspecialchars($item['hero_image']) ?>" alt="" width="640" height="360" loading="lazy"><div class="p-5"><p class="text-xs font-bold tracking-widest text-brand-600 uppercase"><?= htmlspecialchars($item['category_name']) ?></p><h3 class="mt-2 text-xl leading-snug font-bold"><a class="group-hover:text-brand-600" href="/<?= $item['category'] ?>/<?= $item['slug'] ?>"><?= htmlspecialchars($item['title']) ?></a></h3><p class="mt-3 text-sm text-slate-600"><?= htmlspecialchars($item['excerpt']) ?></p></div></article><?php endforeach; ?></div></section>
 
 <?php foreach ($categorySpotlights as $index => $spotlight): $main = $spotlight['main']; ?>

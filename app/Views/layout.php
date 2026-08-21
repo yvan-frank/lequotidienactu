@@ -131,6 +131,7 @@ if ($categoryTree === []) {
       </nav>
       <div class="flex items-center gap-2">
         <div data-island="search-trigger"></div>
+        <div data-island="account" data-categories="<?= htmlspecialchars(json_encode(array_map(static fn (array $c): array => ['slug' => $c['slug'], 'name' => $c['name']], $categoryTree), JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>"></div>
         <div class="relative" data-push-widget data-vapid-public-key="<?= htmlspecialchars($_ENV['VAPID_PUBLIC_KEY'] ?? '') ?>">
           <button type="button" data-push-trigger class="hidden rounded border border-slate-300 p-2 text-slate-600 hover:border-brand-600 hover:text-brand-600" aria-label="Notifications" aria-expanded="false">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
