@@ -296,7 +296,12 @@ export function CrsCalculator() {
       </div>
 
       <div className="lg:order-2">
-        <div className="sticky top-6 grid gap-4">
+        {/* top offset clears the shrunk site header (3.5rem min-height +
+            border + a few px of breathing room, see header[data-scrolled]
+            in public.css) — the header shrinks after just 40px of scroll
+            (public.js), so by the time this sidebar is stickying it's
+            effectively always in that compact state. */}
+        <div className="sticky top-16 grid gap-4">
           <div className="rounded-xl bg-brand-600 p-6 text-center text-white">
             <p className="text-xs font-bold tracking-widest uppercase opacity-80">Votre score estimé</p>
             <p className="mt-2 text-5xl font-extrabold tabular-nums">{score.total}</p>

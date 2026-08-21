@@ -157,7 +157,7 @@ $articleBody = \App\Support\ArticleEmbeds::render($article['body'] ?? '<p>' . ht
   <?php endif; ?>
 </article>
 
-<aside class="space-y-6 lg:sticky lg:top-20">
+<aside class="space-y-6 lg:sticky lg:top-16">
   <?php if (!$readerIsPremium): ?>
     <div class="min-h-64"><?= \App\Support\Ads::renderSlot('article_sidebar', 'Publicité · 300 × 250') ?></div>
   <?php endif; ?>
