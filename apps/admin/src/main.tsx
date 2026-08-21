@@ -66,6 +66,19 @@ import { api, setCsrfToken } from './api';
 import { Toast } from './components/Toast';
 import './styles.css';
 
+let scrollIdleTimeout: number | undefined;
+document.addEventListener(
+  'scroll',
+  () => {
+    document.documentElement.classList.add('is-scrolling');
+    window.clearTimeout(scrollIdleTimeout);
+    scrollIdleTimeout = window.setTimeout(() => {
+      document.documentElement.classList.remove('is-scrolling');
+    }, 600);
+  },
+  { capture: true, passive: true },
+);
+
 type AdminUser = { id: number; name: string; email: string; role: 'admin' | 'editor' | 'author' };
 type AdminSession = { authenticated: boolean; user: AdminUser | null; csrf_token: string | null };
 
@@ -287,20 +300,43 @@ const Login = () => {
 };
 
 const SIDEBAR_STORAGE_KEY = 'lqa-admin-sidebar-collapsed';
-const navItems = [
-  { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, exact: true },
-  { to: '/articles', label: 'Articles', icon: FileText, exact: false },
-  { to: '/pages', label: 'Pages', icon: FilesIcon, exact: false },
-  { to: '/media', label: 'Médiathèque', icon: ImageIcon, exact: false },
-  { to: '/taxonomy', label: 'Rubriques & tags', icon: Tags, exact: false },
-  { to: '/redirects', label: 'Redirections', icon: RouteIcon, exact: false },
-  { to: '/comments', label: 'Commentaires', icon: MessageSquare, exact: false },
-  { to: '/ads', label: 'Publicité', icon: Megaphone, exact: false },
-  { to: '/newsletter', label: 'Newsletter', icon: Mail, exact: false },
-  { to: '/users', label: 'Utilisateurs', icon: Users, exact: false },
-  { to: '/activity', label: 'Journal d’activité', icon: ScrollText, exact: false },
-  { to: '/backups', label: 'Sauvegardes', icon: HardDrive, exact: false },
-  { to: '/settings', label: 'Paramètres', icon: Settings, exact: false },
+const navGroups = [
+  {
+    label: null,
+    items: [{ to: '/', label: 'Tableau de bord', icon: LayoutDashboard, exact: true }],
+  },
+  {
+    label: 'Contenu',
+    items: [
+      { to: '/articles', label: 'Articles', icon: FileText, exact: false },
+      { to: '/pages', label: 'Pages', icon: FilesIcon, exact: false },
+      { to: '/media', label: 'Médiathèque', icon: ImageIcon, exact: false },
+      { to: '/taxonomy', label: 'Rubriques & tags', icon: Tags, exact: false },
+    ],
+  },
+  {
+    label: 'Engagement',
+    items: [
+      { to: '/comments', label: 'Commentaires', icon: MessageSquare, exact: false },
+      { to: '/newsletter', label: 'Newsletter', icon: Mail, exact: false },
+      { to: '/ads', label: 'Publicité', icon: Megaphone, exact: false },
+    ],
+  },
+  {
+    label: 'Outils',
+    items: [
+      { to: '/redirects', label: 'Redirections', icon: RouteIcon, exact: false },
+      { to: '/backups', label: 'Sauvegardes', icon: HardDrive, exact: false },
+      { to: '/activity', label: 'Journal d’activité', icon: ScrollText, exact: false },
+    ],
+  },
+  {
+    label: 'Administration',
+    items: [
+      { to: '/users', label: 'Utilisateurs', icon: Users, exact: false },
+      { to: '/settings', label: 'Paramètres', icon: Settings, exact: false },
+    ],
+  },
 ] as const;
 
 function AccountMenu({ user, onLogout }: { user: AdminUser | null | undefined; onLogout: () => void }) {
@@ -411,18 +447,27 @@ const AdminGate = () => {
           </button>
         </div>
         <nav className={`grid flex-1 content-start gap-2 overflow-y-auto pb-6 ${collapsed ? 'px-3' : 'px-6'}`}>
-          {navItems.map(({ to, label, icon: Icon, exact }) => (
-            <Link
-              key={to}
-              to={to}
-              activeOptions={{ exact: Boolean(exact) }}
-              activeProps={{ className: 'bg-slate-800 text-white' }}
-              className={`flex items-center gap-3 rounded px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white ${collapsed ? 'justify-center' : ''}`}
-              title={collapsed ? label : undefined}
-            >
-              <Icon size={18} className="shrink-0" />
-              {!collapsed && label}
-            </Link>
+          {navGroups.map((group) => (
+            <React.Fragment key={group.label ?? 'root'}>
+              {group.label && !collapsed && (
+                <p className="mt-3 px-3 text-[11px] font-bold tracking-widest text-slate-500 uppercase first:mt-0">
+                  {group.label}
+                </p>
+              )}
+              {group.items.map(({ to, label, icon: Icon, exact }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  activeOptions={{ exact: Boolean(exact) }}
+                  activeProps={{ className: 'bg-slate-800 text-white' }}
+                  className={`flex items-center gap-3 rounded px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white ${collapsed ? 'justify-center' : ''}`}
+                  title={collapsed ? label : undefined}
+                >
+                  <Icon size={18} className="shrink-0" />
+                  {!collapsed && label}
+                </Link>
+              ))}
+            </React.Fragment>
           ))}
         </nav>
       </aside>
@@ -453,18 +498,27 @@ const AdminGate = () => {
           </button>
         </div>
         <nav className="grid gap-2">
-          {navItems.map(({ to, label, icon: Icon, exact }) => (
-            <Link
-              key={to}
-              to={to}
-              activeOptions={{ exact: Boolean(exact) }}
-              activeProps={{ className: 'bg-slate-800 text-white' }}
-              className="flex items-center gap-3 rounded px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white"
-              onClick={() => setMobileNavOpen(false)}
-            >
-              <Icon size={18} className="shrink-0" />
-              {label}
-            </Link>
+          {navGroups.map((group) => (
+            <React.Fragment key={group.label ?? 'root'}>
+              {group.label && (
+                <p className="mt-3 px-3 text-[11px] font-bold tracking-widest text-slate-500 uppercase first:mt-0">
+                  {group.label}
+                </p>
+              )}
+              {group.items.map(({ to, label, icon: Icon, exact }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  activeOptions={{ exact: Boolean(exact) }}
+                  activeProps={{ className: 'bg-slate-800 text-white' }}
+                  className="flex items-center gap-3 rounded px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white"
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  <Icon size={18} className="shrink-0" />
+                  {label}
+                </Link>
+              ))}
+            </React.Fragment>
           ))}
         </nav>
       </aside>
