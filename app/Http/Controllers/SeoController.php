@@ -13,7 +13,7 @@ final class SeoController
     public function robots(): void
     {
         header('Content-Type: text/plain; charset=utf-8');
-        echo "User-agent: *\nAllow: /\nDisallow: /api/admin/\nDisallow: /admin/\n\nSitemap: " . Config::url('/sitemap.xml') . "\nSitemap: " . Config::url('/sitemap-news.xml') . "\n\n# https://llmstxt.org/\nLLMs: " . Config::url('/llms.txt') . "\n";
+        echo "User-agent: *\nAllow: /\nDisallow: /api/admin/\nDisallow: /admin/\n\nSitemap: " . Config::url('/sitemap.xml') . "\nSitemap: " . Config::url('/sitemap-news.xml') . "\n\n# LLM-oriented site index (https://llmstxt.org/): " . Config::url('/llms.txt') . "\n";
     }
 
     /**
