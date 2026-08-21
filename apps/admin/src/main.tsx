@@ -245,7 +245,7 @@ const Login = () => {
     mutationFn: () => api.post<{ user: AdminUser; csrf_token: string }>('/admin/login', { email, password }),
     onSuccess: (response) => {
       setCsrfToken(response.data.csrf_token);
-      window.location.assign('/u/admin');
+      window.location.assign(window.location.pathname + window.location.search);
     },
   });
 
