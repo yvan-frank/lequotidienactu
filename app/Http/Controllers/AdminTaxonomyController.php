@@ -68,10 +68,23 @@ final class AdminTaxonomyController
     {
         AdminAuthController::requireStaff(['admin', 'editor']);
         $this->respond(function (PDO $pdo) use ($id): array {
+            $before = $pdo->prepare('SELECT c.slug, p.slug AS parent_slug FROM categories c LEFT JOIN categories p ON p.id = c.parent_id WHERE c.id = :id');
+            $before->execute(['id' => $id]);
+            $category = $before->fetch(PDO::FETCH_ASSOC);
             $statement = $pdo->prepare('DELETE FROM categories WHERE id = :id');
             $statement->execute(['id' => $id]);
             if ($statement->rowCount() === 0) throw new \InvalidArgumentException('Rubrique introuvable.');
             AuditLog::record('category.delete', 'category', $id);
+
+            // Deleting is only possible once the category has no articles
+            // left (FK RESTRICT), but old links/search results pointing at
+            // its own listing page still deserve somewhere useful to land —
+            // its parent rubrique, or the homepage for a top-level one.
+            if ($category) {
+                $destination = $category['parent_slug'] !== null ? "/{$category['parent_slug']}" : '/';
+                (new RedirectService())->record("/{$category['slug']}", $destination);
+            }
+
             return ['message' => 'Rubrique supprimée.'];
         });
     }

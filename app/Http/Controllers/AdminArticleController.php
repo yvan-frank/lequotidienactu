@@ -193,13 +193,21 @@ final class AdminArticleController
     {
         AdminAuthController::requireStaff(['admin', 'editor']);
         $this->respond(function (PDO $pdo) use ($id): array {
-            $title = $pdo->prepare('SELECT title FROM articles WHERE id = :id');
-            $title->execute(['id' => $id]);
-            $articleTitle = $title->fetchColumn();
+            $before = $pdo->prepare('SELECT a.title, a.slug, a.status, c.slug AS category_slug FROM articles a LEFT JOIN categories c ON c.id = a.category_id WHERE a.id = :id');
+            $before->execute(['id' => $id]);
+            $article = $before->fetch(PDO::FETCH_ASSOC);
             $statement = $pdo->prepare('DELETE FROM articles WHERE id = :id');
             $statement->execute(['id' => $id]);
             if ($statement->rowCount() === 0) throw new \InvalidArgumentException('Article introuvable.');
-            AuditLog::record('article.delete', 'article', $id, ['title' => $articleTitle ?: null]);
+            AuditLog::record('article.delete', 'article', $id, ['title' => $article['title'] ?? null]);
+
+            // A deleted article that was live sends readers and search
+            // engines to its category instead of a dead end — otherwise
+            // stale links/search results 404 until the index catches up.
+            if ($article && $article['status'] === 'published' && $article['category_slug'] !== null) {
+                (new RedirectService())->record("/{$article['category_slug']}/{$article['slug']}", "/{$article['category_slug']}");
+            }
+
             return ['message' => 'Article supprimé.'];
         });
     }
