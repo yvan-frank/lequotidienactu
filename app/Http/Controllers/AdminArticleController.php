@@ -23,11 +23,80 @@ final class AdminArticleController
             if ($status !== 'all' && !in_array($status, self::STATUSES, true)) {
                 throw new \InvalidArgumentException('Filtre de statut invalide.');
             }
-            $sql = 'SELECT a.id, a.title, a.slug, a.status, a.published_at, a.created_at, a.updated_at, a.is_sponsored, a.is_featured, c.name AS category_name, c.slug AS category_slug, au.display_name AS author_name FROM articles a LEFT JOIN categories c ON c.id = a.category_id LEFT JOIN authors au ON au.id = a.author_id';
-            $statement = $pdo->prepare($status === 'all' ? $sql . ' ORDER BY a.updated_at DESC LIMIT 50' : $sql . ' WHERE a.status = :status ORDER BY a.updated_at DESC LIMIT 50');
-            $statement->execute($status === 'all' ? [] : ['status' => $status]);
+            $search = trim((string) ($_GET['q'] ?? ''));
+            $categoryId = isset($_GET['category_id']) && $_GET['category_id'] !== '' ? (int) $_GET['category_id'] : null;
+            $authorId = isset($_GET['author_id']) && $_GET['author_id'] !== '' ? (int) $_GET['author_id'] : null;
+            $sponsored = $_GET['is_sponsored'] ?? '';
+            $featured = $_GET['is_featured'] ?? '';
+            $dateFrom = trim((string) ($_GET['date_from'] ?? ''));
+            $dateTo = trim((string) ($_GET['date_to'] ?? ''));
+            $page = max(1, (int) ($_GET['page'] ?? 1));
+            $perPage = 10;
+
+            $conditions = [];
+            $params = [];
+            if ($status !== 'all') {
+                $conditions[] = 'a.status = :status';
+                $params['status'] = $status;
+            }
+            if ($search !== '') {
+                $conditions[] = '(a.title LIKE :search OR a.excerpt LIKE :search)';
+                $params['search'] = '%' . $search . '%';
+            }
+            if ($categoryId !== null) {
+                $conditions[] = 'a.category_id = :category_id';
+                $params['category_id'] = $categoryId;
+            }
+            if ($authorId !== null) {
+                $conditions[] = 'a.author_id = :author_id';
+                $params['author_id'] = $authorId;
+            }
+            if ($sponsored === '1' || $sponsored === '0') {
+                $conditions[] = 'a.is_sponsored = :is_sponsored';
+                $params['is_sponsored'] = (int) $sponsored;
+            }
+            if ($featured === '1' || $featured === '0') {
+                $conditions[] = 'a.is_featured = :is_featured';
+                $params['is_featured'] = (int) $featured;
+            }
+            if ($dateFrom !== '') {
+                $conditions[] = 'a.created_at >= :date_from';
+                $params['date_from'] = $dateFrom . ' 00:00:00';
+            }
+            if ($dateTo !== '') {
+                $conditions[] = 'a.created_at <= :date_to';
+                $params['date_to'] = $dateTo . ' 23:59:59';
+            }
+
+            $where = $conditions === [] ? '' : ' WHERE ' . implode(' AND ', $conditions);
+
+            $countStatement = $pdo->prepare('SELECT COUNT(*) FROM articles a' . $where);
+            $countStatement->execute($params);
+            $total = (int) $countStatement->fetchColumn();
+            $totalPages = max(1, (int) ceil($total / $perPage));
+            $page = min($page, $totalPages);
+            $offset = ($page - 1) * $perPage;
+
+            $sql = 'SELECT a.id, a.title, a.slug, a.status, a.published_at, a.created_at, a.updated_at, a.is_sponsored, a.is_featured, c.name AS category_name, c.slug AS category_slug, au.display_name AS author_name FROM articles a LEFT JOIN categories c ON c.id = a.category_id LEFT JOIN authors au ON au.id = a.author_id'
+                . $where . ' ORDER BY a.updated_at DESC LIMIT :limit OFFSET :offset';
+            $statement = $pdo->prepare($sql);
+            foreach ($params as $key => $value) {
+                $statement->bindValue(':' . $key, $value);
+            }
+            $statement->bindValue(':limit', $perPage, PDO::PARAM_INT);
+            $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $statement->execute();
             $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
-            return ['data' => $rows];
+
+            return [
+                'data' => $rows,
+                'meta' => [
+                    'page' => $page,
+                    'per_page' => $perPage,
+                    'total' => $total,
+                    'total_pages' => $totalPages,
+                ],
+            ];
         });
     }
 

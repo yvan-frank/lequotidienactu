@@ -20,6 +20,8 @@ import {
   Archive,
   Briefcase,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CircleUserRound,
   ExternalLink,
   Eye,
@@ -41,8 +43,10 @@ import {
   Pencil,
   Route as RouteIcon,
   ScrollText,
+  Search,
   Send,
   Settings,
+  SlidersHorizontal,
   Star,
   Table2,
   Tags,
@@ -722,6 +726,11 @@ type Article = {
   is_sponsored: number | boolean;
   is_featured: number | boolean;
 };
+type ArticlesTaxonomy = {
+  categories: { id: number; parent_id: number | null; name: string; slug: string }[];
+  authors: { id: number; display_name: string }[];
+};
+type ArticlesMeta = { page: number; per_page: number; total: number; total_pages: number };
 const formatDateTime = (value: string) =>
   new Date(value.replace(' ', 'T')).toLocaleString('fr-FR', {
     day: '2-digit',
@@ -861,22 +870,62 @@ const ActionsPopover = ({
   </div>
   );
 };
+const emptyAdvancedFilters = {
+  category_id: '',
+  author_id: '',
+  is_sponsored: '',
+  is_featured: '',
+  date_from: '',
+  date_to: '',
+};
 const Articles = () => {
   const [filter, setFilter] = React.useState<(typeof articleFilters)[number][0]>('all');
   const [view, setView] = React.useState<'compact' | 'table'>('table');
+  const [page, setPage] = React.useState(1);
+  const [search, setSearch] = React.useState('');
+  const [searchInput, setSearchInput] = React.useState('');
+  const [showFilters, setShowFilters] = React.useState(false);
+  const [advancedFilters, setAdvancedFilters] = React.useState(emptyAdvancedFilters);
   const [toast, setToast] = React.useState<{ message: string; tone: 'error' | 'success' } | null>(
     null,
   );
   const [activeMenu, setActiveMenu] = React.useState<ActionMenu | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<Article | null>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
+  const filtersRef = React.useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
-  const articles = useQuery({
-    queryKey: ['admin-articles', filter],
-    queryFn: async () =>
-      (await api.get<{ data: Article[] }>('/admin/articles', { params: { status: filter } })).data
-        .data,
+  React.useEffect(() => {
+    const handle = setTimeout(() => setSearch(searchInput.trim()), 350);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
+  React.useEffect(() => {
+    setPage(1);
+  }, [filter, search, advancedFilters]);
+  const taxonomy = useQuery({
+    queryKey: ['taxonomy'],
+    queryFn: async () => (await api.get<ArticlesTaxonomy>('/admin/taxonomy')).data,
   });
+  const articles = useQuery({
+    queryKey: ['admin-articles', filter, page, search, advancedFilters],
+    queryFn: async () =>
+      (
+        await api.get<{ data: Article[]; meta: ArticlesMeta }>('/admin/articles', {
+          params: {
+            status: filter,
+            page,
+            q: search || undefined,
+            category_id: advancedFilters.category_id || undefined,
+            author_id: advancedFilters.author_id || undefined,
+            is_sponsored: advancedFilters.is_sponsored || undefined,
+            is_featured: advancedFilters.is_featured || undefined,
+            date_from: advancedFilters.date_from || undefined,
+            date_to: advancedFilters.date_to || undefined,
+          },
+        })
+      ).data,
+    placeholderData: (previous) => previous,
+  });
+  const activeAdvancedCount = Object.values(advancedFilters).filter((value) => value !== '').length;
   const transition = useMutation({
     mutationFn: ({ id, status }: { id: number; status: 'published' | 'archived' }) =>
       api.post(`/admin/articles/${id}/transition`, { status }),
@@ -935,6 +984,19 @@ const Articles = () => {
       document.removeEventListener('keydown', closeEscape);
     };
   }, [activeMenu]);
+  React.useEffect(() => {
+    if (!showFilters) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!filtersRef.current?.contains(event.target as Node)) setShowFilters(false);
+    };
+    const closeEscape = (event: KeyboardEvent) => event.key === 'Escape' && setShowFilters(false);
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeEscape);
+    };
+  }, [showFilters]);
   const openActions = (article: Article, rect: DOMRect) => {
     setActiveMenu((current) =>
       current?.article.id === article.id
@@ -949,7 +1011,7 @@ const Articles = () => {
           <p className="text-sm font-semibold text-orange-700">CMS</p>
           <h2 className="text-3xl font-bold">Articles</h2>
           <p className="mt-1 text-sm text-slate-500">
-            {articles.data?.length ?? 0} élément(s) dans cette vue
+            {articles.data?.meta.total ?? 0} élément(s) au total
           </p>
         </div>
         <Link
@@ -959,7 +1021,136 @@ const Articles = () => {
           <FilePlus2 size={17} /> Nouvel article
         </Link>
       </header>
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[220px] flex-1">
+          <Search
+            size={16}
+            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Rechercher un titre ou un extrait…"
+            className="w-full rounded-lg border border-slate-200 bg-white py-2 pr-3 pl-9 text-sm focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+          />
+        </div>
+        <div className="relative shrink-0" ref={filtersRef}>
+          <button
+            onClick={() => setShowFilters((current) => !current)}
+            aria-expanded={showFilters}
+            className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+              showFilters || activeAdvancedCount > 0
+                ? 'border-orange-300 bg-orange-50 text-orange-800'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <SlidersHorizontal size={16} /> Filtres avancés
+            {activeAdvancedCount > 0 && (
+              <span className="rounded-full bg-orange-700 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                {activeAdvancedCount}
+              </span>
+            )}
+          </button>
+          {showFilters && (
+            <div className="absolute top-full right-0 z-20 mt-2 grid w-[min(640px,calc(100vw-2rem))] grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-xl sm:grid-cols-2 lg:grid-cols-3">
+          <label className="flex flex-col gap-1 text-xs font-semibold text-slate-500">
+            Rubrique
+            <select
+              value={advancedFilters.category_id}
+              onChange={(event) =>
+                setAdvancedFilters((current) => ({ ...current, category_id: event.target.value }))
+              }
+              className="rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700"
+            >
+              <option value="">Toutes</option>
+              {taxonomy.data?.categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-slate-500">
+            Auteur
+            <select
+              value={advancedFilters.author_id}
+              onChange={(event) =>
+                setAdvancedFilters((current) => ({ ...current, author_id: event.target.value }))
+              }
+              className="rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700"
+            >
+              <option value="">Tous</option>
+              {taxonomy.data?.authors.map((author) => (
+                <option key={author.id} value={author.id}>
+                  {author.display_name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-slate-500">
+            Sponsorisé
+            <select
+              value={advancedFilters.is_sponsored}
+              onChange={(event) =>
+                setAdvancedFilters((current) => ({ ...current, is_sponsored: event.target.value }))
+              }
+              className="rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700"
+            >
+              <option value="">Indifférent</option>
+              <option value="1">Oui</option>
+              <option value="0">Non</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-slate-500">
+            Mis en avant
+            <select
+              value={advancedFilters.is_featured}
+              onChange={(event) =>
+                setAdvancedFilters((current) => ({ ...current, is_featured: event.target.value }))
+              }
+              className="rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700"
+            >
+              <option value="">Indifférent</option>
+              <option value="1">Oui</option>
+              <option value="0">Non</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-slate-500">
+            Créé depuis le
+            <input
+              type="date"
+              value={advancedFilters.date_from}
+              onChange={(event) =>
+                setAdvancedFilters((current) => ({ ...current, date_from: event.target.value }))
+              }
+              className="rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-slate-500">
+            Jusqu'au
+            <input
+              type="date"
+              value={advancedFilters.date_to}
+              onChange={(event) =>
+                setAdvancedFilters((current) => ({ ...current, date_to: event.target.value }))
+              }
+              className="rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700"
+            />
+          </label>
+              {activeAdvancedCount > 0 && (
+                <button
+                  onClick={() => setAdvancedFilters(emptyAdvancedFilters)}
+                  className="self-end text-xs font-semibold text-orange-700 hover:underline sm:col-span-2 lg:col-span-3"
+                >
+                  Réinitialiser les filtres avancés
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div
           className="no-scrollbar flex max-w-full snap-x scroll-px-4 gap-2 overflow-x-auto scroll-smooth pb-1"
           role="tablist"
@@ -1007,11 +1198,13 @@ const Articles = () => {
           Impossible de charger les articles.
         </p>
       )}
-      {articles.data?.length === 0 && (
-        <p className="mt-6 rounded-xl bg-white p-6 text-slate-500">Aucun article pour ce filtre.</p>
+      {articles.data?.data.length === 0 && (
+        <p className="mt-6 rounded-xl bg-white p-6 text-slate-500">
+          Aucun article ne correspond à ces critères.
+        </p>
       )}
       {articles.data &&
-        articles.data.length > 0 &&
+        articles.data.data.length > 0 &&
         (view === 'table' ? (
           <section className="mt-6 max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white contain-layout">
             <table className="w-full min-w-[920px] text-left">
@@ -1028,7 +1221,7 @@ const Articles = () => {
                 </tr>
               </thead>
               <tbody>
-                {articles.data.map((article) => (
+                {articles.data.data.map((article) => (
                   <tr
                     className="group border-b border-slate-100 last:border-0 hover:bg-slate-50"
                     key={article.id}
@@ -1099,7 +1292,7 @@ const Articles = () => {
           </section>
         ) : (
           <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {articles.data.map((article) => (
+            {articles.data.data.map((article) => (
               <article
                 className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                 key={article.id}
@@ -1152,6 +1345,32 @@ const Articles = () => {
             ))}
           </section>
         ))}
+      {articles.data && articles.data.meta.total_pages > 1 && (
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">
+            Page {articles.data.meta.page} sur {articles.data.meta.total_pages} ·{' '}
+            {articles.data.meta.total} article(s)
+          </p>
+          <div className="inline-flex items-center gap-2">
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft size={16} /> Précédent
+            </button>
+            <button
+              disabled={page >= articles.data.meta.total_pages}
+              onClick={() =>
+                setPage((current) => Math.min(articles.data!.meta.total_pages, current + 1))
+              }
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Suivant <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
       {activeMenu && (
         <ActionsPopover
           menu={activeMenu}
