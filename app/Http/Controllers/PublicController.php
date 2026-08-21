@@ -561,15 +561,37 @@ final class PublicController
         }
     }
 
+    /**
+     * Ranks candidates by a simple relevance score instead of pure recency:
+     * shared tags count for the most (a real topical match), same category
+     * counts for a little, and article popularity (view count) breaks ties
+     * among otherwise-equal candidates — so a well-read piece surfaces
+     * ahead of an obscure one on the same subject. The candidate pool isn't
+     * restricted to the current category, so a strongly tag-matching
+     * article from elsewhere on the site can still surface.
+     */
     private function relatedArticles(array $article): array
     {
         if (!isset($article['id'], $article['category_id'])) {
             return [];
         }
         try {
-            $statement = $this->pdo()->prepare('SELECT a.title, a.slug, a.excerpt, a.published_at, c.slug AS category, c.name AS category_name, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE a.category_id = :category_id AND a.id != :id AND a.status = "published" AND a.published_at <= NOW() ORDER BY a.published_at DESC LIMIT 3');
+            $statement = $this->pdo()->prepare(
+                'SELECT a.title, a.slug, a.excerpt, a.published_at, c.slug AS category, c.name AS category_name, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image,
+                    (SELECT COUNT(*) FROM article_tags cur INNER JOIN article_tags other ON other.tag_id = cur.tag_id WHERE cur.article_id = :id AND other.article_id = a.id) AS shared_tags
+                 FROM articles a
+                 INNER JOIN categories c ON c.id = a.category_id
+                 LEFT JOIN media m ON m.id = a.hero_media_id
+                 WHERE a.id != :id AND a.status = "published" AND a.published_at <= NOW()
+                 ORDER BY (
+                     (SELECT COUNT(*) FROM article_tags cur INNER JOIN article_tags other ON other.tag_id = cur.tag_id WHERE cur.article_id = :id AND other.article_id = a.id) * 3
+                     + (a.category_id = :category_id)
+                 ) DESC, a.views_count DESC, a.published_at DESC
+                 LIMIT 3'
+            );
             $statement->execute(['category_id' => $article['category_id'], 'id' => $article['id']]);
             return array_map(static function (array $item): array {
+                unset($item['shared_tags']);
                 $item['published_at'] = (new \DateTimeImmutable($item['published_at']))->format('d/m/Y');
                 return $item;
             }, $statement->fetchAll(PDO::FETCH_ASSOC));
