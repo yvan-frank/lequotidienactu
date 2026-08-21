@@ -55,6 +55,62 @@ document.querySelectorAll('[data-island="newsletter"]').forEach((form) => {
   });
 });
 
+document.querySelectorAll('[data-island="listing-form"]').forEach((form) => {
+  const typeSelect = form.querySelector('[data-listing-type]');
+  const categorySelect = form.querySelector('[data-listing-category]');
+  const submitButton = form.querySelector('[data-listing-submit]');
+  const message = form.querySelector('[data-listing-message]');
+  let categoriesByType = {};
+  try {
+    categoriesByType = JSON.parse(form.dataset.categoriesByType || '{}');
+  } catch {
+    categoriesByType = {};
+  }
+
+  const refreshCategories = () => {
+    if (!typeSelect || !categorySelect) return;
+    const options = categoriesByType[typeSelect.value] || [];
+    categorySelect.innerHTML = options
+      .map((category) => `<option value="${category}">${category}</option>`)
+      .join('');
+  };
+  typeSelect?.addEventListener('change', refreshCategories);
+
+  const setMessage = (text, tone) => {
+    if (!message) return;
+    message.textContent = text;
+    message.classList.remove('hidden', 'text-emerald-700', 'text-red-700', 'text-slate-500');
+    message.classList.add(tone === 'error' ? 'text-red-700' : tone === 'success' ? 'text-emerald-700' : 'text-slate-500');
+  };
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    submitButton?.setAttribute('disabled', 'true');
+    if (message) message.classList.add('hidden');
+
+    try {
+      const response = await fetch('/api/listings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (response.ok) {
+        setMessage(result.message || 'Annonce envoyée.', 'success');
+        form.reset();
+        refreshCategories();
+      } else {
+        setMessage(result.message || 'Impossible d’envoyer l’annonce. Réessayez.', 'error');
+      }
+    } catch {
+      setMessage('Erreur réseau. Vérifiez votre connexion et réessayez.', 'error');
+    } finally {
+      submitButton?.removeAttribute('disabled');
+    }
+  });
+});
+
 if (document.querySelector('.featured-swiper')) {
   new Swiper('.featured-swiper', {
     loop: true,

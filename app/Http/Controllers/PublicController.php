@@ -232,6 +232,105 @@ final class PublicController
         }
     }
 
+    private const JOB_CATEGORIES = ['CDI', 'CDD', 'Stage', 'Freelance', 'Temps partiel', 'Alternance'];
+    private const CLASSIFIED_CATEGORIES = ['Immobilier', 'Véhicules', 'Multimédia & Électronique', 'Mode & Vêtements', 'Maison & Jardin', 'Services', 'Autres'];
+
+    public function jobs(): void
+    {
+        $this->listingsIndex('job', 'Offres d’emploi', self::JOB_CATEGORIES, '/emploi');
+    }
+
+    public function classifieds(): void
+    {
+        $this->listingsIndex('classified', 'Petites annonces', self::CLASSIFIED_CATEGORIES, '/petites-annonces');
+    }
+
+    private function listingsIndex(string $type, string $heading, array $categories, string $basePath): void
+    {
+        $title = $heading . ' - Le Quotidien Actu';
+        $page = 'listings';
+        $listingType = $type;
+        $listingHeading = $heading;
+        $listingCategories = $categories;
+        $listingBasePath = $basePath;
+        $listings = $this->publishedListings($type);
+        $seo = (new SeoManager())->forStaticPage($heading, $heading . ' publiées par les lecteurs de Le Quotidien Actu.', $basePath);
+        require __DIR__ . '/../../Views/layout.php';
+    }
+
+    public function jobExists(string $slug): bool
+    {
+        return $this->listingExists('job', $slug);
+    }
+
+    public function classifiedExists(string $slug): bool
+    {
+        return $this->listingExists('classified', $slug);
+    }
+
+    private function listingExists(string $type, string $slug): bool
+    {
+        try {
+            $statement = $this->pdo()->prepare('SELECT 1 FROM listings WHERE type = :type AND slug = :slug AND status = "approved" AND (expires_at IS NULL OR expires_at >= CURDATE()) LIMIT 1');
+            $statement->execute(['type' => $type, 'slug' => $slug]);
+            return (bool) $statement->fetchColumn();
+        } catch (PDOException) {
+            return false;
+        }
+    }
+
+    public function jobDetail(string $slug): void
+    {
+        $this->listingDetail('job', $slug, '/emploi');
+    }
+
+    public function classifiedDetail(string $slug): void
+    {
+        $this->listingDetail('classified', $slug, '/petites-annonces');
+    }
+
+    private function listingDetail(string $type, string $slug, string $basePath): void
+    {
+        $statement = $this->pdo()->prepare('SELECT * FROM listings WHERE type = :type AND slug = :slug AND status = "approved" AND (expires_at IS NULL OR expires_at >= CURDATE()) LIMIT 1');
+        $statement->execute(['type' => $type, 'slug' => $slug]);
+        $listingRow = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!$listingRow) {
+            throw new \LogicException('Annonce introuvable.');
+        }
+        $title = $listingRow['title'] . ' - Le Quotidien Actu';
+        $page = 'listing';
+        $listing = $listingRow;
+        $listingBasePath = $basePath;
+        $seo = (new SeoManager())->forStaticPage($listingRow['title'], mb_substr(strip_tags($listingRow['description']), 0, 160), $basePath . '/' . $slug);
+        require __DIR__ . '/../../Views/layout.php';
+    }
+
+    public function listingSubmitForm(): void
+    {
+        $title = 'Déposer une annonce - Le Quotidien Actu';
+        $page = 'listing-submit';
+        $listingType = trim((string) ($_GET['type'] ?? 'classified')) === 'job' ? 'job' : 'classified';
+        $listingCategories = $listingType === 'job' ? self::JOB_CATEGORIES : self::CLASSIFIED_CATEGORIES;
+        $listingCategoriesByType = ['job' => self::JOB_CATEGORIES, 'classified' => self::CLASSIFIED_CATEGORIES];
+        $submitStatus = (string) ($_GET['statut'] ?? '');
+        $seo = (new SeoManager())->forStaticPage('Déposer une annonce', 'Publiez une offre d’emploi ou une petite annonce sur Le Quotidien Actu.', '/annonces/deposer');
+        require __DIR__ . '/../../Views/layout.php';
+    }
+
+    private function publishedListings(string $type): array
+    {
+        try {
+            $statement = $this->pdo()->prepare('SELECT id, category, title, slug, location, price, created_at FROM listings WHERE type = :type AND status = "approved" AND (expires_at IS NULL OR expires_at >= CURDATE()) ORDER BY created_at DESC LIMIT 100');
+            $statement->execute(['type' => $type]);
+            return array_map(static function (array $row): array {
+                $row['created_at'] = (new \DateTimeImmutable($row['created_at']))->format('d/m/Y');
+                return $row;
+            }, $statement->fetchAll(PDO::FETCH_ASSOC));
+        } catch (PDOException) {
+            return [];
+        }
+    }
+
     public function contact(): void
     {
         $title = 'Contact - Le Quotidien Actu';

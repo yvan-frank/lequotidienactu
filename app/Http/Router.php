@@ -13,6 +13,7 @@ use App\Http\Controllers\AdminBackupController;
 use App\Http\Controllers\AdminCommentController;
 use App\Http\Controllers\AdminContentSearchController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminListingController;
 use App\Http\Controllers\AdminMediaController;
 use App\Http\Controllers\AdminNewsletterController;
 use App\Http\Controllers\AdminPageController;
@@ -51,6 +52,7 @@ final class Router
         $adminUsers = new AdminUserController();
         $adminNewsletter = new AdminNewsletterController();
         $adminAi = new AdminAiController();
+        $adminListings = new AdminListingController();
         $seo = new SeoController();
 
         if ($method === 'GET' && ($path === '/u/admin' || str_starts_with($path, '/u/admin/'))) {
@@ -198,6 +200,10 @@ final class Router
         if ($method === 'POST' && preg_match('#^/api/ads/(\d+)/click$#', $path, $m)) { $api->adClick((int) $m[1]); return; }
         if ($method === 'POST' && $path === '/api/push/subscribe') { $api->subscribePush(); return; }
         if ($method === 'POST' && $path === '/api/push/unsubscribe') { $api->unsubscribePush(); return; }
+        if ($method === 'POST' && $path === '/api/listings') { $api->submitListing(); return; }
+        if ($method === 'GET' && $path === '/api/admin/listings') { $adminListings->index(); return; }
+        if ($method === 'PUT' && preg_match('#^/api/admin/listings/(\d+)$#', $path, $m)) { $adminListings->update((int) $m[1]); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/listings/(\d+)$#', $path, $m)) { $adminListings->delete((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/') {
             $public->home();
             return;
@@ -214,6 +220,27 @@ final class Router
         if ($method === 'GET' && preg_match('#^/auteurs/([a-z0-9-]+)$#', $path, $m)) {
             if ($public->authorExists($m[1])) {
                 $public->authorPage($m[1]);
+                return;
+            }
+
+            $this->notFound();
+            return;
+        }
+        if ($method === 'GET' && $path === '/annonces/deposer') { $public->listingSubmitForm(); return; }
+        if ($method === 'GET' && $path === '/emploi') { $public->jobs(); return; }
+        if ($method === 'GET' && $path === '/petites-annonces') { $public->classifieds(); return; }
+        if ($method === 'GET' && preg_match('#^/emploi/([a-z0-9-]+)$#', $path, $m)) {
+            if ($public->jobExists($m[1])) {
+                $public->jobDetail($m[1]);
+                return;
+            }
+
+            $this->notFound();
+            return;
+        }
+        if ($method === 'GET' && preg_match('#^/petites-annonces/([a-z0-9-]+)$#', $path, $m)) {
+            if ($public->classifiedExists($m[1])) {
+                $public->classifiedDetail($m[1]);
                 return;
             }
 

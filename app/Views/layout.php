@@ -257,6 +257,8 @@ if ($categoryTree === []) {
           <p class="text-xs font-bold tracking-widest text-white uppercase">Ressources</p>
           <ul class="mt-3 grid gap-2 text-sm">
             <li><a class="text-slate-400 hover:text-white" href="/recherche">Recherche</a></li>
+            <li><a class="text-slate-400 hover:text-white" href="/emploi">Offres d’emploi</a></li>
+            <li><a class="text-slate-400 hover:text-white" href="/petites-annonces">Petites annonces</a></li>
             <li><a class="text-slate-400 hover:text-white" href="/feed.xml">Flux RSS</a></li>
             <li><a class="text-slate-400 hover:text-white" href="/sitemap.xml">Plan du site</a></li>
             <li><a class="text-slate-400 hover:text-white" href="/a-propos">À propos</a></li>

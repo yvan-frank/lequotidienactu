@@ -8,6 +8,7 @@ use App\Support\Mailer;
 use App\Support\MailTemplate;
 use App\Support\RateLimiter;
 use App\Support\RateLimits;
+use App\Support\Slug;
 use App\Support\TooManyAttemptsException;
 use PDO;
 use PDOException;
@@ -371,6 +372,65 @@ final class ApiController
             $pdo->prepare('DELETE FROM push_subscriptions WHERE endpoint = :endpoint')->execute(['endpoint' => $endpoint]);
             return ['message' => 'Notifications désactivées.'];
         });
+    }
+
+    /**
+     * Public submission for the jobs/classifieds board — always lands as
+     * "pending", exactly like a comment; nothing here is visible on the
+     * site until a staff member approves it in the admin.
+     */
+    public function submitListing(): void
+    {
+        $this->respond(function (PDO $pdo): array {
+            [$max, $window] = RateLimits::resolve('listing-submit');
+            if ((new RateLimiter($pdo))->tooManyAttempts('listing-submit', $max, $window)) {
+                throw new TooManyAttemptsException('Trop de dépôts d’annonces. Réessayez plus tard.');
+            }
+
+            $input = $this->input();
+            $type = (string) ($input['type'] ?? '');
+            if (!in_array($type, ['job', 'classified'], true)) {
+                throw new \InvalidArgumentException('Type d’annonce invalide.');
+            }
+            $title = trim((string) ($input['title'] ?? ''));
+            $description = trim((string) ($input['description'] ?? ''));
+            $posterName = trim((string) ($input['poster_name'] ?? ''));
+            $posterEmail = trim((string) ($input['poster_email'] ?? ''));
+            if ($title === '' || $description === '' || $posterName === '' || $posterEmail === '') {
+                throw new \InvalidArgumentException('Le titre, la description, votre nom et votre e-mail sont obligatoires.');
+            }
+            if (!filter_var($posterEmail, FILTER_VALIDATE_EMAIL)) {
+                throw new \InvalidArgumentException('Adresse e-mail invalide.');
+            }
+            if (mb_strlen($description) > 4000) {
+                throw new \InvalidArgumentException('Description trop longue (4000 caractères maximum).');
+            }
+
+            $baseSlug = Slug::make($title) ?: 'annonce';
+            $slug = $baseSlug . '-' . bin2hex(random_bytes(3));
+
+            $statement = $pdo->prepare(
+                'INSERT INTO listings (type, category, title, slug, description, location, price, contact_name, contact_email, contact_phone, poster_name, poster_email, ip_address)
+                 VALUES (:type, :category, :title, :slug, :description, :location, :price, :contact_name, :contact_email, :contact_phone, :poster_name, :poster_email, :ip)'
+            );
+            $statement->execute([
+                'type' => $type,
+                'category' => trim((string) ($input['category'] ?? '')) ?: null,
+                'title' => mb_substr($title, 0, 255),
+                'slug' => $slug,
+                'description' => $description,
+                'location' => trim((string) ($input['location'] ?? '')) ?: null,
+                'price' => trim((string) ($input['price'] ?? '')) ?: null,
+                'contact_name' => trim((string) ($input['contact_name'] ?? '')) ?: null,
+                'contact_email' => trim((string) ($input['contact_email'] ?? '')) ?: null,
+                'contact_phone' => trim((string) ($input['contact_phone'] ?? '')) ?: null,
+                'poster_name' => mb_substr($posterName, 0, 150),
+                'poster_email' => mb_substr($posterEmail, 0, 190),
+                'ip' => (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'),
+            ]);
+
+            return ['message' => 'Merci ! Votre annonce est en attente de modération avant publication.'];
+        }, 201);
     }
 
     public function adClick(int $adId): void

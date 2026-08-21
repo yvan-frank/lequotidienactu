@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS listings (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  type ENUM('job', 'classified') NOT NULL,
+  category VARCHAR(100) NULL,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  location VARCHAR(150) NULL,
+  price VARCHAR(100) NULL,
+  contact_name VARCHAR(150) NULL,
+  contact_email VARCHAR(190) NULL,
+  contact_phone VARCHAR(50) NULL,
+  poster_name VARCHAR(150) NOT NULL,
+  poster_email VARCHAR(190) NOT NULL,
+  status ENUM('pending', 'approved', 'rejected', 'expired') NOT NULL DEFAULT 'pending',
+  expires_at DATE NULL,
+  ip_address VARCHAR(45) NULL,
+  reviewed_by BIGINT UNSIGNED NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_slug (slug),
+  INDEX (type, status, expires_at),
+  FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
+);

@@ -18,6 +18,7 @@ import {
 } from '@tanstack/react-router';
 import {
   Archive,
+  Briefcase,
   ChevronDown,
   CircleUserRound,
   ExternalLink,
@@ -59,6 +60,7 @@ import { Taxonomy } from './Taxonomy';
 import { Users as UsersPage } from './Users';
 import { Redirects } from './Redirects';
 import { Comments } from './Comments';
+import { Listings } from './Listings';
 import { Settings as SettingsPage } from './Settings';
 import { ActivityLog } from './ActivityLog';
 import { Backups } from './Backups';
@@ -318,6 +320,7 @@ const navGroups = [
     label: 'Engagement',
     items: [
       { to: '/comments', label: 'Commentaires', icon: MessageSquare, exact: false },
+      { to: '/listings', label: 'Annonces', icon: Briefcase, exact: false },
       { to: '/newsletter', label: 'Newsletter', icon: Mail, exact: false },
       { to: '/ads', label: 'Publicité', icon: Megaphone, exact: false },
     ],
@@ -1268,6 +1271,11 @@ const commentsRoute = new Route({
   path: '/comments',
   component: Comments,
 });
+const listingsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/listings',
+  component: Listings,
+});
 const adsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/ads',
@@ -1313,6 +1321,7 @@ const router = createRouter({
     taxonomyRoute,
     redirectsRoute,
     commentsRoute,
+    listingsRoute,
     adsRoute,
     newsletterRoute,
     usersRoute,
