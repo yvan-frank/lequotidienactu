@@ -74,6 +74,20 @@ final class ApiController
         });
     }
 
+    /**
+     * Backs the "derniers tirages" panel on the CRS simulator — recent
+     * Entrée express draw rounds, entered manually in the admin (IRCC has
+     * no public API for these). Read-only, no auth: the data isn't
+     * sensitive and the simulator page is public.
+     */
+    public function drawRounds(): void
+    {
+        $this->respond(function (PDO $pdo): array {
+            $rows = $pdo->query('SELECT draw_date, draw_type, crs_cutoff, invitations_issued FROM draw_rounds ORDER BY draw_date DESC LIMIT 10')->fetchAll(PDO::FETCH_ASSOC);
+            return ['data' => $rows];
+        });
+    }
+
     public function search(): void
     {
         $this->respond(function (PDO $pdo): array {

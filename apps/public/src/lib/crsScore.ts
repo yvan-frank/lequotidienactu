@@ -23,29 +23,29 @@ export type EducationLevel =
   | 'doctorate';
 
 export type Ability = 'listening' | 'speaking' | 'reading' | 'writing';
-export type ClbScores = Record<Ability, number>;
+export type ClbScores = Record<Ability, number | null>;
 export type LanguageTag = 'french' | 'english' | 'other';
 export type CanadianExpYears = 0 | 1 | 2 | 3 | 4 | 5;
 export type ForeignExpYears = 0 | 1 | 3;
 
 export interface CrsInput {
-  age: number;
-  hasSpouse: boolean;
-  education: EducationLevel;
-  canadianExpYears: CanadianExpYears;
-  foreignExpYears: ForeignExpYears;
+  age: number | null;
+  hasSpouse: boolean | null;
+  education: EducationLevel | null;
+  canadianExpYears: CanadianExpYears | null;
+  foreignExpYears: ForeignExpYears | null;
   hasCertificateOfQualification: boolean;
   language1: ClbScores;
-  language1Tag: LanguageTag;
+  language1Tag: LanguageTag | null;
   hasLanguage2: boolean;
   language2: ClbScores;
-  language2Tag: LanguageTag;
+  language2Tag: LanguageTag | null;
   hasProvincialNomination: boolean;
   hasSiblingInCanada: boolean;
   canadianStudy: 'none' | 'one_or_two_years' | 'three_years_plus';
-  spouseEducation: EducationLevel;
+  spouseEducation: EducationLevel | null;
   spouseLanguage: ClbScores;
-  spouseCanadianExpYears: CanadianExpYears;
+  spouseCanadianExpYears: CanadianExpYears | null;
 }
 
 export interface CrsBreakdown {
@@ -193,15 +193,22 @@ function certificateTransfer(hasCertificate: boolean, minClb: number): number {
 }
 
 export function calculateCrsScore(input: CrsInput): CrsBreakdown {
-  const { hasSpouse } = input;
+  const hasSpouse = input.hasSpouse === true;
+  const educationLevel = input.education ?? 'less_than_secondary';
+  const canadianExpYears = input.canadianExpYears ?? 0;
+  const foreignExpYears = input.foreignExpYears ?? 0;
+  const language1Tag = input.language1Tag ?? 'other';
+  const language2Tag = input.hasLanguage2 ? (input.language2Tag ?? 'other') : 'other';
+  const spouseEducationLevel = input.spouseEducation ?? 'less_than_secondary';
+  const spouseCanadianExpYears = input.spouseCanadianExpYears ?? 0;
   const minClb1 = minAbility(input.language1);
 
-  const age = ageScore(input.age, hasSpouse);
-  const education = EDUCATION_POINTS[input.education][hasSpouse ? 'withSpouse' : 'single'];
+  const age = ageScore(input.age ?? 0, hasSpouse);
+  const education = EDUCATION_POINTS[educationLevel][hasSpouse ? 'withSpouse' : 'single'];
   const firstLanguage = sumAbilities(input.language1, (clb) => firstLanguageAbilityPoints(clb, hasSpouse));
   const secondLanguage = input.hasLanguage2 ? sumAbilities(input.language2, secondLanguageAbilityPoints) : 0;
-  const canadianExperience = CANADIAN_EXP_POINTS[input.canadianExpYears][hasSpouse ? 'withSpouse' : 'single'];
-  const frenchBonusPoints = frenchBonus(input.language1, input.language1Tag, input.language2, input.hasLanguage2 ? input.language2Tag : 'other');
+  const canadianExperience = CANADIAN_EXP_POINTS[canadianExpYears][hasSpouse ? 'withSpouse' : 'single'];
+  const frenchBonusPoints = frenchBonus(input.language1, language1Tag, input.language2, language2Tag);
 
   const coreHumanCapital = age + education + firstLanguage + secondLanguage + canadianExperience;
 
@@ -209,19 +216,19 @@ export function calculateCrsScore(input: CrsInput): CrsBreakdown {
   let spouseLanguage = 0;
   let spouseCanadianExperience = 0;
   if (hasSpouse) {
-    spouseEducation = SPOUSE_EDUCATION_POINTS[input.spouseEducation];
+    spouseEducation = SPOUSE_EDUCATION_POINTS[spouseEducationLevel];
     spouseLanguage = sumAbilities(input.spouseLanguage, spouseLanguageAbilityPoints);
-    spouseCanadianExperience = SPOUSE_CANADIAN_EXP_POINTS[input.spouseCanadianExpYears];
+    spouseCanadianExperience = SPOUSE_CANADIAN_EXP_POINTS[spouseCanadianExpYears];
   }
   const spouseFactors = spouseEducation + spouseLanguage + spouseCanadianExperience;
 
   const educationGroup = Math.min(
     50,
-    educationLanguageTransfer(input.education, minClb1) + educationExperienceTransfer(input.education, input.canadianExpYears),
+    educationLanguageTransfer(educationLevel, minClb1) + educationExperienceTransfer(educationLevel, canadianExpYears),
   );
   const foreignExpGroup = Math.min(
     50,
-    foreignExperienceLanguageTransfer(input.foreignExpYears, minClb1) + foreignExperienceCanadianTransfer(input.foreignExpYears, input.canadianExpYears),
+    foreignExperienceLanguageTransfer(foreignExpYears, minClb1) + foreignExperienceCanadianTransfer(foreignExpYears, canadianExpYears),
   );
   const certificateGroup = certificateTransfer(input.hasCertificateOfQualification, minClb1);
   const skillTransferability = Math.min(100, educationGroup + foreignExpGroup + certificateGroup);

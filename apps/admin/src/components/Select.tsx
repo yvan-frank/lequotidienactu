@@ -6,9 +6,10 @@ export type SelectOption<T> = { value: T; label: string };
 /**
  * Custom listbox — native <select> can't have its open dropdown styled
  * (the option list is rendered by the OS, not the page) so a fully custom
- * one is needed for a consistent look. Single reusable component: every
- * select on the public site should go through this rather than a bare
- * <select>, so the dropdown look stays consistent site-wide.
+ * one is needed for a consistent look. Mirrors apps/public/src/components/
+ * Select.tsx (separate Vite bundle, can't share the import) — kept in
+ * sync manually; colors use orange-* rather than brand-* since the admin
+ * build has no brand-* theme tokens defined.
  */
 export function Select<T extends string | number>({
   value,
@@ -72,8 +73,7 @@ export function Select<T extends string | number>({
 
   // Jump straight to the currently selected option on open, same as a
   // native <select> highlighting its current value when the list drops
-  // down — without this, a long list (e.g. age 1-45) always opens at the
-  // top regardless of what's already selected.
+  // down.
   useLayoutEffect(() => {
     if (!open) return;
     const activeItem = listRef.current?.children[activeIndex] as HTMLElement | undefined;
@@ -125,8 +125,8 @@ export function Select<T extends string | number>({
         aria-label={ariaLabel}
         onClick={() => (open ? setOpen(false) : openDropdown())}
         onKeyDown={onKeyDown}
-        className={`flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border bg-white px-3 py-2 text-left text-sm transition focus:outline-none ${
-          open ? 'border-brand-600 ring-2 ring-brand-600/15' : 'border-slate-300 hover:border-slate-400'
+        className={`flex w-full min-w-0 items-center justify-between gap-2 rounded border bg-white px-3 py-2 text-left text-sm transition focus:outline-none ${
+          open ? 'border-orange-600 ring-2 ring-orange-600/15' : 'border-slate-300 hover:border-slate-400'
         }`}
       >
         <span className={`min-w-0 flex-1 truncate ${selected ? 'text-slate-900' : 'text-slate-400'}`}>
@@ -154,11 +154,11 @@ export function Select<T extends string | number>({
               onMouseEnter={() => setActiveIndex(index)}
               onClick={() => commit(index)}
               className={`flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition ${
-                index === activeIndex ? 'bg-brand-50 text-brand-700' : 'text-slate-700'
+                index === activeIndex ? 'bg-orange-50 text-orange-800' : 'text-slate-700'
               }`}
             >
               <span className="truncate">{option.label}</span>
-              {option.value === value && <Check size={14} className="shrink-0 text-brand-600" aria-hidden="true" />}
+              {option.value === value && <Check size={14} className="shrink-0 text-orange-700" aria-hidden="true" />}
             </li>
           ))}
         </ul>

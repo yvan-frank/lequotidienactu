@@ -19,6 +19,7 @@ import {
 import {
   Archive,
   Briefcase,
+  CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -63,6 +64,7 @@ import { Newsletter } from './Newsletter';
 import { Taxonomy } from './Taxonomy';
 import { Users as UsersPage } from './Users';
 import { Redirects } from './Redirects';
+import { DrawRounds } from './DrawRounds';
 import { Comments } from './Comments';
 import { Listings } from './Listings';
 import { Settings as SettingsPage } from './Settings';
@@ -333,6 +335,7 @@ const navGroups = [
     label: 'Outils',
     items: [
       { to: '/redirects', label: 'Redirections', icon: RouteIcon, exact: false },
+      { to: '/tirages', label: 'Tirages Entrée express', icon: CalendarDays, exact: false },
       { to: '/backups', label: 'Sauvegardes', icon: HardDrive, exact: false },
       { to: '/activity', label: 'Journal d’activité', icon: ScrollText, exact: false },
     ],
@@ -1485,6 +1488,11 @@ const redirectsRoute = new Route({
   path: '/redirects',
   component: Redirects,
 });
+const drawRoundsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/tirages',
+  component: DrawRounds,
+});
 const commentsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/comments',
@@ -1539,6 +1547,7 @@ const router = createRouter({
     loginRoute,
     taxonomyRoute,
     redirectsRoute,
+    drawRoundsRoute,
     commentsRoute,
     listingsRoute,
     adsRoute,

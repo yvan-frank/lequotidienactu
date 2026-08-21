@@ -13,6 +13,7 @@ use App\Http\Controllers\AdminBackupController;
 use App\Http\Controllers\AdminCommentController;
 use App\Http\Controllers\AdminContentSearchController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminDrawRoundController;
 use App\Http\Controllers\AdminListingController;
 use App\Http\Controllers\AdminMediaController;
 use App\Http\Controllers\AdminNewsletterController;
@@ -45,6 +46,7 @@ final class Router
         $adminMedia = new AdminMediaController();
         $adminTaxonomy = new AdminTaxonomyController();
         $adminRedirects = new AdminRedirectController();
+        $adminDrawRounds = new AdminDrawRoundController();
         $adminComments = new AdminCommentController();
         $adminContentSearch = new AdminContentSearchController();
         $adminDashboard = new AdminDashboardController();
@@ -110,6 +112,10 @@ final class Router
             $api->articles();
             return;
         }
+        if ($method === 'GET' && $path === '/api/draw-rounds') {
+            $api->drawRounds();
+            return;
+        }
         if ($method === 'GET' && $path === '/api/admin/session') { $adminAuth->session(); return; }
         if ($method === 'POST' && $path === '/api/admin/login') { $adminAuth->login(); return; }
         if ($method === 'POST' && $path === '/api/admin/logout') { $adminAuth->logout(); return; }
@@ -151,6 +157,10 @@ final class Router
         if ($method === 'POST' && $path === '/api/admin/redirects') { $adminRedirects->create(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/redirects/(\d+)$#', $path, $m)) { $adminRedirects->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/redirects/(\d+)$#', $path, $m)) { $adminRedirects->delete((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/draw-rounds') { $adminDrawRounds->index(); return; }
+        if ($method === 'POST' && $path === '/api/admin/draw-rounds') { $adminDrawRounds->create(); return; }
+        if ($method === 'PUT' && preg_match('#^/api/admin/draw-rounds/(\d+)$#', $path, $m)) { $adminDrawRounds->update((int) $m[1]); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/draw-rounds/(\d+)$#', $path, $m)) { $adminDrawRounds->delete((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/dashboard') { $adminDashboard->stats(); return; }
         if ($method === 'GET' && $path === '/api/admin/audit-logs') { $adminAuditLog->index(); return; }
         if ($method === 'GET' && $path === '/api/admin/backups') { $adminBackups->index(); return; }

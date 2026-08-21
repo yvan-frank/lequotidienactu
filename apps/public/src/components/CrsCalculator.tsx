@@ -1,5 +1,16 @@
-import { useMemo, useState, type ComponentType } from 'react';
-import { Briefcase, Languages, Sparkles, User, Users, type LucideProps } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import {
+  Briefcase,
+  CalendarDays,
+  CheckCircle2,
+  Languages,
+  RotateCcw,
+  Sparkles,
+  User,
+  Users,
+  XCircle,
+  type LucideProps,
+} from 'lucide-react';
 import {
   calculateCrsScore,
   CLB_LEVELS,
@@ -13,6 +24,15 @@ import {
   type LanguageTag,
 } from '../lib/crsScore';
 import { Select, type SelectOption } from './Select';
+import { Toast } from './Toast';
+import { api } from '../api';
+
+type DrawRound = {
+  draw_date: string;
+  draw_type: string;
+  crs_cutoff: number;
+  invitations_issued: number;
+};
 
 const ABILITY_LABELS: Record<Ability, string> = {
   listening: 'Compréhension orale',
@@ -68,7 +88,8 @@ const CANADIAN_STUDY_OPTIONS: SelectOption<CanadianStudy>[] = [
   { value: 'three_years_plus', label: 'Programme de 3 ans ou plus (+30)' },
 ];
 
-const defaultClb: ClbScores = { listening: 7, speaking: 7, reading: 7, writing: 7 };
+const ABILITIES: Ability[] = ['listening', 'speaking', 'reading', 'writing'];
+const emptyClb: ClbScores = { listening: null, speaking: null, reading: null, writing: null };
 
 type Accent = 'sky' | 'violet' | 'amber' | 'rose' | 'emerald';
 
@@ -127,7 +148,7 @@ function LanguageAbilities({
 }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {(Object.keys(ABILITY_LABELS) as Ability[]).map((ability) => (
+      {ABILITIES.map((ability) => (
         <div key={ability} className="grid gap-1 text-xs font-semibold text-slate-500">
           {ABILITY_LABELS[ability]}
           <Select
@@ -135,6 +156,7 @@ function LanguageAbilities({
             value={scores[ability]}
             onChange={(clb) => onChange({ ...scores, [ability]: clb })}
             options={CLB_OPTIONS}
+            placeholder="NCLC ?"
           />
         </div>
       ))}
@@ -143,23 +165,75 @@ function LanguageAbilities({
 }
 
 export function CrsCalculator() {
-  const [age, setAge] = useState(30);
-  const [hasSpouse, setHasSpouse] = useState(false);
-  const [education, setEducation] = useState<EducationLevel>('three_year_plus');
-  const [canadianExpYears, setCanadianExpYears] = useState<CanadianExpYears>(0);
-  const [foreignExpYears, setForeignExpYears] = useState<ForeignExpYears>(1);
+  const [age, setAge] = useState<number | null>(null);
+  const [hasSpouse, setHasSpouse] = useState<boolean | null>(null);
+  const [education, setEducation] = useState<EducationLevel | null>(null);
+  const [canadianExpYears, setCanadianExpYears] = useState<CanadianExpYears | null>(null);
+  const [foreignExpYears, setForeignExpYears] = useState<ForeignExpYears | null>(null);
   const [hasCertificateOfQualification, setHasCertificateOfQualification] = useState(false);
-  const [language1, setLanguage1] = useState<ClbScores>(defaultClb);
-  const [language1Tag, setLanguage1Tag] = useState<LanguageTag>('french');
+  const [language1, setLanguage1] = useState<ClbScores>(emptyClb);
+  const [language1Tag, setLanguage1Tag] = useState<LanguageTag | null>(null);
   const [hasLanguage2, setHasLanguage2] = useState(false);
-  const [language2, setLanguage2] = useState<ClbScores>(defaultClb);
-  const [language2Tag, setLanguage2Tag] = useState<LanguageTag>('english');
+  const [language2, setLanguage2] = useState<ClbScores>(emptyClb);
+  const [language2Tag, setLanguage2Tag] = useState<LanguageTag | null>(null);
   const [hasProvincialNomination, setHasProvincialNomination] = useState(false);
   const [hasSiblingInCanada, setHasSiblingInCanada] = useState(false);
   const [canadianStudy, setCanadianStudy] = useState<CanadianStudy>('none');
-  const [spouseEducation, setSpouseEducation] = useState<EducationLevel>('three_year_plus');
-  const [spouseLanguage, setSpouseLanguage] = useState<ClbScores>(defaultClb);
-  const [spouseCanadianExpYears, setSpouseCanadianExpYears] = useState<CanadianExpYears>(0);
+  const [spouseEducation, setSpouseEducation] = useState<EducationLevel | null>(null);
+  const [spouseLanguage, setSpouseLanguage] = useState<ClbScores>(emptyClb);
+  const [spouseCanadianExpYears, setSpouseCanadianExpYears] = useState<CanadianExpYears | null>(null);
+  const [drawRounds, setDrawRounds] = useState<DrawRound[]>([]);
+
+  useEffect(() => {
+    api
+      .get<{ data: DrawRound[] }>('/draw-rounds')
+      .then((response) => setDrawRounds(response.data.data))
+      .catch(() => {});
+  }, []);
+
+  const reset = () => {
+    setAge(null);
+    setHasSpouse(null);
+    setEducation(null);
+    setCanadianExpYears(null);
+    setForeignExpYears(null);
+    setHasCertificateOfQualification(false);
+    setLanguage1(emptyClb);
+    setLanguage1Tag(null);
+    setHasLanguage2(false);
+    setLanguage2(emptyClb);
+    setLanguage2Tag(null);
+    setHasProvincialNomination(false);
+    setHasSiblingInCanada(false);
+    setCanadianStudy('none');
+    setSpouseEducation(null);
+    setSpouseLanguage(emptyClb);
+    setSpouseCanadianExpYears(null);
+  };
+
+  const language1Complete = language1Tag !== null && ABILITIES.every((ability) => language1[ability] !== null);
+  const language2Complete = !hasLanguage2 || (language2Tag !== null && ABILITIES.every((ability) => language2[ability] !== null));
+  const spouseComplete =
+    !hasSpouse ||
+    (spouseEducation !== null &&
+      spouseCanadianExpYears !== null &&
+      ABILITIES.every((ability) => spouseLanguage[ability] !== null));
+  const isComplete =
+    age !== null &&
+    hasSpouse !== null &&
+    education !== null &&
+    canadianExpYears !== null &&
+    foreignExpYears !== null &&
+    language1Complete &&
+    language2Complete &&
+    spouseComplete;
+
+  const [showCompletionToast, setShowCompletionToast] = useState(false);
+  const wasCompleteRef = useRef(false);
+  useEffect(() => {
+    if (isComplete && !wasCompleteRef.current) setShowCompletionToast(true);
+    wasCompleteRef.current = isComplete;
+  }, [isComplete]);
 
   const input: CrsInput = {
     age,
@@ -184,29 +258,31 @@ export function CrsCalculator() {
   const score = useMemo(() => calculateCrsScore(input), [JSON.stringify(input)]);
 
   return (
+    <>
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div className="grid gap-5 lg:order-1">
         <Card title="Profil" icon={User} accent="sky">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Âge">
-              <Select value={age} onChange={setAge} options={AGE_OPTIONS} />
+              <Select value={age} onChange={setAge} options={AGE_OPTIONS} placeholder="Sélectionner…" />
             </Field>
             <Field label="Situation familiale">
               <Select
-                value={hasSpouse ? '1' : '0'}
+                value={hasSpouse === null ? null : hasSpouse ? '1' : '0'}
                 onChange={(value) => setHasSpouse(value === '1')}
                 options={FAMILY_OPTIONS}
+                placeholder="Sélectionner…"
               />
             </Field>
           </div>
           <Field label="Niveau de scolarité le plus élevé">
-            <Select value={education} onChange={setEducation} options={EDUCATION_OPTIONS} />
+            <Select value={education} onChange={setEducation} options={EDUCATION_OPTIONS} placeholder="Sélectionner…" />
           </Field>
         </Card>
 
         <Card title="Langue 1 (test le plus favorable)" icon={Languages} accent="violet">
           <Field label="Cette langue est">
-            <Select value={language1Tag} onChange={setLanguage1Tag} options={LANGUAGE_TAG_OPTIONS} />
+            <Select value={language1Tag} onChange={setLanguage1Tag} options={LANGUAGE_TAG_OPTIONS} placeholder="Sélectionner…" />
           </Field>
           <LanguageAbilities scores={language1} onChange={setLanguage1} />
           <p className="text-xs text-slate-500">
@@ -227,7 +303,7 @@ export function CrsCalculator() {
           {hasLanguage2 && (
             <>
               <Field label="Cette langue est">
-                <Select value={language2Tag} onChange={setLanguage2Tag} options={LANGUAGE_TAG_OPTIONS} />
+                <Select value={language2Tag} onChange={setLanguage2Tag} options={LANGUAGE_TAG_OPTIONS} placeholder="Sélectionner…" />
               </Field>
               <LanguageAbilities scores={language2} onChange={setLanguage2} />
             </>
@@ -237,10 +313,10 @@ export function CrsCalculator() {
         <Card title="Expérience professionnelle" icon={Briefcase} accent="amber">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Expérience de travail qualifiée au Canada">
-              <Select value={canadianExpYears} onChange={setCanadianExpYears} options={WORK_EXP_OPTIONS} />
+              <Select value={canadianExpYears} onChange={setCanadianExpYears} options={WORK_EXP_OPTIONS} placeholder="Sélectionner…" />
             </Field>
             <Field label="Expérience de travail qualifiée à l’étranger">
-              <Select value={foreignExpYears} onChange={setForeignExpYears} options={FOREIGN_EXP_OPTIONS} />
+              <Select value={foreignExpYears} onChange={setForeignExpYears} options={FOREIGN_EXP_OPTIONS} placeholder="Sélectionner…" />
             </Field>
           </div>
           <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -256,14 +332,14 @@ export function CrsCalculator() {
         {hasSpouse && (
           <Card title="Conjoint ou partenaire de fait" icon={Users} accent="rose">
             <Field label="Niveau de scolarité du conjoint">
-              <Select value={spouseEducation} onChange={setSpouseEducation} options={EDUCATION_OPTIONS} />
+              <Select value={spouseEducation} onChange={setSpouseEducation} options={EDUCATION_OPTIONS} placeholder="Sélectionner…" />
             </Field>
             <div>
               <p className="mb-1.5 text-sm font-semibold text-slate-700">Langue officielle du conjoint</p>
               <LanguageAbilities scores={spouseLanguage} onChange={setSpouseLanguage} />
             </div>
             <Field label="Expérience de travail qualifiée du conjoint au Canada">
-              <Select value={spouseCanadianExpYears} onChange={setSpouseCanadianExpYears} options={WORK_EXP_OPTIONS} />
+              <Select value={spouseCanadianExpYears} onChange={setSpouseCanadianExpYears} options={WORK_EXP_OPTIONS} placeholder="Sélectionner…" />
             </Field>
           </Card>
         )}
@@ -307,6 +383,13 @@ export function CrsCalculator() {
             <p className="mt-2 text-5xl font-extrabold tabular-nums">{score.total}</p>
             <p className="mt-1 text-sm opacity-80">sur 1 200 points</p>
           </div>
+          <button
+            type="button"
+            onClick={reset}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+          >
+            <RotateCcw size={15} aria-hidden="true" /> Réinitialiser le formulaire
+          </button>
           <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm">
             <p className="font-bold text-slate-900">Détail du score</p>
             <dl className="mt-3 grid gap-2">
@@ -316,6 +399,37 @@ export function CrsCalculator() {
               <ScoreRow accent="emerald" label="Points supplémentaires" value={score.additional} />
             </dl>
           </div>
+          {drawRounds.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm">
+              <p className="flex items-center gap-2 font-bold text-slate-900">
+                <CalendarDays size={16} className="text-slate-400" aria-hidden="true" />
+                Derniers tirages
+              </p>
+              <ul className="mt-3 grid gap-3">
+                {drawRounds.map((round) => {
+                  const qualifies = score.total >= round.crs_cutoff;
+                  return (
+                    <li key={`${round.draw_date}-${round.draw_type}`} className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-slate-700">
+                          {new Date(round.draw_date).toLocaleDateString('fr-FR')}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">{round.draw_type}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <span className="font-bold text-slate-900 tabular-nums">{round.crs_cutoff}</span>
+                        {qualifies ? (
+                          <CheckCircle2 size={15} className="text-emerald-600" aria-label="Score suffisant" />
+                        ) : (
+                          <XCircle size={15} className="text-slate-300" aria-label="Score insuffisant" />
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
           <p className="text-xs leading-relaxed text-slate-500">
             Estimation basée sur la grille publique du Système de classement global (SCG) d’IRCC. Barème
             indicatif pouvant différer légèrement du calcul officiel — vérifiez toujours votre score exact
@@ -324,6 +438,14 @@ export function CrsCalculator() {
         </div>
       </div>
     </div>
+    {showCompletionToast && (
+      <Toast
+        tone="success"
+        message="Formulaire complet — voici votre score final estimé !"
+        onClose={() => setShowCompletionToast(false)}
+      />
+    )}
+    </>
   );
 }
 
