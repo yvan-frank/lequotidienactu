@@ -70,7 +70,7 @@ $articleBody = \App\Support\ArticleEmbeds::render($article['body'] ?? '<p>' . ht
 
   <?php if (!empty($article['hero_image'])): ?>
     <figure class="mt-8">
-      <img class="aspect-video w-full cursor-zoom-in rounded-xl object-cover" data-lightbox src="<?= htmlspecialchars($article['hero_image']) ?>" alt="<?= htmlspecialchars($article['hero_alt'] ?? '') ?>" width="1200" height="675">
+      <img class="aspect-video w-full cursor-zoom-in rounded-xl object-cover" data-lightbox src="<?= htmlspecialchars($article['hero_image']) ?>" alt="<?= htmlspecialchars($article['hero_alt'] ?? '') ?>" width="1200" height="675" fetchpriority="high">
       <?php if (!empty($article['hero_credit'])): ?>
         <figcaption class="mt-2 text-xs text-slate-400">© <?= htmlspecialchars($article['hero_credit']) ?></figcaption>
       <?php endif; ?>
@@ -129,7 +129,7 @@ $articleBody = \App\Support\ArticleEmbeds::render($article['body'] ?? '<p>' . ht
         <?php foreach ($related as $item): ?>
           <article class="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <?php if (!empty($item['hero_image'])): ?>
-              <img class="h-36 w-full object-cover" src="<?= htmlspecialchars($item['hero_image']) ?>" alt="" width="640" height="360">
+              <img class="h-36 w-full object-cover" src="<?= htmlspecialchars($item['hero_image']) ?>" alt="" width="640" height="360" loading="lazy">
             <?php endif; ?>
             <div class="p-5">
               <p class="text-xs font-bold tracking-widest text-brand-600 uppercase"><?= htmlspecialchars($item['category_name']) ?></p>
@@ -165,7 +165,7 @@ $articleBody = \App\Support\ArticleEmbeds::render($article['body'] ?? '<p>' . ht
         <?php foreach ($sidebarArticles as $item): ?>
           <a class="group flex items-center gap-3 py-3 first:pt-0 last:pb-0" href="/<?= htmlspecialchars($item['category']) ?>/<?= htmlspecialchars($item['slug']) ?>">
             <?php if (!empty($item['hero_image'])): ?>
-              <img class="size-14 shrink-0 rounded-lg object-cover" src="<?= htmlspecialchars($item['hero_image']) ?>" alt="" width="56" height="56">
+              <img class="size-14 shrink-0 rounded-lg object-cover" src="<?= htmlspecialchars($item['hero_image']) ?>" alt="" width="56" height="56" loading="lazy">
             <?php endif; ?>
             <div class="min-w-0">
               <p class="text-[11px] font-bold tracking-widest text-brand-600 uppercase"><?= htmlspecialchars($item['category_name']) ?></p>

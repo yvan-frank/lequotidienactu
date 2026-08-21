@@ -23,10 +23,10 @@
   <p class="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-slate-600">Aucun article publié dans cette rubrique pour le moment.</p>
 <?php else: ?>
   <div class="grid gap-4 md:grid-cols-2">
-    <?php foreach ($articles as $item): ?>
+    <?php foreach ($articles as $index => $item): ?>
       <article class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <?php if (!empty($item['hero_image'])): ?>
-          <img class="h-40 w-full object-cover" src="<?= htmlspecialchars($item['hero_image']) ?>" alt="" width="640" height="360">
+          <img class="h-40 w-full object-cover" src="<?= htmlspecialchars($item['hero_image']) ?>" alt="" width="640" height="360" <?= $index === 0 ? 'fetchpriority="high"' : 'loading="lazy"' ?>>
         <?php endif; ?>
         <div class="p-6">
           <?php if ($item['category'] !== $category): ?>

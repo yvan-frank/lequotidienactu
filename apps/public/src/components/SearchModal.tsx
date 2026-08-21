@@ -132,6 +132,7 @@ export function SearchModal() {
                       className="size-12 shrink-0 rounded-lg object-cover"
                       width={48}
                       height={48}
+                      loading="lazy"
                     />
                   )}
                   <div className="min-w-0">

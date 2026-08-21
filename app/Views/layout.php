@@ -180,7 +180,7 @@ if ($categoryTree === []) {
     <div class="mx-auto grid max-w-7xl gap-10 px-6 py-14 md:grid-cols-[1.3fr_2fr] lg:grid-cols-[1.3fr_2.2fr_1fr]">
       <div class="max-w-sm">
         <a class="inline-flex items-center" href="/" aria-label="Le Quotidien Actu - accueil">
-          <img class="h-10 w-auto max-w-40 object-contain object-left" src="/assets/logo-header.png" alt="Le Quotidien Actu" width="1482" height="720">
+          <img class="h-10 w-auto max-w-40 object-contain object-left" src="/assets/logo-header.png" alt="Le Quotidien Actu" width="1482" height="720" loading="lazy">
         </a>
         <p class="mt-4 text-sm leading-relaxed text-slate-400">
           <?= htmlspecialchars($generalSettings['tagline'] !== '' ? $generalSettings['tagline'] : 'L’actualité Afrique francophone, France et diaspora : décryptée, vérifiée, sans détour.') ?>

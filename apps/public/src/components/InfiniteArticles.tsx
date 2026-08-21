@@ -98,6 +98,7 @@ export function InfiniteArticles({
                   alt=""
                   width={640}
                   height={360}
+                  loading="lazy"
                 />
               )}
               <div className="p-6">
