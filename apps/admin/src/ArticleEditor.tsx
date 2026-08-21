@@ -74,6 +74,7 @@ type StoredArticle = {
   hero_bytes: number | null;
   hero_created_at: string | null;
   is_sponsored: number | boolean;
+  layout: 'standard' | 'magazine';
   tag_ids: number[];
 };
 const slugify = (value: string) =>
@@ -349,6 +350,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
   const [heroMedia, setHeroMedia] = useState<Media | null>(null);
   const [heroAlt, setHeroAlt] = useState('');
   const [isSponsored, setIsSponsored] = useState(false);
+  const [layout, setLayout] = useState<'standard' | 'magazine'>('standard');
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [bodyImagePickerOpen, setBodyImagePickerOpen] = useState(false);
   const [articlePickerOpen, setArticlePickerOpen] = useState(false);
@@ -436,6 +438,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
     setTagIds(article.tag_ids ?? []);
     setHeroAlt(article.hero_alt_text ?? '');
     setIsSponsored(Boolean(article.is_sponsored));
+    setLayout(article.layout === 'magazine' ? 'magazine' : 'standard');
     setHeroMedia(
       article.hero_media_id && article.hero_url
         ? {
@@ -473,6 +476,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
             author_id: form.author_id ? Number(form.author_id) : null,
             tag_ids: tagIds,
             is_sponsored: isSponsored,
+            layout,
           })
         : api.post('/admin/articles', {
             ...form,
@@ -482,6 +486,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
             author_id: form.author_id ? Number(form.author_id) : null,
             tag_ids: tagIds,
             is_sponsored: isSponsored,
+            layout,
           })),
       status,
       wasCreate: !effectiveArticleId,
@@ -947,6 +952,41 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
                 value={form.published_at}
                 onChange={(event) => update('published_at', event.target.value)}
               />
+            </label>
+            <label className="mt-4 block text-sm font-semibold">
+              Mise en page
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLayout('standard');
+                    markDirty();
+                  }}
+                  className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                    layout === 'standard'
+                      ? 'border-orange-600 bg-orange-50 text-orange-800'
+                      : 'border-slate-200 font-normal text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  Standard
+                  <span className="mt-0.5 block font-normal text-slate-400">Mise en page article classique</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLayout('magazine');
+                    markDirty();
+                  }}
+                  className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                    layout === 'magazine'
+                      ? 'border-orange-600 bg-orange-50 text-orange-800'
+                      : 'border-slate-200 font-normal text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  Magazine
+                  <span className="mt-0.5 block font-normal text-slate-400">Grande image, typographie immersive</span>
+                </button>
+              </div>
             </label>
             <label className="mt-4 flex items-center gap-2 text-sm font-semibold">
               <input
