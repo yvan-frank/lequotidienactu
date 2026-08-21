@@ -230,6 +230,7 @@ final class PublicController
             'Estimez gratuitement votre score au Système de classement global (SCG) pour l’immigration Entrée express au Canada.',
             '/simulateur-entree-express'
         );
+        $seo['og_image'] = Config::url('/assets/og-simulateur-entree-express.webp');
         require __DIR__ . '/../../Views/layout.php';
     }
 
@@ -242,6 +243,7 @@ final class PublicController
             'Estimez gratuitement votre pointage au Programme de sélection des travailleurs qualifiés (PSTQ) du Québec, via Arrima.',
             '/simulateur-arrima'
         );
+        $seo['og_image'] = Config::url('/assets/og-simulateur-arrima.webp');
         require __DIR__ . '/../../Views/layout.php';
     }
 

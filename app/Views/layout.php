@@ -200,7 +200,7 @@ if ($categoryTree === []) {
       <figcaption data-lightbox-caption class="is-empty"></figcaption>
     </figure>
   </div>
-  <main class="mx-auto max-w-7xl px-6 py-10"><?php require __DIR__ . '/' . ($page ?? '404') . '.php'; ?></main>
+  <main class="mx-auto max-w-7xl px-3 sm:px-6 py-10"><?php require __DIR__ . '/' . ($page ?? '404') . '.php'; ?></main>
   <footer class="w-full bg-slate-950 text-slate-300">
     <div class="mx-auto grid max-w-7xl gap-10 px-6 py-14 md:grid-cols-[1.3fr_2fr] lg:grid-cols-[1.3fr_2.2fr_1fr]">
       <div class="max-w-sm">

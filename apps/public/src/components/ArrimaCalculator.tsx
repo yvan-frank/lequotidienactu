@@ -102,7 +102,7 @@ function Card({
 }) {
   const colors = ACCENTS[accent];
   return (
-    <section className={`rounded-xl border border-l-4 border-slate-200 bg-white p-5 sm:p-6 ${colors.bar}`}>
+    <section className={`rounded-xl border border-l-4 border-slate-200 bg-white p-2 sm:p-6 ${colors.bar}`}>
       <div className="flex items-center gap-3">
         <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${colors.chip}`}>
           <Icon size={18} aria-hidden="true" />

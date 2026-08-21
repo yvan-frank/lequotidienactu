@@ -10,6 +10,16 @@
   </p>
 </header>
 
+<img
+  src="/assets/og-simulateur-arrima.webp"
+  alt="Drapeau du Canada et logo Arrima, portail du gouvernement du Québec"
+  width="1536"
+  height="1024"
+  class="mb-10 h-auto max-h-80 w-full rounded-xl border border-slate-200 object-cover"
+  loading="eager"
+  fetchpriority="high"
+>
+
 <div class="pb-10" data-island="arrima-calculator"></div>
 
 <div class="mb-16 max-w-3xl rounded-xl border border-slate-200 bg-white p-5">

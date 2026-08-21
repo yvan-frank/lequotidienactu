@@ -10,6 +10,16 @@
   </p>
 </header>
 
+<img
+  src="/assets/og-simulateur-entree-express.webp"
+  alt="Drapeau du Canada et logo d’Immigration, Réfugiés et Citoyenneté Canada (IRCC)"
+  width="1536"
+  height="1024"
+  class="mb-10 h-auto max-h-80 w-full rounded-xl border border-slate-200 object-cover"
+  loading="eager"
+  fetchpriority="high"
+>
+
 <div class="pb-10" data-island="crs-calculator"></div>
 
 <div class="mb-16 max-w-3xl rounded-xl border border-slate-200 bg-white p-5">
