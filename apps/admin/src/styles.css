@@ -9,6 +9,63 @@ button:not(:disabled),
   cursor: pointer;
 }
 
+/*
+ * Custom checkbox/select skin applied globally so every current and future
+ * form control matches without touching each component individually.
+ */
+input[type='checkbox'] {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.3rem;
+  background-color: #fff;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+input[type='checkbox']::before {
+  content: '';
+  width: 0.65rem;
+  height: 0.65rem;
+  transform: scale(0);
+  transition: transform 0.1s ease-in-out;
+  box-shadow: inset 1em 1em white;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+input[type='checkbox']:checked {
+  background-color: #c2410c;
+  border-color: #c2410c;
+}
+
+input[type='checkbox']:checked::before {
+  transform: scale(1);
+}
+
+input[type='checkbox']:focus-visible {
+  outline: 2px solid #c2410c;
+  outline-offset: 2px;
+}
+
+input[type='checkbox']:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2364748b' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 0.9rem;
+  padding-right: 2.25rem;
+  cursor: pointer;
+}
+
 .no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
