@@ -5,6 +5,7 @@ namespace App\Http;
 
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\AdminAdsController;
+use App\Http\Controllers\AdminAiController;
 use App\Http\Controllers\AdminArticleController;
 use App\Http\Controllers\AdminAuditLogController;
 use App\Http\Controllers\AdminAuthController;
@@ -49,6 +50,7 @@ final class Router
         $adminAds = new AdminAdsController();
         $adminUsers = new AdminUserController();
         $adminNewsletter = new AdminNewsletterController();
+        $adminAi = new AdminAiController();
         $seo = new SeoController();
 
         if ($method === 'GET' && ($path === '/u/admin' || str_starts_with($path, '/u/admin/'))) {
@@ -118,6 +120,7 @@ final class Router
         if ($method === 'DELETE' && preg_match('#^/api/admin/articles/(\d+)$#', $path, $m)) { $adminArticles->delete((int) $m[1]); return; }
         if ($method === 'POST' && preg_match('#^/api/admin/articles/(\d+)/transition$#', $path, $m)) { $adminArticles->transition((int) $m[1]); return; }
         if ($method === 'POST' && preg_match('#^/api/admin/articles/(\d+)/featured$#', $path, $m)) { $adminArticles->toggleFeatured((int) $m[1]); return; }
+        if ($method === 'POST' && $path === '/api/admin/ai/assist') { $adminAi->assist(); return; }
         if ($method === 'GET' && $path === '/api/admin/content-search') { $adminContentSearch->search(); return; }
         if ($method === 'GET' && $path === '/api/admin/pages') { $adminPages->index(); return; }
         if ($method === 'POST' && $path === '/api/admin/pages') { $adminPages->create(); return; }

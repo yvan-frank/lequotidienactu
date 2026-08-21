@@ -34,6 +34,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { api } from './api';
+import { AiAssistButton } from './components/AiAssistButton';
 import { ArticlePicker, type ArticleSummary } from './components/ArticlePicker';
 import { LinkPopover } from './components/LinkPopover';
 import { MediaPicker, type Media } from './components/MediaPicker';
@@ -525,6 +526,13 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
     setForm((current) => ({ ...current, [key]: value }));
     markDirty();
   };
+  const aiContext = {
+    title: form.title,
+    excerpt: form.excerpt,
+    body: form.body,
+    category_name:
+      taxonomy.data?.categories.find((category) => String(category.id) === String(form.category_id))?.name ?? '',
+  };
   const onTitle = (title: string) => {
     setForm((current) => ({
       ...current,
@@ -540,6 +548,23 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
       excerpt,
       meta_description: current.meta_description || excerpt.slice(0, 160),
     }));
+    markDirty();
+  };
+  const applyProofread = (correctedText: string) => {
+    if (!editor) return;
+    if (
+      !window.confirm(
+        'Remplacer tout le contenu par le texte corrigé ? Les images, encarts et mises en forme avancées présents dans le contenu actuel seront perdus — seul le texte est conservé.',
+      )
+    ) {
+      return;
+    }
+    const html = correctedText
+      .split(/\n{2,}/)
+      .map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`)
+      .join('');
+    editor.commands.setContent(html, true);
+    setForm((current) => ({ ...current, body: html }));
     markDirty();
   };
   const requestSave = (status: Status) => {
@@ -652,7 +677,10 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
             <summary className="cursor-pointer font-semibold">Titre & aperçu</summary>
             <div className="mt-5 grid grid-cols-1 gap-4">
               <label className="min-w-0 text-sm font-semibold">
-                Titre
+                <div className="flex items-center justify-between gap-2">
+                  <span>Titre</span>
+                  <AiAssistButton task="title" label="Suggérer" context={aiContext} onApply={onTitle} />
+                </div>
                 <input
                   className="mt-2 w-full rounded border border-slate-300 px-3 py-2"
                   value={form.title}
@@ -673,7 +701,10 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
                 />
               </label>
               <label className="min-w-0 text-sm font-semibold">
-                Chapô
+                <div className="flex items-center justify-between gap-2">
+                  <span>Chapô</span>
+                  <AiAssistButton task="excerpt" label="Suggérer" context={aiContext} onApply={onExcerpt} />
+                </div>
                 <textarea
                   className="mt-2 w-full rounded border border-slate-300 px-3 py-2"
                   rows={3}
@@ -687,7 +718,8 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
             <details open className="rounded-lg border border-slate-200 bg-white p-6">
               <summary className="cursor-pointer font-semibold">Contenu</summary>
               <div className="mt-4">
-                <div className="flex items-center justify-end">
+                <div className="flex items-center justify-end gap-2">
+                  <AiAssistButton task="proofread" label="Corriger" context={aiContext} onApply={applyProofread} />
                   <button
                     type="button"
                     onClick={expandContent}
@@ -763,7 +795,15 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
                 </div>
               )}
               <label className="text-sm font-semibold">
-                Meta title
+                <div className="flex items-center justify-between gap-2">
+                  <span>Meta title</span>
+                  <AiAssistButton
+                    task="meta_title"
+                    label="Suggérer"
+                    context={aiContext}
+                    onApply={(suggestion) => update('meta_title', suggestion)}
+                  />
+                </div>
                 <input
                   className="mt-2 w-full rounded border border-slate-300 px-3 py-2"
                   value={form.meta_title}
@@ -776,7 +816,15 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
                 </span>
               </label>
               <label className="text-sm font-semibold">
-                Meta description
+                <div className="flex items-center justify-between gap-2">
+                  <span>Meta description</span>
+                  <AiAssistButton
+                    task="meta_description"
+                    label="Suggérer"
+                    context={aiContext}
+                    onApply={(suggestion) => update('meta_description', suggestion)}
+                  />
+                </div>
                 <textarea
                   className="mt-2 w-full rounded border border-slate-300 px-3 py-2"
                   rows={3}
@@ -1006,6 +1054,16 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
               </p>
             )}
           </details>
+          <details className="rounded-lg border border-slate-200 bg-white p-5">
+            <summary className="cursor-pointer font-bold">Réseaux sociaux</summary>
+            <p className="mt-3 text-xs text-slate-500">
+              Génère des propositions de publication pour X/Twitter, Facebook et LinkedIn à partir de
+              l’article. Rien n’est publié automatiquement — copiez le texte souhaité.
+            </p>
+            <div className="mt-3">
+              <AiAssistButton task="social" label="Générer des déclinaisons" context={aiContext} />
+            </div>
+          </details>
         </aside>
       </div>
       <div className="sticky bottom-4 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur">
@@ -1085,14 +1143,17 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
         >
           <div className="flex items-center justify-between border-b border-slate-200 p-6 pb-4">
             <p className="text-sm font-semibold">Contenu</p>
-            <button
-              type="button"
-              onClick={collapseContent}
-              className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-              title="Réduire pour retrouver la barre latérale"
-            >
-              <Minimize2 size={14} /> Réduire
-            </button>
+            <div className="flex items-center gap-2">
+              <AiAssistButton task="proofread" label="Corriger" context={aiContext} onApply={applyProofread} />
+              <button
+                type="button"
+                onClick={collapseContent}
+                className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                title="Réduire pour retrouver la barre latérale"
+              >
+                <Minimize2 size={14} /> Réduire
+              </button>
+            </div>
           </div>
           <div className="flex min-h-0 flex-1 flex-col px-6 pb-6">
             <EditorToolbar
