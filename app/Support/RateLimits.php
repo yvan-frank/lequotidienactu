@@ -29,6 +29,7 @@ final class RateLimits
         'listing-submit' => ['label' => 'Dépôt d’annonces', 'description' => 'Soumissions d’offres d’emploi et de petites annonces depuis le site public.', 'max_attempts' => 5, 'window_seconds' => 3600],
         'reader-register' => ['label' => 'Inscription lecteur', 'description' => 'Créations de compte lecteur depuis le site public.', 'max_attempts' => 5, 'window_seconds' => 900],
         'reader-login' => ['label' => 'Connexion lecteur', 'description' => 'Tentatives de connexion à un compte lecteur.', 'max_attempts' => 8, 'window_seconds' => 900],
+        'advertiser-login' => ['label' => 'Connexion annonceur', 'description' => 'Tentatives de connexion à l’espace annonceurs.', 'max_attempts' => 8, 'window_seconds' => 900],
     ];
 
     /**

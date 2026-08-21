@@ -1,15 +1,18 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, MousePointerClick, Megaphone, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Building2, Eye, MousePointerClick, Megaphone, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { api } from './api';
 import { Toast } from './components/Toast';
 
 type AdSlot = { id: number; code: string; label: string; page_scope: string };
+type Advertiser = { id: number; name: string; email: string; created_at: string; ads_count: number };
 type Ad = {
   id: number;
   ad_slot_id: number;
   slot_code: string;
   slot_label: string;
+  advertiser_id: number | null;
+  advertiser_name: string | null;
   name: string;
   content_html: string;
   starts_at: string | null;
@@ -47,13 +50,19 @@ export function Ads() {
     queryKey: ['admin-ads'],
     queryFn: async () => (await api.get<{ data: Ad[] }>('/admin/ads')).data.data,
   });
+  const advertisers = useQuery({
+    queryKey: ['admin-advertisers'],
+    queryFn: async () => (await api.get<{ data: Advertiser[] }>('/admin/advertisers')).data.data,
+  });
   const [toast, setToast] = React.useState<{ message: string; tone: 'error' | 'success' } | null>(
     null,
   );
   const [editing, setEditing] = React.useState<Ad | 'new' | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<Ad | null>(null);
+  const [advertiserPanelOpen, setAdvertiserPanelOpen] = React.useState(false);
   const [form, setForm] = React.useState({
     ad_slot_id: '',
+    advertiser_id: '',
     name: '',
     content_html: '',
     starts_at: '',
@@ -63,6 +72,7 @@ export function Ads() {
   const openNew = () => {
     setForm({
       ad_slot_id: slots.data?.[0] ? String(slots.data[0].id) : '',
+      advertiser_id: '',
       name: '',
       content_html: '',
       starts_at: '',
@@ -73,6 +83,7 @@ export function Ads() {
   const openEdit = (ad: Ad) => {
     setForm({
       ad_slot_id: String(ad.ad_slot_id),
+      advertiser_id: ad.advertiser_id ? String(ad.advertiser_id) : '',
       name: ad.name,
       content_html: ad.content_html,
       starts_at: toDatetimeLocal(ad.starts_at),
@@ -83,6 +94,7 @@ export function Ads() {
 
   const payload = () => ({
     ad_slot_id: Number(form.ad_slot_id),
+    advertiser_id: form.advertiser_id ? Number(form.advertiser_id) : null,
     name: form.name,
     content_html: form.content_html,
     starts_at: form.starts_at || null,
@@ -112,6 +124,26 @@ export function Ads() {
     onError: (error) =>
       setToast({ tone: 'error', message: apiErrorMessage(error, 'Impossible de supprimer cette publicité.') }),
   });
+  const [newAdvertiser, setNewAdvertiser] = React.useState({ name: '', email: '', password: '' });
+  const createAdvertiser = useMutation({
+    mutationFn: () => api.post('/admin/advertisers', newAdvertiser),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-advertisers'] });
+      setNewAdvertiser({ name: '', email: '', password: '' });
+      setToast({ tone: 'success', message: 'Annonceur créé.' });
+    },
+    onError: (error) =>
+      setToast({ tone: 'error', message: apiErrorMessage(error, "Impossible de créer cet annonceur.") }),
+  });
+  const removeAdvertiser = useMutation({
+    mutationFn: (id: number) => api.delete(`/admin/advertisers/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-advertisers'] });
+      setToast({ tone: 'success', message: 'Annonceur supprimé.' });
+    },
+    onError: (error) =>
+      setToast({ tone: 'error', message: apiErrorMessage(error, "Impossible de supprimer cet annonceur.") }),
+  });
 
   return (
     <>
@@ -123,13 +155,21 @@ export function Ads() {
             Gérez les créations publicitaires diffusées sur les emplacements du site public.
           </p>
         </div>
-        <button
-          onClick={openNew}
-          disabled={!slots.data || slots.data.length === 0}
-          className="inline-flex items-center gap-2 rounded bg-orange-700 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-800 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Plus size={16} /> Nouvelle publicité
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setAdvertiserPanelOpen(true)}
+            className="inline-flex items-center gap-2 rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            <Building2 size={16} /> Annonceurs
+          </button>
+          <button
+            onClick={openNew}
+            disabled={!slots.data || slots.data.length === 0}
+            className="inline-flex items-center gap-2 rounded bg-orange-700 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus size={16} /> Nouvelle publicité
+          </button>
+        </div>
       </header>
       <section className="mt-6 rounded-xl border border-slate-200 bg-white shadow-sm">
         {ads.isLoading && <p className="p-6 text-slate-500">Chargement…</p>}
@@ -142,10 +182,11 @@ export function Ads() {
         )}
         {ads.data && ads.data.length > 0 && (
           <div className="max-w-full overflow-x-auto p-6 contain-layout">
-            <table className="w-full min-w-[920px] text-left text-sm">
+            <table className="w-full min-w-[1080px] text-left text-sm">
               <thead className="border-b border-slate-200 text-xs tracking-wider text-slate-500 uppercase">
                 <tr>
                   <th className="py-3 pr-4">Campagne</th>
+                  <th className="py-3 pr-4">Annonceur</th>
                   <th className="py-3 pr-4">Emplacement</th>
                   <th className="py-3 pr-4">Statut</th>
                   <th className="py-3 pr-4">Impressions</th>
@@ -160,6 +201,7 @@ export function Ads() {
                 {ads.data.map((ad) => (
                   <tr key={ad.id} className="border-b border-slate-100 last:border-0">
                     <td className="py-3 pr-4 font-semibold text-slate-900">{ad.name}</td>
+                    <td className="py-3 pr-4 text-slate-500">{ad.advertiser_name ?? '—'}</td>
                     <td className="py-3 pr-4 text-slate-500">{ad.slot_label}</td>
                     <td className="py-3 pr-4">
                       <span
@@ -251,6 +293,24 @@ export function Ads() {
               </select>
             </label>
             <label className={`mt-4 ${labelClass}`}>
+              Annonceur (optionnel)
+              <select
+                className={inputClass}
+                value={form.advertiser_id}
+                onChange={(event) => setForm({ ...form, advertiser_id: event.target.value })}
+              >
+                <option value="">Aucun</option>
+                {advertisers.data?.map((advertiser) => (
+                  <option key={advertiser.id} value={advertiser.id}>
+                    {advertiser.name}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-xs text-slate-400">
+                Donne accès aux statistiques de cette campagne depuis l’espace annonceurs.
+              </span>
+            </label>
+            <label className={`mt-4 ${labelClass}`}>
               Contenu HTML
               <textarea
                 required
@@ -324,6 +384,89 @@ export function Ads() {
               >
                 {remove.isPending ? 'Suppression…' : 'Supprimer'}
               </button>
+            </div>
+          </section>
+        </div>
+      )}
+      {advertiserPanelOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4" role="dialog" aria-modal="true">
+          <section className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-extrabold">Annonceurs</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Créez un accès pour qu’un annonceur consulte les statistiques de ses campagnes sur{' '}
+                  <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">/annonceurs/connexion</code>.
+                </p>
+              </div>
+              <button type="button" onClick={() => setAdvertiserPanelOpen(false)} className="rounded p-1 hover:bg-slate-100" aria-label="Fermer">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              className="mt-5 grid grid-cols-1 gap-3 rounded-lg border border-slate-200 p-4 sm:grid-cols-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                createAdvertiser.mutate();
+              }}
+            >
+              <input
+                required
+                placeholder="Nom"
+                className={inputClass + ' mt-0'}
+                value={newAdvertiser.name}
+                onChange={(event) => setNewAdvertiser({ ...newAdvertiser, name: event.target.value })}
+              />
+              <input
+                required
+                type="email"
+                placeholder="E-mail"
+                className={inputClass + ' mt-0'}
+                value={newAdvertiser.email}
+                onChange={(event) => setNewAdvertiser({ ...newAdvertiser, email: event.target.value })}
+              />
+              <input
+                required
+                type="password"
+                minLength={8}
+                placeholder="Mot de passe"
+                className={inputClass + ' mt-0'}
+                value={newAdvertiser.password}
+                onChange={(event) => setNewAdvertiser({ ...newAdvertiser, password: event.target.value })}
+              />
+              <button
+                disabled={createAdvertiser.isPending}
+                className="sm:col-span-3 rounded bg-orange-700 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-800 disabled:opacity-50"
+              >
+                {createAdvertiser.isPending ? 'Création…' : 'Créer l’accès'}
+              </button>
+            </form>
+
+            <div className="mt-5 max-h-64 overflow-y-auto">
+              {advertisers.isLoading && <p className="text-sm text-slate-500">Chargement…</p>}
+              {advertisers.data?.length === 0 && <p className="text-sm text-slate-500">Aucun annonceur pour le moment.</p>}
+              {advertisers.data?.map((advertiser) => (
+                <div key={advertiser.id} className="flex items-center justify-between gap-3 border-b border-slate-100 py-2.5 last:border-0">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-900">{advertiser.name}</p>
+                    <p className="truncate text-xs text-slate-500">
+                      {advertiser.email} · {advertiser.ads_count} campagne{advertiser.ads_count > 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Supprimer l’accès de « ${advertiser.name} » ? Ses campagnes existantes ne sont pas supprimées, juste détachées.`)) {
+                        removeAdvertiser.mutate(advertiser.id);
+                      }
+                    }}
+                    className="shrink-0 rounded p-2 text-red-700 hover:bg-red-50"
+                    aria-label={`Supprimer l’annonceur ${advertiser.name}`}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
             </div>
           </section>
         </div>

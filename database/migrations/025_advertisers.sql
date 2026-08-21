@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS advertisers (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  email VARCHAR(190) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_email (email)
+);
+
+ALTER TABLE advertisements
+  ADD COLUMN advertiser_id BIGINT UNSIGNED NULL AFTER ad_slot_id,
+  ADD FOREIGN KEY (advertiser_id) REFERENCES advertisers(id) ON DELETE SET NULL;

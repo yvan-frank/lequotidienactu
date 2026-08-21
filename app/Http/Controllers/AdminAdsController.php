@@ -23,11 +23,61 @@ final class AdminAdsController
         AdminAuthController::requireStaff();
         $this->respond(function (PDO $pdo): array {
             $rows = $pdo->query(
-                'SELECT a.id, a.ad_slot_id, s.code AS slot_code, s.label AS slot_label, a.name, a.content_html, a.starts_at, a.ends_at, a.impressions, a.clicks
-                 FROM advertisements a INNER JOIN ad_slots s ON s.id = a.ad_slot_id
+                'SELECT a.id, a.ad_slot_id, s.code AS slot_code, s.label AS slot_label, a.advertiser_id, adv.name AS advertiser_name, a.name, a.content_html, a.starts_at, a.ends_at, a.impressions, a.clicks
+                 FROM advertisements a
+                 INNER JOIN ad_slots s ON s.id = a.ad_slot_id
+                 LEFT JOIN advertisers adv ON adv.id = a.advertiser_id
                  ORDER BY a.id DESC'
             )->fetchAll(PDO::FETCH_ASSOC);
             return ['data' => $rows];
+        });
+    }
+
+    public function advertisers(): void
+    {
+        AdminAuthController::requireStaff();
+        $this->respond(function (PDO $pdo): array {
+            $rows = $pdo->query(
+                'SELECT adv.id, adv.name, adv.email, adv.created_at, (SELECT COUNT(*) FROM advertisements a WHERE a.advertiser_id = adv.id) AS ads_count
+                 FROM advertisers adv ORDER BY adv.name'
+            )->fetchAll(PDO::FETCH_ASSOC);
+            return ['data' => $rows];
+        });
+    }
+
+    public function createAdvertiser(): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        $this->respond(function (PDO $pdo): array {
+            $input = $this->input();
+            $name = trim((string) ($input['name'] ?? ''));
+            $email = filter_var(trim((string) ($input['email'] ?? '')), FILTER_VALIDATE_EMAIL);
+            $password = (string) ($input['password'] ?? '');
+            if ($name === '' || !$email || mb_strlen($password) < 8) {
+                throw new \InvalidArgumentException('Nom, e-mail valide et mot de passe (8 caractères minimum) sont obligatoires.');
+            }
+            $exists = $pdo->prepare('SELECT 1 FROM advertisers WHERE email = :email');
+            $exists->execute(['email' => $email]);
+            if ($exists->fetchColumn()) {
+                throw new \InvalidArgumentException('Un annonceur existe déjà avec cette adresse e-mail.');
+            }
+            $pdo->prepare('INSERT INTO advertisers (name, email, password_hash) VALUES (:name, :email, :hash)')
+                ->execute(['name' => mb_substr($name, 0, 150), 'email' => $email, 'hash' => password_hash($password, PASSWORD_DEFAULT)]);
+            $newId = (int) $pdo->lastInsertId();
+            AuditLog::record('advertiser.create', 'advertiser', $newId, ['name' => $name]);
+            return ['data' => ['id' => $newId], 'message' => 'Annonceur créé.'];
+        }, 201);
+    }
+
+    public function deleteAdvertiser(int $id): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        $this->respond(function (PDO $pdo) use ($id): array {
+            $statement = $pdo->prepare('DELETE FROM advertisers WHERE id = :id');
+            $statement->execute(['id' => $id]);
+            if ($statement->rowCount() === 0) throw new \InvalidArgumentException('Annonceur introuvable.');
+            AuditLog::record('advertiser.delete', 'advertiser', $id);
+            return ['message' => 'Annonceur supprimé.'];
         });
     }
 
@@ -36,7 +86,7 @@ final class AdminAdsController
         AdminAuthController::requireStaff(['admin', 'editor']);
         $this->respond(function (PDO $pdo): array {
             $data = $this->validate($this->input(), $pdo);
-            $statement = $pdo->prepare('INSERT INTO advertisements (ad_slot_id, name, content_html, starts_at, ends_at) VALUES (:ad_slot_id, :name, :content_html, :starts_at, :ends_at)');
+            $statement = $pdo->prepare('INSERT INTO advertisements (ad_slot_id, advertiser_id, name, content_html, starts_at, ends_at) VALUES (:ad_slot_id, :advertiser_id, :name, :content_html, :starts_at, :ends_at)');
             $statement->execute($data);
             $newId = (int) $pdo->lastInsertId();
             AuditLog::record('ad.create', 'advertisement', $newId, ['name' => $data['name']]);
@@ -50,7 +100,7 @@ final class AdminAdsController
         $this->respond(function (PDO $pdo) use ($id): array {
             $data = $this->validate($this->input(), $pdo);
             $data['id'] = $id;
-            $statement = $pdo->prepare('UPDATE advertisements SET ad_slot_id = :ad_slot_id, name = :name, content_html = :content_html, starts_at = :starts_at, ends_at = :ends_at WHERE id = :id');
+            $statement = $pdo->prepare('UPDATE advertisements SET ad_slot_id = :ad_slot_id, advertiser_id = :advertiser_id, name = :name, content_html = :content_html, starts_at = :starts_at, ends_at = :ends_at WHERE id = :id');
             $statement->execute($data);
             if ($statement->rowCount() === 0) {
                 $exists = $pdo->prepare('SELECT 1 FROM advertisements WHERE id = :id');
@@ -87,6 +137,14 @@ final class AdminAdsController
         if (!$slotExists->fetchColumn()) {
             throw new \InvalidArgumentException('Emplacement publicitaire invalide.');
         }
+        $advertiserId = !empty($input['advertiser_id']) ? (int) $input['advertiser_id'] : null;
+        if ($advertiserId !== null) {
+            $advertiserExists = $pdo->prepare('SELECT 1 FROM advertisers WHERE id = :id');
+            $advertiserExists->execute(['id' => $advertiserId]);
+            if (!$advertiserExists->fetchColumn()) {
+                throw new \InvalidArgumentException('Annonceur introuvable.');
+            }
+        }
         $startsAt = trim((string) ($input['starts_at'] ?? '')) ?: null;
         $endsAt = trim((string) ($input['ends_at'] ?? '')) ?: null;
         if ($startsAt !== null && $endsAt !== null && $startsAt > $endsAt) {
@@ -95,6 +153,7 @@ final class AdminAdsController
 
         return [
             'ad_slot_id' => $adSlotId,
+            'advertiser_id' => $advertiserId,
             'name' => mb_substr($name, 0, 150),
             'content_html' => $contentHtml,
             'starts_at' => $startsAt,

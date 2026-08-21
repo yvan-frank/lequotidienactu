@@ -21,6 +21,7 @@ use App\Http\Controllers\AdminRedirectController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminTaxonomyController;
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AdvertiserAuthController;
 use App\Http\Controllers\PremiumController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\ReaderAuthController;
@@ -57,6 +58,7 @@ final class Router
         $adminListings = new AdminListingController();
         $readerAuth = new ReaderAuthController();
         $premium = new PremiumController();
+        $advertiserAuth = new AdvertiserAuthController();
         $seo = new SeoController();
 
         if ($method === 'GET' && ($path === '/u/admin' || str_starts_with($path, '/u/admin/'))) {
@@ -185,6 +187,9 @@ final class Router
         if ($method === 'POST' && $path === '/api/admin/ads') { $adminAds->create(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/ads/(\d+)$#', $path, $m)) { $adminAds->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/ads/(\d+)$#', $path, $m)) { $adminAds->delete((int) $m[1]); return; }
+        if ($method === 'GET' && $path === '/api/admin/advertisers') { $adminAds->advertisers(); return; }
+        if ($method === 'POST' && $path === '/api/admin/advertisers') { $adminAds->createAdvertiser(); return; }
+        if ($method === 'DELETE' && preg_match('#^/api/admin/advertisers/(\d+)$#', $path, $m)) { $adminAds->deleteAdvertiser((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/search') {
             $api->search();
             return;
@@ -238,6 +243,10 @@ final class Router
             $this->notFound();
             return;
         }
+        if ($method === 'GET' && $path === '/annonceurs/connexion') { $advertiserAuth->loginPage(); return; }
+        if ($method === 'POST' && $path === '/annonceurs/connexion') { $advertiserAuth->login(); return; }
+        if ($method === 'POST' && $path === '/annonceurs/deconnexion') { $advertiserAuth->logout(); return; }
+        if ($method === 'GET' && $path === '/annonceurs/tableau-de-bord') { $advertiserAuth->dashboard(); return; }
         if ($method === 'GET' && $path === '/annonces/deposer') { $public->listingSubmitForm(); return; }
         if ($method === 'GET' && $path === '/emploi') { $public->jobs(); return; }
         if ($method === 'GET' && $path === '/petites-annonces') { $public->classifieds(); return; }
