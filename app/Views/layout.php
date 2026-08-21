@@ -131,6 +131,30 @@ if ($categoryTree === []) {
       </nav>
       <div class="flex items-center gap-2">
         <div data-island="search-trigger"></div>
+        <div class="relative" data-push-widget data-vapid-public-key="<?= htmlspecialchars($_ENV['VAPID_PUBLIC_KEY'] ?? '') ?>">
+          <button type="button" data-push-trigger class="hidden rounded border border-slate-300 p-2 text-slate-600 hover:border-brand-600 hover:text-brand-600" aria-label="Notifications" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+          </button>
+          <div data-push-panel class="absolute top-full right-0 z-30 mt-2 hidden w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+            <p class="text-sm font-bold text-slate-900">Notifications</p>
+            <p class="mt-1 text-xs text-slate-500">Choisissez les rubriques à suivre.</p>
+            <div class="mt-3 grid max-h-48 gap-1.5 overflow-y-auto">
+              <?php foreach ($categoryTree as $navItem): ?>
+                <label class="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="checkbox" data-push-category value="<?= htmlspecialchars($navItem['slug']) ?>" checked>
+                  <?= htmlspecialchars($navItem['name']) ?>
+                </label>
+              <?php endforeach; ?>
+            </div>
+            <button type="button" data-push-enable class="mt-3 w-full rounded bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700">
+              Activer les notifications
+            </button>
+            <button type="button" data-push-disable class="mt-3 hidden w-full rounded border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+              Désactiver les notifications
+            </button>
+            <p data-push-status class="mt-2 text-xs text-slate-500"></p>
+          </div>
+        </div>
         <button class="rounded border border-slate-300 px-3 py-1.5 text-sm font-semibold md:hidden" data-mobile-menu-trigger aria-label="Ouvrir le menu" aria-expanded="false">Menu</button>
       </div>
     </div>

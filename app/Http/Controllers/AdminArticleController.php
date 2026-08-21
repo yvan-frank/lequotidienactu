@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 
 use App\Seo\RedirectService;
 use App\Support\AuditLog;
+use App\Support\Config;
+use App\Support\Push;
 use App\Support\Slug;
 use PDO;
 use PDOException;
@@ -64,6 +66,9 @@ final class AdminArticleController
                 (new RedirectService())->reclaim("/{$categorySlug}/{$data['slug']}");
             }
             AuditLog::record('article.create', 'article', $id, ['title' => $data['title'], 'status' => $data['status']]);
+            if ($data['status'] === 'published') {
+                $this->notifyPublished($pdo, $id);
+            }
             return ['data' => ['id' => $id], 'message' => 'Article enregistré.'];
         }, 201);
     }
@@ -77,11 +82,12 @@ final class AdminArticleController
             if (!in_array($status, self::STATUSES, true)) {
                 throw new \InvalidArgumentException('Statut éditorial invalide.');
             }
+            $current = $pdo->prepare('SELECT status, title, body, category_id, author_id FROM articles WHERE id = :id');
+            $current->execute(['id' => $id]);
+            $row = $current->fetch(PDO::FETCH_ASSOC);
+            if (!$row) throw new \InvalidArgumentException('Article introuvable.');
+            $previousStatus = $row['status'];
             if (in_array($status, ['published', 'scheduled'], true)) {
-                $article = $pdo->prepare('SELECT title, body, category_id, author_id FROM articles WHERE id = :id');
-                $article->execute(['id' => $id]);
-                $row = $article->fetch(PDO::FETCH_ASSOC);
-                if (!$row) throw new \InvalidArgumentException('Article introuvable.');
                 if (trim((string) $row['title']) === '' || trim((string) $row['body']) === '' || $row['category_id'] === null || $row['author_id'] === null) {
                     throw new \InvalidArgumentException('Complétez le titre, le contenu, la rubrique et l’auteur avant de publier ou programmer.');
                 }
@@ -93,6 +99,9 @@ final class AdminArticleController
             $statement = $pdo->prepare('UPDATE articles SET status = :status, published_at = :published_at WHERE id = :id');
             $statement->execute(['status' => $status, 'published_at' => $publishedAt, 'id' => $id]);
             AuditLog::record('article.transition', 'article', $id, ['status' => $status]);
+            if ($status === 'published' && $previousStatus !== 'published') {
+                $this->notifyPublished($pdo, $id);
+            }
             return ['message' => 'Workflow mis à jour.'];
         });
     }
@@ -173,6 +182,9 @@ final class AdminArticleController
             }
 
             AuditLog::record('article.update', 'article', $id, ['title' => $data['title']]);
+            if ($data['status'] === 'published' && $previous['status'] !== 'published') {
+                $this->notifyPublished($pdo, $id);
+            }
             return ['data' => ['id' => $id], 'message' => 'Article mis à jour.'];
         });
     }
@@ -190,6 +202,35 @@ final class AdminArticleController
             AuditLog::record('article.delete', 'article', $id, ['title' => $articleTitle ?: null]);
             return ['message' => 'Article supprimé.'];
         });
+    }
+
+    /**
+     * Fires a push notification to readers subscribed to this article's
+     * category. Only ever called right after a status transitions INTO
+     * "published" — never on ordinary edits of an already-published
+     * article, which would otherwise re-notify readers on every typo fix.
+     */
+    private function notifyPublished(PDO $pdo, int $articleId): void
+    {
+        $statement = $pdo->prepare(
+            'SELECT a.title, a.excerpt, a.slug, c.slug AS category_slug, c.name AS category_name, COALESCE(m.path, NULL) AS hero_image
+             FROM articles a
+             INNER JOIN categories c ON c.id = a.category_id
+             LEFT JOIN media m ON m.id = a.hero_media_id
+             WHERE a.id = :id LIMIT 1'
+        );
+        $statement->execute(['id' => $articleId]);
+        $article = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!$article) {
+            return;
+        }
+
+        Push::notifyCategory($article['category_slug'], [
+            'title' => $article['category_name'] . ' — ' . $article['title'],
+            'body' => $article['excerpt'] ?? '',
+            'url' => Config::url('/' . $article['category_slug'] . '/' . $article['slug']),
+            'icon' => $article['hero_image'] ? Config::url($article['hero_image']) : Config::url('/assets/logo-header.png'),
+        ]);
     }
 
     private function validate(array $input): array

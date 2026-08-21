@@ -196,6 +196,8 @@ final class Router
         if ($method === 'POST' && preg_match('#^/api/articles/(\d+)/comments$#', $path, $m)) { $api->postComment((int) $m[1]); return; }
         if ($method === 'POST' && preg_match('#^/api/comments/(\d+)/report$#', $path, $m)) { $api->reportComment((int) $m[1]); return; }
         if ($method === 'POST' && preg_match('#^/api/ads/(\d+)/click$#', $path, $m)) { $api->adClick((int) $m[1]); return; }
+        if ($method === 'POST' && $path === '/api/push/subscribe') { $api->subscribePush(); return; }
+        if ($method === 'POST' && $path === '/api/push/unsubscribe') { $api->unsubscribePush(); return; }
         if ($method === 'GET' && $path === '/') {
             $public->home();
             return;

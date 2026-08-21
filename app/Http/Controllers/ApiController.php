@@ -324,6 +324,55 @@ final class ApiController
         });
     }
 
+    /**
+     * Creates or updates a browser's push subscription (upsert by endpoint,
+     * since re-subscribing after a permission/category change is the
+     * common case, not a rare one). `categories` is a JSON array of slugs
+     * to restrict to, or omitted/empty to receive every published article.
+     */
+    public function subscribePush(): void
+    {
+        $this->respond(function (PDO $pdo): array {
+            [$max, $window] = RateLimits::resolve('push-subscribe');
+            if ((new RateLimiter($pdo))->tooManyAttempts('push-subscribe', $max, $window)) {
+                throw new TooManyAttemptsException('Trop de requêtes. Réessayez dans un instant.');
+            }
+
+            $input = $this->input();
+            $endpoint = trim((string) ($input['endpoint'] ?? ''));
+            $keys = (array) ($input['keys'] ?? []);
+            $p256dh = trim((string) ($keys['p256dh'] ?? ''));
+            $authToken = trim((string) ($keys['auth'] ?? ''));
+            if ($endpoint === '' || $p256dh === '' || $authToken === '') {
+                throw new \InvalidArgumentException('Abonnement push invalide.');
+            }
+
+            $categories = $input['categories'] ?? null;
+            $categoriesJson = is_array($categories) && $categories !== []
+                ? json_encode(array_values(array_unique(array_map('strval', $categories))), JSON_UNESCAPED_UNICODE)
+                : null;
+
+            $pdo->prepare(
+                'INSERT INTO push_subscriptions (endpoint, p256dh, auth_token, categories) VALUES (:endpoint, :p256dh, :auth_token, :categories)
+                 ON DUPLICATE KEY UPDATE p256dh = VALUES(p256dh), auth_token = VALUES(auth_token), categories = VALUES(categories)'
+            )->execute(['endpoint' => $endpoint, 'p256dh' => $p256dh, 'auth_token' => $authToken, 'categories' => $categoriesJson]);
+
+            return ['message' => 'Notifications activées.'];
+        }, 201);
+    }
+
+    public function unsubscribePush(): void
+    {
+        $this->respond(function (PDO $pdo): array {
+            $endpoint = trim((string) ($this->input()['endpoint'] ?? ''));
+            if ($endpoint === '') {
+                throw new \InvalidArgumentException('Point de terminaison manquant.');
+            }
+            $pdo->prepare('DELETE FROM push_subscriptions WHERE endpoint = :endpoint')->execute(['endpoint' => $endpoint]);
+            return ['message' => 'Notifications désactivées.'];
+        });
+    }
+
     public function adClick(int $adId): void
     {
         $this->respond(function (PDO $pdo) use ($adId): array {

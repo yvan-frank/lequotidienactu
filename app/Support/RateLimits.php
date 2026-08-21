@@ -25,6 +25,7 @@ final class RateLimits
         'newsletter-click' => ['label' => 'Clics newsletter', 'description' => 'Clics sur les liens d’articles dans les e-mails de campagne.', 'max_attempts' => 30, 'window_seconds' => 60],
         'contact' => ['label' => 'Formulaire de contact', 'description' => 'Envois du formulaire de contact public.', 'max_attempts' => 5, 'window_seconds' => 600],
         'ai-assist' => ['label' => 'Assistant IA éditorial', 'description' => 'Sollicitations de l’assistant IA (titres, résumés, meta, correction, réseaux sociaux) depuis l’éditeur d’article.', 'max_attempts' => 30, 'window_seconds' => 600],
+        'push-subscribe' => ['label' => 'Abonnement notifications push', 'description' => 'Activation ou mise à jour des préférences de notifications push par un visiteur.', 'max_attempts' => 10, 'window_seconds' => 600],
     ];
 
     /**

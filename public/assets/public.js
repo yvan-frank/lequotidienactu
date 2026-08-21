@@ -249,4 +249,107 @@ document.addEventListener('click', (event) => {
   }
 });
 
+// Web Push opt-in widget — feature-detected, so it stays fully hidden on
+// browsers/contexts without Notification+PushManager support (e.g. iOS
+// Safari outside a home-screen install, or plain HTTP in dev).
+{
+  const widget = document.querySelector('[data-push-widget]');
+  const supported =
+    widget && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  if (supported) {
+    const trigger = widget.querySelector('[data-push-trigger]');
+    const panel = widget.querySelector('[data-push-panel]');
+    const enableBtn = widget.querySelector('[data-push-enable]');
+    const disableBtn = widget.querySelector('[data-push-disable]');
+    const statusEl = widget.querySelector('[data-push-status]');
+    const categoryInputs = [...widget.querySelectorAll('[data-push-category]')];
+    const vapidKey = widget.dataset.vapidPublicKey || '';
+
+    const urlBase64ToUint8Array = (base64String) => {
+      const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+    };
+
+    const setEnabledState = (enabled) => {
+      enableBtn.classList.toggle('hidden', enabled);
+      disableBtn.classList.toggle('hidden', !enabled);
+    };
+
+    const refreshState = async () => {
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        const subscription = await registration.pushManager.getSubscription();
+        setEnabledState(Boolean(subscription) && Notification.permission === 'granted');
+      } catch {
+        // Registration can fail in dev over plain HTTP; leave the default (disabled) state.
+      }
+    };
+
+    trigger.classList.remove('hidden');
+    trigger.addEventListener('click', () => {
+      const isOpen = !panel.classList.contains('hidden');
+      panel.classList.toggle('hidden', isOpen);
+      trigger.setAttribute('aria-expanded', String(!isOpen));
+    });
+    document.addEventListener('click', (event) => {
+      if (!widget.contains(event.target)) panel.classList.add('hidden');
+    });
+
+    enableBtn.addEventListener('click', async () => {
+      statusEl.textContent = '';
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          statusEl.textContent = 'Autorisation refusée.';
+          return;
+        }
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.ready;
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidKey),
+          });
+        }
+        const categories = categoryInputs.filter((input) => input.checked).map((input) => input.value);
+        const json = subscription.toJSON();
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint: json.endpoint, keys: json.keys, categories }),
+        });
+        setEnabledState(true);
+        statusEl.textContent = 'Notifications activées.';
+      } catch {
+        statusEl.textContent = 'Impossible d’activer les notifications.';
+      }
+    });
+
+    disableBtn.addEventListener('click', async () => {
+      statusEl.textContent = '';
+      try {
+        const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+        const subscription = registration && (await registration.pushManager.getSubscription());
+        if (subscription) {
+          await fetch('/api/push/unsubscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: subscription.endpoint }),
+          });
+          await subscription.unsubscribe();
+        }
+        setEnabledState(false);
+        statusEl.textContent = 'Notifications désactivées.';
+      } catch {
+        statusEl.textContent = 'Impossible de désactiver les notifications.';
+      }
+    });
+
+    refreshState();
+  }
+}
+
 import Swiper from '/vendor/swiper/swiper-bundle.min.mjs';
