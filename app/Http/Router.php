@@ -168,6 +168,7 @@ final class Router
         if ($method === 'PUT' && preg_match('#^/api/admin/users/(\d+)$#', $path, $m)) { $adminUsers->update((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/users/(\d+)$#', $path, $m)) { $adminUsers->delete((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/newsletter') { $adminNewsletter->index(); return; }
+        if ($method === 'POST' && $path === '/api/admin/newsletter') { $adminNewsletter->create(); return; }
         if ($method === 'GET' && $path === '/api/admin/newsletter/campaigns') { $adminNewsletter->campaigns(); return; }
         if ($method === 'POST' && $path === '/api/admin/newsletter/send') { $adminNewsletter->send(); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/newsletter/(\d+)$#', $path, $m)) { $adminNewsletter->delete((int) $m[1]); return; }

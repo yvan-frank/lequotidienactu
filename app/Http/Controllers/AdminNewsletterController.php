@@ -29,6 +29,46 @@ final class AdminNewsletterController
         });
     }
 
+    /**
+     * Staff-added subscribers skip the double opt-in confirmation e-mail —
+     * a staff member deliberately adding an address (e.g. someone who
+     * asked to be added by phone/in person) is a different trust level
+     * than an anonymous public form submission, so they land straight on
+     * "active" instead of "pending".
+     */
+    public function create(): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        $this->respond(function (PDO $pdo): array {
+            $input = $this->input();
+            $email = filter_var(trim((string) ($input['email'] ?? '')), FILTER_VALIDATE_EMAIL);
+            if (!$email) {
+                throw new \InvalidArgumentException('Adresse e-mail invalide.');
+            }
+
+            $existing = $pdo->prepare('SELECT id, status FROM newsletter_subscribers WHERE email = :email LIMIT 1');
+            $existing->execute(['email' => $email]);
+            $subscriber = $existing->fetch(PDO::FETCH_ASSOC);
+
+            if ($subscriber && $subscriber['status'] === 'active') {
+                throw new \InvalidArgumentException('Cette adresse est déjà inscrite à la newsletter.');
+            }
+
+            if ($subscriber) {
+                $pdo->prepare('UPDATE newsletter_subscribers SET status = "active", confirmed_at = NOW() WHERE id = :id')
+                    ->execute(['id' => $subscriber['id']]);
+                $id = (int) $subscriber['id'];
+            } else {
+                $pdo->prepare('INSERT INTO newsletter_subscribers (email, status, confirmed_at) VALUES (:email, "active", NOW())')
+                    ->execute(['email' => $email]);
+                $id = (int) $pdo->lastInsertId();
+            }
+
+            AuditLog::record('newsletter.add_subscriber', 'newsletter_subscriber', $id, ['email' => $email]);
+            return ['data' => ['id' => $id], 'message' => 'Abonné ajouté.'];
+        }, 201);
+    }
+
     public function delete(int $id): void
     {
         AdminAuthController::requireStaff(['admin', 'editor']);

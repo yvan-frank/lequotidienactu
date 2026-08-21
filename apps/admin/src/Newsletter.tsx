@@ -56,6 +56,16 @@ export function Newsletter() {
     },
     onError: (error) => setToast({ tone: 'error', message: apiErrorMessage(error, "Impossible de supprimer cet abonné.") }),
   });
+  const [newSubscriberEmail, setNewSubscriberEmail] = React.useState('');
+  const addSubscriber = useMutation({
+    mutationFn: (email: string) => api.post('/admin/newsletter', { email }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-newsletter'] });
+      setNewSubscriberEmail('');
+      setToast({ tone: 'success', message: 'Abonné ajouté.' });
+    },
+    onError: (error) => setToast({ tone: 'error', message: apiErrorMessage(error, "Impossible d'ajouter cet abonné.") }),
+  });
 
   const meta = subscribers.data?.meta;
   const activeSubscribers = React.useMemo(
@@ -138,6 +148,28 @@ export function Newsletter() {
               </button>
             )}
           </div>
+          <form
+            className="flex items-center gap-2 border-b border-slate-100 px-6 py-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (newSubscriberEmail.trim()) addSubscriber.mutate(newSubscriberEmail.trim());
+            }}
+          >
+            <input
+              type="email"
+              required
+              placeholder="adresse@exemple.fr"
+              value={newSubscriberEmail}
+              onChange={(event) => setNewSubscriberEmail(event.target.value)}
+              className="min-w-0 flex-1 rounded border border-slate-300 px-3 py-2 text-sm focus:border-orange-600 focus:outline-none"
+            />
+            <button
+              disabled={addSubscriber.isPending}
+              className="shrink-0 rounded bg-orange-700 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-800 disabled:opacity-50"
+            >
+              {addSubscriber.isPending ? 'Ajout…' : 'Ajouter'}
+            </button>
+          </form>
           {subscribers.isLoading && <p className="p-6 text-slate-500">Chargement…</p>}
           {subscribers.isError && <p className="p-6 text-red-700">Impossible de charger les abonnés.</p>}
           {subscribers.data && subscribers.data.data.length === 0 && (
