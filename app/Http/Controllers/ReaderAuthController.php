@@ -19,6 +19,23 @@ final class ReaderAuthController
     public function session(): void
     {
         $this->startSession();
+        if (isset($_SESSION['reader'])) {
+            // Premium status can change asynchronously (a Stripe webhook
+            // fires independently of the reader's browser), so it's read
+            // fresh from the DB on every session check rather than trusted
+            // from the (possibly stale) session snapshot taken at login.
+            try {
+                $statement = $this->pdo()->prepare('SELECT premium_status, premium_current_period_end FROM readers WHERE id = :id');
+                $statement->execute(['id' => $_SESSION['reader']['id']]);
+                $row = $statement->fetch(PDO::FETCH_ASSOC);
+                if ($row) {
+                    $_SESSION['reader']['is_premium'] = $row['premium_status'] === 'active'
+                        && (!$row['premium_current_period_end'] || $row['premium_current_period_end'] >= date('Y-m-d H:i:s'));
+                }
+            } catch (PDOException) {
+                // Fall through with whatever premium flag was already in the session.
+            }
+        }
         $this->json(['authenticated' => isset($_SESSION['reader']), 'reader' => $_SESSION['reader'] ?? null]);
     }
 
@@ -55,7 +72,7 @@ final class ReaderAuthController
             $readerId = (int) $pdo->lastInsertId();
 
             session_regenerate_id(true);
-            $_SESSION['reader'] = ['id' => $readerId, 'name' => $name, 'email' => $email, 'followed_categories' => null];
+            $_SESSION['reader'] = ['id' => $readerId, 'name' => $name, 'email' => $email, 'followed_categories' => null, 'is_premium' => false];
             $this->json(['reader' => $_SESSION['reader']], 201);
         } catch (PDOException) {
             $this->json(['message' => 'Base de données indisponible.'], 503);
@@ -82,7 +99,7 @@ final class ReaderAuthController
                 return;
             }
 
-            $statement = $pdo->prepare('SELECT id, name, email, password_hash, followed_categories FROM readers WHERE email = :email LIMIT 1');
+            $statement = $pdo->prepare('SELECT id, name, email, password_hash, followed_categories, premium_status, premium_current_period_end FROM readers WHERE email = :email LIMIT 1');
             $statement->execute(['email' => $email]);
             $reader = $statement->fetch(PDO::FETCH_ASSOC);
 
@@ -97,6 +114,8 @@ final class ReaderAuthController
                 'name' => $reader['name'],
                 'email' => $reader['email'],
                 'followed_categories' => $reader['followed_categories'] ? json_decode((string) $reader['followed_categories'], true) : null,
+                'is_premium' => $reader['premium_status'] === 'active'
+                    && (!$reader['premium_current_period_end'] || $reader['premium_current_period_end'] >= date('Y-m-d H:i:s')),
             ];
             $this->json(['reader' => $_SESSION['reader']]);
         } catch (PDOException) {

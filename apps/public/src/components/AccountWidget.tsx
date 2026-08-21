@@ -3,7 +3,13 @@ import { createPortal } from 'react-dom';
 import { CircleUser, Loader2, X } from 'lucide-react';
 import { api } from '../api';
 
-type Reader = { id: number; name: string; email: string; followed_categories: string[] | null };
+type Reader = {
+  id: number;
+  name: string;
+  email: string;
+  followed_categories: string[] | null;
+  is_premium?: boolean;
+};
 type Category = { slug: string; name: string };
 
 function apiErrorMessage(error: any, fallback: string): string {
@@ -91,6 +97,27 @@ export function AccountWidget({ categories }: { categories: Category[] }) {
     }
   };
 
+  const goPremium = async () => {
+    setMenuOpen(false);
+    setError(null);
+    try {
+      const response = await api.post<{ url: string }>('/premium/checkout');
+      window.location.href = response.data.url;
+    } catch (err) {
+      window.alert(apiErrorMessage(err, 'Impossible de démarrer le paiement.'));
+    }
+  };
+
+  const manageSubscription = async () => {
+    setMenuOpen(false);
+    try {
+      const response = await api.post<{ url: string }>('/premium/portal');
+      window.location.href = response.data.url;
+    } catch (err) {
+      window.alert(apiErrorMessage(err, 'Impossible d’ouvrir la gestion d’abonnement.'));
+    }
+  };
+
   const toggleCategory = (slug: string) => {
     setSelectedCategories((current) =>
       current.includes(slug) ? current.filter((value) => value !== slug) : [...current, slug],
@@ -112,9 +139,14 @@ export function AccountWidget({ categories }: { categories: Category[] }) {
           >
             <CircleUser size={16} aria-hidden="true" />
             <span className="hidden max-w-24 truncate sm:inline">{reader.name}</span>
+            {reader.is_premium && (
+              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-amber-800 uppercase">
+                Premium
+              </span>
+            )}
           </button>
           {menuOpen && (
-            <div className="absolute right-0 z-30 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+            <div className="absolute right-0 z-30 mt-2 w-60 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
               <p className="truncate px-3 py-2 text-xs text-slate-500">{reader.email}</p>
               <button
                 type="button"
@@ -123,6 +155,23 @@ export function AccountWidget({ categories }: { categories: Category[] }) {
               >
                 Mes rubriques suivies
               </button>
+              {reader.is_premium ? (
+                <button
+                  type="button"
+                  onClick={manageSubscription}
+                  className="block w-full rounded px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                >
+                  Gérer mon abonnement
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={goPremium}
+                  className="block w-full rounded px-3 py-2 text-left text-sm font-semibold text-amber-700 hover:bg-amber-50"
+                >
+                  Passer premium (sans pub)
+                </button>
+              )}
               <button
                 type="button"
                 onClick={logout}

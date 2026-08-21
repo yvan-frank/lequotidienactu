@@ -21,6 +21,7 @@ use App\Http\Controllers\AdminRedirectController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminTaxonomyController;
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\PremiumController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\ReaderAuthController;
 use App\Http\Controllers\SeoController;
@@ -55,6 +56,7 @@ final class Router
         $adminAi = new AdminAiController();
         $adminListings = new AdminListingController();
         $readerAuth = new ReaderAuthController();
+        $premium = new PremiumController();
         $seo = new SeoController();
 
         if ($method === 'GET' && ($path === '/u/admin' || str_starts_with($path, '/u/admin/'))) {
@@ -211,6 +213,9 @@ final class Router
         if ($method === 'POST' && $path === '/api/account/login') { $readerAuth->login(); return; }
         if ($method === 'POST' && $path === '/api/account/logout') { $readerAuth->logout(); return; }
         if ($method === 'PUT' && $path === '/api/account/preferences') { $readerAuth->updatePreferences(); return; }
+        if ($method === 'POST' && $path === '/api/premium/checkout') { $premium->checkout(); return; }
+        if ($method === 'POST' && $path === '/api/premium/portal') { $premium->billingPortal(); return; }
+        if ($method === 'POST' && $path === '/api/premium/webhook') { $premium->webhook(); return; }
         if ($method === 'GET' && $path === '/') {
             $public->home();
             return;

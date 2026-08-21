@@ -65,11 +65,13 @@ $latest = $remaining !== [] ? array_slice($remaining, 0, 3) : array_slice($artic
       <?php endif; ?>
     </div>
   </section>
-  <?php if ($index === 0): ?>
+  <?php if ($index === 0 && !$readerIsPremium): ?>
     <div class="my-10"><?= \App\Support\Ads::renderSlot('home_banner') ?></div>
   <?php endif; ?>
 <?php endforeach; ?>
-<?php if ($categorySpotlights === []): ?>
+<?php if ($categorySpotlights === [] && !$readerIsPremium): ?>
   <div class="my-10"><?= \App\Support\Ads::renderSlot('home_banner') ?></div>
 <?php endif; ?>
-<div class="my-10"><?= \App\Support\Ads::renderSlot('home_multiplex', 'Publicité · Multiplex') ?></div>
+<?php if (!$readerIsPremium): ?>
+  <div class="my-10"><?= \App\Support\Ads::renderSlot('home_multiplex', 'Publicité · Multiplex') ?></div>
+<?php endif; ?>

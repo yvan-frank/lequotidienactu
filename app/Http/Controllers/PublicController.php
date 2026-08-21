@@ -31,6 +31,7 @@ final class PublicController
         $forYouArticles = ($reader && !empty($reader['followed_categories']))
             ? $this->publishedArticles($this->expandCategorySlugs($reader['followed_categories']), null, false, 6)
             : [];
+        $readerIsPremium = $this->isPremiumReader($reader);
         $seo = (new SeoManager())->forHome();
         require __DIR__ . '/../../Views/layout.php';
     }
@@ -68,6 +69,28 @@ final class PublicController
             session_start();
         }
         return $_SESSION['reader'] ?? null;
+    }
+
+    /**
+     * Re-checks premium status from the DB rather than trusting the
+     * session snapshot — a Stripe webhook can flip `premium_status`
+     * between requests without the reader ever logging in again.
+     */
+    private function isPremiumReader(?array $reader): bool
+    {
+        if ($reader === null) {
+            return false;
+        }
+        try {
+            $statement = $this->pdo()->prepare('SELECT premium_status, premium_current_period_end FROM readers WHERE id = :id');
+            $statement->execute(['id' => $reader['id']]);
+            $row = $statement->fetch(PDO::FETCH_ASSOC);
+            return $row
+                && $row['premium_status'] === 'active'
+                && (!$row['premium_current_period_end'] || $row['premium_current_period_end'] >= date('Y-m-d H:i:s'));
+        } catch (PDOException) {
+            return false;
+        }
     }
 
     /**
@@ -154,6 +177,7 @@ final class PublicController
         $related = $this->relatedArticles($article);
         $nextArticle = $this->nextArticle($article);
         $sidebarArticles = $this->latestArticles($article['id'] ?? null, 4);
+        $readerIsPremium = $this->isPremiumReader($this->currentReader());
         $seo = (new SeoManager())->forArticle($article);
         require __DIR__ . '/../../Views/layout.php';
     }

@@ -102,7 +102,9 @@ $articleBody = \App\Support\ArticleEmbeds::render($article['body'] ?? '<p>' . ht
 
   <div class="mt-8 flex items-center gap-3" data-island="reactions" data-article-id="<?= (int) ($article['id'] ?? 0) ?>"></div>
 
-  <div class="my-10"><?= \App\Support\Ads::renderSlot('article_inline') ?></div>
+  <?php if (!$readerIsPremium): ?>
+    <div class="my-10"><?= \App\Support\Ads::renderSlot('article_inline') ?></div>
+  <?php endif; ?>
 
   <?php if (!empty($article['author_bio'])): ?>
     <section class="flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-6">
@@ -166,7 +168,9 @@ $articleBody = \App\Support\ArticleEmbeds::render($article['body'] ?? '<p>' . ht
 </article>
 
 <aside class="space-y-6 lg:sticky lg:top-20">
-  <div class="min-h-64"><?= \App\Support\Ads::renderSlot('article_sidebar', 'Publicité · 300 × 250') ?></div>
+  <?php if (!$readerIsPremium): ?>
+    <div class="min-h-64"><?= \App\Support\Ads::renderSlot('article_sidebar', 'Publicité · 300 × 250') ?></div>
+  <?php endif; ?>
 
   <?php if (!empty($sidebarArticles)): ?>
     <div class="rounded-xl border border-slate-200 bg-white p-5">
