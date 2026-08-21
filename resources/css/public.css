@@ -5,9 +5,12 @@
  * Belt-and-braces against horizontal scroll/shift: any single element that
  * briefly overflows the viewport width (a third-party ad iframe sized
  * before its container settles, an unbroken long word/URL, …) would
- * otherwise make the whole page horizontally scrollable.
+ * otherwise make the whole page horizontally scrollable. This has to sit
+ * on <body>, not <html> — overflow-x on <html> turns it into the nearest
+ * scrolling ancestor for the whole page, which breaks `position: sticky`
+ * on descendants (e.g. the site header) in every major browser.
  */
-html {
+body {
   overflow-x: hidden;
 }
 
