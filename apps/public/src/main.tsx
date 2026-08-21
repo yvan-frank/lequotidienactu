@@ -6,6 +6,7 @@ import { ReactionWidget } from './components/ReactionWidget';
 import { CommentsWidget } from './components/CommentsWidget';
 import { InfiniteArticles } from './components/InfiniteArticles';
 import { CrsCalculator } from './components/CrsCalculator';
+import { ArrimaCalculator } from './components/ArrimaCalculator';
 
 function mount<P extends object>(
   selector: string,
@@ -40,3 +41,4 @@ mount('[data-island="infinite-articles"]', InfiniteArticles, (el) => ({
   hasMore: el.dataset.hasMore === '1',
 }));
 mount('[data-island="crs-calculator"]', CrsCalculator);
+mount('[data-island="arrima-calculator"]', ArrimaCalculator);

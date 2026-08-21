@@ -10,7 +10,15 @@
   </p>
 </header>
 
-<div class="pb-16" data-island="crs-calculator"></div>
+<div class="pb-10" data-island="crs-calculator"></div>
+
+<div class="mb-16 max-w-3xl rounded-xl border border-slate-200 bg-white p-5">
+  <p class="text-sm text-slate-600">
+    <strong>Vous visez plutôt le Québec ?</strong> Le SCG ne s’applique pas au Programme de sélection des
+    travailleurs qualifiés (PSTQ), qui utilise sa propre grille de pointage via Arrima.
+    <a class="font-semibold text-brand-600 hover:underline" href="/simulateur-arrima">Essayez le simulateur Arrima →</a>
+  </p>
+</div>
 
 <div class="max-w-3xl border-t border-slate-200 pt-10 pb-14">
   <h2 class="text-2xl font-extrabold">Questions fréquentes</h2>

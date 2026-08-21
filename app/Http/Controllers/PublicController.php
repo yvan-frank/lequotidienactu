@@ -233,6 +233,18 @@ final class PublicController
         require __DIR__ . '/../../Views/layout.php';
     }
 
+    public function arrimaCalculator(): void
+    {
+        $title = 'Simulateur de points Arrima (PSTQ) - Le Quotidien Actu';
+        $page = 'simulateur-arrima';
+        $seo = (new SeoManager())->forStaticPage(
+            'Simulateur Arrima',
+            'Estimez gratuitement votre pointage au Programme de sélection des travailleurs qualifiés (PSTQ) du Québec, via Arrima.',
+            '/simulateur-arrima'
+        );
+        require __DIR__ . '/../../Views/layout.php';
+    }
+
     public function pageExists(string $slug): bool
     {
         try {
