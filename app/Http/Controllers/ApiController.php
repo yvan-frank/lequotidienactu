@@ -31,14 +31,21 @@ final class ApiController
             $offset = ($page - 1) * $perPage;
             $categorySlugs = array_values(array_filter(array_map('trim', explode(',', (string) ($_GET['category'] ?? '')))));
             $query = trim((string) ($_GET['q'] ?? ''));
+            $authorSlug = trim((string) ($_GET['author'] ?? ''));
 
             [$searchMax, $searchWindow] = RateLimits::resolve('search');
             if ($query !== '' && (new RateLimiter($pdo))->tooManyAttempts('search', $searchMax, $searchWindow)) {
                 throw new TooManyAttemptsException('Trop de recherches. Réessayez dans un instant.');
             }
 
-            $sql = 'SELECT a.title, a.slug, a.excerpt, a.published_at, c.slug AS category, c.name AS category_name, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE a.status = "published" AND a.published_at <= NOW()';
+            $sql = 'SELECT a.title, a.slug, a.excerpt, a.published_at, c.slug AS category, c.name AS category_name, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id LEFT JOIN media m ON m.id = a.hero_media_id';
+            $sql .= $authorSlug !== '' ? ' INNER JOIN authors au ON au.id = a.author_id' : '';
+            $sql .= ' WHERE a.status = "published" AND a.published_at <= NOW()';
             $params = [];
+            if ($authorSlug !== '') {
+                $sql .= ' AND au.slug = :author';
+                $params['author'] = $authorSlug;
+            }
             if ($categorySlugs !== []) {
                 $placeholders = [];
                 foreach ($categorySlugs as $index => $categorySlug) {

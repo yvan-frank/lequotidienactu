@@ -29,6 +29,7 @@ mount('[data-island="comments"]', CommentsWidget, (el) => ({
 mount('[data-island="infinite-articles"]', InfiniteArticles, (el) => ({
   category: el.dataset.category || undefined,
   query: el.dataset.query || undefined,
+  author: el.dataset.author || undefined,
   currentCategory: el.dataset.currentCategory || undefined,
   page: Number(el.dataset.page) || 1,
   hasMore: el.dataset.hasMore === '1',

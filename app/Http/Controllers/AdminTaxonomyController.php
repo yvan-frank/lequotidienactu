@@ -132,7 +132,7 @@ final class AdminTaxonomyController
     {
         AdminAuthController::requireStaff();
         $this->respond(function (PDO $pdo): array {
-            $rows = $pdo->query('SELECT au.id, au.user_id, au.display_name, au.slug, au.bio, au.avatar_media_id, (SELECT COUNT(*) FROM articles a WHERE a.author_id = au.id) AS articles_count FROM authors au ORDER BY au.display_name')->fetchAll(PDO::FETCH_ASSOC);
+            $rows = $pdo->query('SELECT au.id, au.user_id, au.display_name, au.job_title, au.slug, au.bio, au.disclosure, au.avatar_media_id, (SELECT COUNT(*) FROM articles a WHERE a.author_id = au.id) AS articles_count FROM authors au ORDER BY au.display_name')->fetchAll(PDO::FETCH_ASSOC);
             return ['data' => $rows];
         });
     }
@@ -142,7 +142,7 @@ final class AdminTaxonomyController
         AdminAuthController::requireStaff(['admin', 'editor']);
         $this->respond(function (PDO $pdo): array {
             $data = $this->validateAuthor($this->input(), $pdo);
-            $statement = $pdo->prepare('INSERT INTO authors (user_id, display_name, slug, bio, avatar_media_id) VALUES (:user_id, :display_name, :slug, :bio, :avatar_media_id)');
+            $statement = $pdo->prepare('INSERT INTO authors (user_id, display_name, job_title, slug, bio, disclosure, avatar_media_id) VALUES (:user_id, :display_name, :job_title, :slug, :bio, :disclosure, :avatar_media_id)');
             $statement->execute($data);
             $newId = (int) $pdo->lastInsertId();
             AuditLog::record('author.create', 'author', $newId, ['display_name' => $data['display_name']]);
@@ -156,7 +156,7 @@ final class AdminTaxonomyController
         $this->respond(function (PDO $pdo) use ($id): array {
             $data = $this->validateAuthor($this->input(), $pdo);
             $data['id'] = $id;
-            $statement = $pdo->prepare('UPDATE authors SET user_id = :user_id, display_name = :display_name, slug = :slug, bio = :bio, avatar_media_id = :avatar_media_id WHERE id = :id');
+            $statement = $pdo->prepare('UPDATE authors SET user_id = :user_id, display_name = :display_name, job_title = :job_title, slug = :slug, bio = :bio, disclosure = :disclosure, avatar_media_id = :avatar_media_id WHERE id = :id');
             $statement->execute($data);
             if ($statement->rowCount() === 0) {
                 $exists = $pdo->prepare('SELECT 1 FROM authors WHERE id = :id');
@@ -239,8 +239,10 @@ final class AdminTaxonomyController
         return [
             'user_id' => $userId,
             'display_name' => $name,
+            'job_title' => trim((string) ($input['job_title'] ?? '')) ?: null,
             'slug' => trim((string) ($input['slug'] ?? '')) ?: $this->slugify($name),
             'bio' => trim((string) ($input['bio'] ?? '')) ?: null,
+            'disclosure' => trim((string) ($input['disclosure'] ?? '')) ?: null,
             'avatar_media_id' => $avatarMediaId,
         ];
     }

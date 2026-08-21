@@ -183,6 +183,55 @@ final class PublicController
         require __DIR__ . '/../../Views/layout.php';
     }
 
+    public function authorExists(string $slug): bool
+    {
+        try {
+            $statement = $this->pdo()->prepare('SELECT 1 FROM authors WHERE slug = :slug LIMIT 1');
+            $statement->execute(['slug' => $slug]);
+            return (bool) $statement->fetchColumn();
+        } catch (PDOException) {
+            return false;
+        }
+    }
+
+    public function authorPage(string $slug): void
+    {
+        $statement = $this->pdo()->prepare('SELECT au.id, au.display_name, au.job_title, au.slug, au.bio, au.disclosure, COALESCE(m.path, null) AS avatar FROM authors au LEFT JOIN media m ON m.id = au.avatar_media_id WHERE au.slug = :slug LIMIT 1');
+        $statement->execute(['slug' => $slug]);
+        $authorRow = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!$authorRow) {
+            throw new \LogicException('Auteur introuvable.');
+        }
+        $title = $authorRow['display_name'] . ' - Le Quotidien Actu';
+        $page = 'author';
+        $authorProfile = $authorRow;
+        $perPage = 12;
+        $articlesPlusOne = $this->authorArticles($slug, $perPage + 1);
+        $hasMoreArticles = count($articlesPlusOne) > $perPage;
+        $articles = array_slice($articlesPlusOne, 0, $perPage);
+        $seo = (new SeoManager())->forStaticPage(
+            $authorRow['display_name'],
+            $authorRow['bio'] ?? ('Articles publiés par ' . $authorRow['display_name'] . ' sur Le Quotidien Actu.'),
+            '/auteurs/' . $slug,
+        );
+        require __DIR__ . '/../../Views/layout.php';
+    }
+
+    private function authorArticles(string $authorSlug, int $limit): array
+    {
+        try {
+            $sql = 'SELECT a.title, a.slug, a.excerpt, a.published_at, c.slug AS category, c.name AS category_name, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN authors au ON au.id = a.author_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE au.slug = :slug AND a.status = "published" AND a.published_at <= NOW() ORDER BY a.published_at DESC LIMIT ' . max(1, $limit);
+            $statement = $this->pdo()->prepare($sql);
+            $statement->execute(['slug' => $authorSlug]);
+            return array_map(static function (array $article): array {
+                $article['published_at'] = (new \DateTimeImmutable($article['published_at']))->format('d/m/Y');
+                return $article;
+            }, $statement->fetchAll(PDO::FETCH_ASSOC));
+        } catch (PDOException) {
+            return [];
+        }
+    }
+
     public function contact(): void
     {
         $title = 'Contact - Le Quotidien Actu';
@@ -309,7 +358,7 @@ final class PublicController
             if (is_array($category) && $category === []) {
                 return [];
             }
-            $sql = 'SELECT a.id, a.category_id, a.title, a.slug, a.excerpt, a.body, a.status, a.published_at, a.updated_at, a.meta_title, a.meta_description, a.canonical_url, a.robots, a.is_sponsored, a.is_featured, c.slug AS category, c.name AS category_name, au.display_name AS author, au.slug AS author_slug, au.bio AS author_bio, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image, m.credit AS hero_credit, m.alt_text AS hero_alt FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN authors au ON au.id = a.author_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE 1 = 1';
+            $sql = 'SELECT a.id, a.category_id, a.title, a.slug, a.excerpt, a.body, a.status, a.published_at, a.updated_at, a.meta_title, a.meta_description, a.canonical_url, a.robots, a.is_sponsored, a.is_featured, c.slug AS category, c.name AS category_name, au.display_name AS author, au.slug AS author_slug, au.job_title AS author_job_title, au.bio AS author_bio, au.disclosure AS author_disclosure, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image, m.credit AS hero_credit, m.alt_text AS hero_alt FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN authors au ON au.id = a.author_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE 1 = 1';
             $params = [];
             if (is_array($category)) {
                 $placeholders = [];

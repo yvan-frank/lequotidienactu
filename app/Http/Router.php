@@ -206,6 +206,15 @@ final class Router
         if ($method === 'GET' && $path === '/a-propos') { $public->aPropos(); return; }
         if ($method === 'GET' && $path === '/contact') { $public->contact(); return; }
         if ($method === 'POST' && $path === '/contact') { $public->submitContact(); return; }
+        if ($method === 'GET' && preg_match('#^/auteurs/([a-z0-9-]+)$#', $path, $m)) {
+            if ($public->authorExists($m[1])) {
+                $public->authorPage($m[1]);
+                return;
+            }
+
+            $this->notFound();
+            return;
+        }
         if ($method === 'GET' && preg_match('#^/([a-z0-9-]+)$#', $path, $m)) {
             if ($public->categoryExists($m[1])) {
                 $public->category($m[1]);

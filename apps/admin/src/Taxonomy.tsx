@@ -27,8 +27,10 @@ type Author = {
   id: number;
   user_id: number | null;
   display_name: string;
+  job_title: string | null;
   slug: string;
   bio: string | null;
+  disclosure: string | null;
   avatar_media_id: number | null;
   articles_count: number;
 };
@@ -594,14 +596,20 @@ function AuthorsPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
   });
   const [editing, setEditing] = React.useState<Author | 'new' | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<Author | null>(null);
-  const [form, setForm] = React.useState({ display_name: '', slug: '', bio: '' });
+  const [form, setForm] = React.useState({ display_name: '', job_title: '', slug: '', bio: '', disclosure: '' });
 
   const openNew = () => {
-    setForm({ display_name: '', slug: '', bio: '' });
+    setForm({ display_name: '', job_title: '', slug: '', bio: '', disclosure: '' });
     setEditing('new');
   };
   const openEdit = (author: Author) => {
-    setForm({ display_name: author.display_name, slug: author.slug, bio: emptyToFilled(author.bio) });
+    setForm({
+      display_name: author.display_name,
+      job_title: emptyToFilled(author.job_title),
+      slug: author.slug,
+      bio: emptyToFilled(author.bio),
+      disclosure: emptyToFilled(author.disclosure),
+    });
     setEditing(author);
   };
 
@@ -656,7 +664,10 @@ function AuthorsPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
             <tbody>
               {authors.data.map((author) => (
                 <tr key={author.id} className="border-b border-slate-100 last:border-0">
-                  <td className="py-3 pr-4 font-semibold text-slate-900">{author.display_name}</td>
+                  <td className="py-3 pr-4">
+                    <p className="font-semibold text-slate-900">{author.display_name}</p>
+                    {author.job_title && <p className="text-xs text-slate-500">{author.job_title}</p>}
+                  </td>
                   <td className="py-3 pr-4 text-slate-500">{author.slug}</td>
                   <td className="py-3 pr-4 text-slate-500">{author.articles_count}</td>
                   <td className="py-3 pr-4">
@@ -708,6 +719,15 @@ function AuthorsPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
               />
             </label>
             <label className={`mt-4 ${labelClass}`}>
+              Poste / titre (optionnel)
+              <input
+                className={inputClass}
+                placeholder="Rédacteur indépendant"
+                value={form.job_title}
+                onChange={(event) => setForm({ ...form, job_title: event.target.value })}
+              />
+            </label>
+            <label className={`mt-4 ${labelClass}`}>
               Slug (optionnel)
               <input
                 className={inputClass}
@@ -723,6 +743,19 @@ function AuthorsPanel({ setToast }: { setToast: (toast: ToastState) => void }) {
                 value={form.bio}
                 onChange={(event) => setForm({ ...form, bio: event.target.value })}
               />
+            </label>
+            <label className={`mt-4 ${labelClass}`}>
+              Déclaration de transparence (optionnel)
+              <textarea
+                className={inputClass}
+                rows={3}
+                placeholder="Autres activités professionnelles pouvant influencer la ligne éditoriale (ex. également développeur web et chef de projet digital)."
+                value={form.disclosure}
+                onChange={(event) => setForm({ ...form, disclosure: event.target.value })}
+              />
+              <span className="mt-1 block text-xs font-normal text-slate-400">
+                Affichée publiquement sur la fiche auteur et en bas des articles signés.
+              </span>
             </label>
             <div className="mt-6 flex justify-end gap-3">
               <button type="button" onClick={() => setEditing(null)} className="rounded px-4 py-2 text-sm font-semibold hover:bg-slate-100">

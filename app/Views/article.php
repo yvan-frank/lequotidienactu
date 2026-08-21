@@ -96,10 +96,25 @@ $articleBody = \App\Support\ArticleEmbeds::render($article['body'] ?? '<p>' . ht
   <?php if (!empty($article['author_bio'])): ?>
     <section class="flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-6">
       <span class="grid size-14 shrink-0 place-items-center rounded-full bg-brand-50 text-xl font-bold text-brand-700" aria-hidden="true"><?= htmlspecialchars($authorInitial) ?></span>
-      <div>
+      <div class="min-w-0">
         <p class="text-xs font-bold tracking-widest text-slate-400 uppercase">À propos de l’auteur</p>
-        <p class="mt-1 text-lg font-bold text-slate-900"><?= htmlspecialchars($article['author']) ?></p>
+        <p class="mt-1 text-lg font-bold text-slate-900">
+          <?php if (!empty($article['author_slug'])): ?>
+            <a class="hover:text-brand-600" href="/auteurs/<?= htmlspecialchars($article['author_slug']) ?>"><?= htmlspecialchars($article['author']) ?></a>
+          <?php else: ?>
+            <?= htmlspecialchars($article['author']) ?>
+          <?php endif; ?>
+        </p>
+        <?php if (!empty($article['author_job_title'])): ?>
+          <p class="text-sm font-semibold text-slate-500"><?= htmlspecialchars($article['author_job_title']) ?></p>
+        <?php endif; ?>
         <p class="mt-2 text-sm leading-relaxed text-slate-600"><?= htmlspecialchars($article['author_bio']) ?></p>
+        <?php if (!empty($article['author_disclosure'])): ?>
+          <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p class="text-[11px] font-bold tracking-widest text-amber-800 uppercase">Transparence éditoriale</p>
+            <p class="mt-1 text-sm leading-relaxed text-amber-900"><?= htmlspecialchars($article['author_disclosure']) ?></p>
+          </div>
+        <?php endif; ?>
       </div>
     </section>
   <?php endif; ?>

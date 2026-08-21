@@ -14,6 +14,7 @@ type ArticleItem = {
 export function InfiniteArticles({
   category,
   query,
+  author,
   currentCategory,
   page,
   hasMore: initialHasMore,
@@ -22,6 +23,8 @@ export function InfiniteArticles({
   category?: string;
   /** Search query to restrict to (search-results page). */
   query?: string;
+  /** Author slug to restrict to (author pages). */
+  author?: string;
   /** Current category slug — hides the redundant category badge on its own cards, same as the server-rendered grid. */
   currentCategory?: string;
   /** Page already rendered server-side; the island starts fetching from the next one. */
@@ -48,7 +51,7 @@ export function InfiniteArticles({
     try {
       const nextPage = currentPage + 1;
       const response = await api.get<{ data: ArticleItem[]; meta: { has_more: boolean } }>('/articles', {
-        params: { page: nextPage, category, q: query },
+        params: { page: nextPage, category, q: query, author },
       });
       setItems((current) => [...current, ...response.data.data]);
       setHasMore(response.data.meta.has_more);
@@ -60,7 +63,7 @@ export function InfiniteArticles({
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, category, query]);
+  }, [currentPage, category, query, author]);
 
   useEffect(() => {
     if (!hasMore || error) return;
