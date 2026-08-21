@@ -1,6 +1,16 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
+/*
+ * Belt-and-braces against horizontal scroll/shift: any single element that
+ * briefly overflows the viewport width (a third-party ad iframe sized
+ * before its container settles, an unbroken long word/URL, …) would
+ * otherwise make the whole page horizontally scrollable.
+ */
+html {
+  overflow-x: hidden;
+}
+
 button:not(:disabled),
 [role='button']:not([aria-disabled='true']) {
   cursor: pointer;
