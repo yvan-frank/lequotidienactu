@@ -3,6 +3,7 @@ import {
   Briefcase,
   CalendarDays,
   CheckCircle2,
+  HelpCircle,
   Languages,
   RotateCcw,
   Sparkles,
@@ -90,6 +91,35 @@ const CANADIAN_STUDY_OPTIONS: SelectOption<CanadianStudy>[] = [
 
 const ABILITIES: Ability[] = ['listening', 'speaking', 'reading', 'writing'];
 const emptyClb: ClbScores = { listening: null, speaking: null, reading: null, writing: null };
+
+/**
+ * IRCC's CRS grid awards no points for occupation/CNP directly — it only
+ * gates eligibility for category-based draws (a candidate needs matching
+ * work experience in the category's CNP list within the last 3 years, on
+ * top of meeting the score cutoff). The French category is the exception:
+ * it's language-based, not CNP-based, so it's derived automatically from
+ * the French/English CLB scores already entered (score.frenchBonus > 0)
+ * rather than asked here. Draw type strings must match DRAW_TYPES in
+ * apps/admin/src/DrawRounds.tsx exactly.
+ */
+type OccupationCategory = 'healthcare' | 'stem' | 'trades' | 'transport' | 'agriculture' | 'education';
+const OCCUPATION_CATEGORY_LABELS: Record<OccupationCategory, string> = {
+  healthcare: 'Professions de la santé',
+  stem: 'STIM (sciences, technologie, ingénierie, mathématiques)',
+  trades: 'Métiers du bâtiment et de la construction',
+  transport: 'Transport',
+  agriculture: 'Agriculture et agroalimentaire',
+  education: 'Éducation',
+};
+const DRAW_TYPE_TO_CATEGORY: Record<string, OccupationCategory> = {
+  'Catégorie : professions de la santé': 'healthcare',
+  'Catégorie : STIM (sciences, technologie, ingénierie, mathématiques)': 'stem',
+  'Catégorie : métiers du bâtiment et de la construction': 'trades',
+  'Catégorie : transport': 'transport',
+  'Catégorie : agriculture et agroalimentaire': 'agriculture',
+  'Catégorie : éducation': 'education',
+};
+const FRENCH_CATEGORY_DRAW_TYPE = 'Catégorie : connaissance du français';
 
 type Accent = 'sky' | 'violet' | 'amber' | 'rose' | 'emerald';
 
@@ -182,7 +212,17 @@ export function CrsCalculator() {
   const [spouseEducation, setSpouseEducation] = useState<EducationLevel | null>(null);
   const [spouseLanguage, setSpouseLanguage] = useState<ClbScores>(emptyClb);
   const [spouseCanadianExpYears, setSpouseCanadianExpYears] = useState<CanadianExpYears | null>(null);
+  const [occupationCategories, setOccupationCategories] = useState<Set<OccupationCategory>>(new Set());
   const [drawRounds, setDrawRounds] = useState<DrawRound[]>([]);
+
+  const toggleOccupationCategory = (category: OccupationCategory) => {
+    setOccupationCategories((current) => {
+      const next = new Set(current);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  };
 
   useEffect(() => {
     api
@@ -209,6 +249,14 @@ export function CrsCalculator() {
     setSpouseEducation(null);
     setSpouseLanguage(emptyClb);
     setSpouseCanadianExpYears(null);
+    setOccupationCategories(new Set());
+  };
+
+  const isDrawEligible = (drawType: string, frenchBonus: number): boolean => {
+    if (drawType === FRENCH_CATEGORY_DRAW_TYPE) return frenchBonus > 0;
+    const category = DRAW_TYPE_TO_CATEGORY[drawType];
+    if (category) return occupationCategories.has(category);
+    return true;
   };
 
   const language1Complete = language1Tag !== null && ABILITIES.every((ability) => language1[ability] !== null);
@@ -327,6 +375,26 @@ export function CrsCalculator() {
             />
             Je détiens un certificat de qualification d’un métier délivré par une province ou un territoire
           </label>
+          <div>
+            <p className="text-sm font-semibold text-slate-700">Catégorie professionnelle (CNP)</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Sans incidence sur le score SCG lui-même — sert uniquement à vérifier votre admissibilité
+              aux tirages ciblés par catégorie ci-contre. Cochez si votre expérience des 3 dernières
+              années correspond à l’une de ces catégories.
+            </p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {(Object.keys(OCCUPATION_CATEGORY_LABELS) as OccupationCategory[]).map((category) => (
+                <label key={category} className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={occupationCategories.has(category)}
+                    onChange={() => toggleOccupationCategory(category)}
+                  />
+                  {OCCUPATION_CATEGORY_LABELS[category]}
+                </label>
+              ))}
+            </div>
+          </div>
         </Card>
 
         {hasSpouse && (
@@ -407,7 +475,8 @@ export function CrsCalculator() {
               </p>
               <ul className="mt-3 grid gap-3">
                 {drawRounds.map((round) => {
-                  const qualifies = score.total >= round.crs_cutoff;
+                  const eligible = isDrawEligible(round.draw_type, score.frenchBonus);
+                  const qualifies = eligible && score.total >= round.crs_cutoff;
                   return (
                     <li key={`${round.draw_date}-${round.draw_type}`} className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
@@ -418,7 +487,9 @@ export function CrsCalculator() {
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
                         <span className="font-bold text-slate-900 tabular-nums">{round.crs_cutoff}</span>
-                        {qualifies ? (
+                        {!eligible ? (
+                          <HelpCircle size={15} className="text-amber-500" aria-label="Admissibilité à la catégorie non confirmée" />
+                        ) : qualifies ? (
                           <CheckCircle2 size={15} className="text-emerald-600" aria-label="Score suffisant" />
                         ) : (
                           <XCircle size={15} className="text-slate-300" aria-label="Score insuffisant" />
@@ -428,6 +499,11 @@ export function CrsCalculator() {
                   );
                 })}
               </ul>
+              <p className="mt-3 flex items-start gap-1.5 text-xs text-slate-400">
+                <HelpCircle size={13} className="mt-0.5 shrink-0 text-amber-500" aria-hidden="true" />
+                Catégorie ciblée : admissibilité non confirmée (voir « Catégorie professionnelle » ou vos
+                langues).
+              </p>
             </div>
           )}
           <p className="text-xs leading-relaxed text-slate-500">
