@@ -59,7 +59,7 @@ final class AdminCommentController
             if (mb_strlen($body) > 2000) {
                 throw new \InvalidArgumentException('Réponse trop longue (2000 caractères maximum).');
             }
-            $parent = $pdo->prepare('SELECT article_id, parent_id, status FROM comments WHERE id = :id');
+            $parent = $pdo->prepare('SELECT c.article_id, c.parent_id, c.status, au.display_name AS author_display_name FROM comments c INNER JOIN articles a ON a.id = c.article_id LEFT JOIN authors au ON au.id = a.author_id WHERE c.id = :id');
             $parent->execute(['id' => $id]);
             $row = $parent->fetch(PDO::FETCH_ASSOC);
             if (!$row) {
@@ -68,7 +68,10 @@ final class AdminCommentController
             if ($row['parent_id'] !== null) {
                 throw new \InvalidArgumentException('Impossible de répondre à une réponse.');
             }
-            $staffName = $_SESSION['admin_user']['name'] ?? 'La rédaction';
+            // Publiquement, une réponse est signée par l'auteur de l'article
+            // (sa byline), pas par le compte staff qui l'a rédigée en coulisses
+            // — le staff reste tracé via user_id pour la modération/l'audit.
+            $staffName = $row['author_display_name'] ?? 'La rédaction';
             $staffId = $_SESSION['admin_user']['id'] ?? null;
             $statement = $pdo->prepare('INSERT INTO comments (article_id, parent_id, user_id, author_name, body, status) VALUES (:article_id, :parent_id, :user_id, :author_name, :body, "approved")');
             $statement->execute([
