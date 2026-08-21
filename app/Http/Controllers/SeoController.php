@@ -159,6 +159,8 @@ final class SeoController
             '/contact' => date(DATE_ATOM),
             '/mentions-legales' => date(DATE_ATOM),
             '/confidentialite' => date(DATE_ATOM),
+            '/simulateur-entree-express' => date(DATE_ATOM),
+            '/simulateur-arrima' => date(DATE_ATOM),
         ];
         try {
             $rows = $this->pdo()
