@@ -5,6 +5,7 @@ import { AccountWidget } from './components/AccountWidget';
 import { ReactionWidget } from './components/ReactionWidget';
 import { CommentsWidget } from './components/CommentsWidget';
 import { InfiniteArticles } from './components/InfiniteArticles';
+import { CrsCalculator } from './components/CrsCalculator';
 
 function mount<P extends object>(
   selector: string,
@@ -38,3 +39,4 @@ mount('[data-island="infinite-articles"]', InfiniteArticles, (el) => ({
   page: Number(el.dataset.page) || 1,
   hasMore: el.dataset.hasMore === '1',
 }));
+mount('[data-island="crs-calculator"]', CrsCalculator);

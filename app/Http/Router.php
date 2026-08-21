@@ -233,6 +233,7 @@ final class Router
         if ($method === 'GET' && $path === '/mentions-legales') { $public->mentionsLegales(); return; }
         if ($method === 'GET' && $path === '/confidentialite') { $public->confidentialite(); return; }
         if ($method === 'GET' && $path === '/a-propos') { $public->aPropos(); return; }
+        if ($method === 'GET' && $path === '/simulateur-entree-express') { $public->crsCalculator(); return; }
         if ($method === 'GET' && $path === '/contact') { $public->contact(); return; }
         if ($method === 'POST' && $path === '/contact') { $public->submitContact(); return; }
         if ($method === 'GET' && preg_match('#^/auteurs/([a-z0-9-]+)$#', $path, $m)) {

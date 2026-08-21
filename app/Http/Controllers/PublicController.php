@@ -221,6 +221,18 @@ final class PublicController
         require __DIR__ . '/../../Views/layout.php';
     }
 
+    public function crsCalculator(): void
+    {
+        $title = 'Simulateur de points Entrée express (SCG) - Le Quotidien Actu';
+        $page = 'simulateur-entree-express';
+        $seo = (new SeoManager())->forStaticPage(
+            'Simulateur Entrée express',
+            'Estimez gratuitement votre score au Système de classement global (SCG) pour l’immigration Entrée express au Canada.',
+            '/simulateur-entree-express'
+        );
+        require __DIR__ . '/../../Views/layout.php';
+    }
+
     public function pageExists(string $slug): bool
     {
         try {
