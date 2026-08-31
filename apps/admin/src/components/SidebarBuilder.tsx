@@ -147,7 +147,7 @@ function SortableWidget({
   const Icon = widgetDef?.icon ?? Type;
 
   return (
-    <div ref={setNodeRef} style={style} className="rounded-lg border border-slate-200 bg-white">
+    <div ref={setNodeRef} style={style} className="min-w-0 rounded-lg border border-slate-200 bg-white">
       <div className="flex items-center gap-2 px-3 py-2.5">
         <button
           type="button"

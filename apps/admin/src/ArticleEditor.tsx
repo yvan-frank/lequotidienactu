@@ -778,7 +778,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
         </div>
       )}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="space-y-6">
+        <section className="min-w-0 space-y-6">
           <details open className="rounded-lg border border-slate-200 bg-white p-6">
             <summary className="cursor-pointer font-semibold">Titre & aperçu</summary>
             <div className="mt-5 grid grid-cols-1 gap-4">
@@ -1105,7 +1105,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
             </div>
           </details>
         </section>
-        <aside className="space-y-5 lg:sticky lg:top-6 lg:h-fit lg:self-start">
+        <aside className="min-w-0 space-y-5 lg:sticky lg:top-6 lg:h-fit lg:self-start">
           <details open className="rounded-lg border border-slate-200 bg-white p-5">
             <summary className="cursor-pointer font-bold">Image de couverture</summary>
             <p className="mt-2 text-sm text-slate-500">

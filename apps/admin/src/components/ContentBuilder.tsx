@@ -330,7 +330,7 @@ function ColumnsBlockEditor({
       </label>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {columns.map((column, index) => (
-          <div key={index} className="rounded-lg border border-dashed border-slate-300 bg-slate-50/60 p-2.5">
+          <div key={index} className="min-w-0 rounded-lg border border-dashed border-slate-300 bg-slate-50/60 p-2.5">
             <p className="mb-2 text-xs font-bold tracking-widest text-slate-400 uppercase">Colonne {index + 1}</p>
             <ContentBuilder
               blocks={column.blocks}
@@ -513,7 +513,7 @@ function SortableBlock({
   const Icon = blockDef?.icon ?? Type;
 
   return (
-    <div ref={setNodeRef} style={style} className="rounded-lg border border-slate-200 bg-white">
+    <div ref={setNodeRef} style={style} className="min-w-0 rounded-lg border border-slate-200 bg-white">
       <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
         <button
           type="button"
