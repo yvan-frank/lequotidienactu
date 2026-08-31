@@ -56,6 +56,18 @@ final class ArticleEmbeds
             },
             $rendered
         );
+        $rendered = $rendered ?? $bodyHtml;
+
+        $rendered = preg_replace_callback(
+            '/<div\b[^>]*\bdata-file-attachment\b[^>]*><\/div>/i',
+            static function (array $matches): string {
+                $url = self::extractAttribute($matches[0], 'data-file-url');
+                $name = self::extractAttribute($matches[0], 'data-file-name');
+                $bytes = (int) self::extractAttribute($matches[0], 'data-file-bytes');
+                return self::renderFileAttachment($url, $name, $bytes);
+            },
+            $rendered
+        );
 
         return $rendered ?? $bodyHtml;
     }
@@ -98,6 +110,43 @@ final class ArticleEmbeds
         $relAttr = $external ? ' rel="noopener noreferrer" target="_blank"' : '';
 
         return '<p class="not-prose my-6"><a class="flex items-center rounded-full px-6 py-3 text-sm font-bold transition ' . $widthClasses . ' ' . $classes . '" href="' . $safeUrl . '"' . $relAttr . '>' . $safeText . '</a></p>';
+    }
+
+    /**
+     * Replaces the file-attachment block inserted via the editor toolbar
+     * (<div data-file-attachment data-file-url="…" data-file-name="…"
+     * data-file-bytes="…"></div>) with a downloadable card linking straight
+     * to the stored file.
+     */
+    private static function renderFileAttachment(string $url, string $name, int $bytes): string
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return '';
+        }
+        $name = trim($name) !== '' ? trim($name) : basename($url);
+        $safeUrl = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
+        $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+        $size = self::formatBytes($bytes);
+
+        return '<a class="not-prose my-6 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 no-underline transition hover:border-brand-300 hover:bg-brand-50" href="' . $safeUrl . '" download>'
+            . '<span class="grid size-10 shrink-0 place-items-center rounded-lg bg-brand-600 text-white" aria-hidden="true">'
+            . '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 12-4-4m4 4 4-4M2 17l.621 2.485A2 2 0 0 0 4.561 21h14.878a2 2 0 0 0 1.94-1.515L22 17"/></svg>'
+            . '</span>'
+            . '<span class="min-w-0"><span class="block truncate font-bold text-slate-900">' . $safeName . '</span>'
+            . '<span class="block text-xs font-medium text-slate-500">Télécharger' . ($size !== '' ? ' · ' . $size : '') . '</span></span>'
+            . '</a>';
+    }
+
+    private static function formatBytes(int $bytes): string
+    {
+        if ($bytes <= 0) {
+            return '';
+        }
+        if ($bytes >= 1_000_000) {
+            return round($bytes / 1_000_000, 1) . ' Mo';
+        }
+        return round($bytes / 1_000, 0) . ' Ko';
     }
 
     /**

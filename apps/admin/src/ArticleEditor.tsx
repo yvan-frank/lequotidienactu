@@ -6,16 +6,23 @@ import TiptapLink from '@tiptap/extension-link';
 import TiptapImage from '@tiptap/extension-image';
 import TiptapTextStyle from '@tiptap/extension-text-style';
 import TiptapColor from '@tiptap/extension-color';
+import TextAlign from '@tiptap/extension-text-align';
+import Highlight from '@tiptap/extension-highlight';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
   Bold,
   CheckCircle2,
   Circle,
   Eye,
   Heading2,
   Heading3,
+  Highlighter,
   HelpCircle,
   Image as ImageIcon,
   Italic,
@@ -28,6 +35,7 @@ import {
   Minimize2,
   MousePointerClick,
   Newspaper,
+  Paperclip,
   Palette,
   Quote,
   Redo2,
@@ -39,12 +47,14 @@ import { AiAssistButton } from './components/AiAssistButton';
 import { ArticlePicker, type ArticleSummary } from './components/ArticlePicker';
 import { LinkPopover } from './components/LinkPopover';
 import { MediaPicker, type Media } from './components/MediaPicker';
+import { FilePicker, type UploadedFile } from './components/FilePicker';
 import { Toast } from './components/Toast';
 import { CategoryCombobox, TagsInput } from './components/TaxonomyPicker';
 import { ArticleEmbed } from './extensions/ArticleEmbed';
 import { AdEmbed } from './extensions/AdEmbed';
 import { FaqEmbed } from './extensions/FaqEmbed';
 import { ButtonEmbed } from './extensions/ButtonEmbed';
+import { FileEmbed } from './extensions/FileEmbed';
 
 type Taxonomy = {
   categories: { id: number; parent_id: number | null; name: string; slug: string }[];
@@ -208,10 +218,12 @@ function EditorToolbar({
   editor,
   onInsertImage,
   onInsertArticleEmbed,
+  onInsertFile,
 }: {
   editor: Editor | null;
   onInsertImage: () => void;
   onInsertArticleEmbed: () => void;
+  onInsertFile: () => void;
 }) {
   const onInsertAdEmbed = () => editor?.chain().focus().insertAdEmbed().run();
   const onInsertFaqEmbed = () => editor?.chain().focus().insertFaqEmbed().run();
@@ -294,6 +306,42 @@ function EditorToolbar({
       >
         <Quote size={16} />
       </ToolbarButton>
+      <ToolbarButton
+        label="Surbrillance"
+        active={editor?.isActive('highlight')}
+        onClick={() => editor?.chain().focus().toggleHighlight().run()}
+      >
+        <Highlighter size={16} />
+      </ToolbarButton>
+      <span className="mx-1 h-5 w-px bg-slate-300" aria-hidden="true" />
+      <ToolbarButton
+        label="Aligner à gauche"
+        active={editor?.isActive({ textAlign: 'left' })}
+        onClick={() => editor?.chain().focus().setTextAlign('left').run()}
+      >
+        <AlignLeft size={16} />
+      </ToolbarButton>
+      <ToolbarButton
+        label="Centrer"
+        active={editor?.isActive({ textAlign: 'center' })}
+        onClick={() => editor?.chain().focus().setTextAlign('center').run()}
+      >
+        <AlignCenter size={16} />
+      </ToolbarButton>
+      <ToolbarButton
+        label="Aligner à droite"
+        active={editor?.isActive({ textAlign: 'right' })}
+        onClick={() => editor?.chain().focus().setTextAlign('right').run()}
+      >
+        <AlignRight size={16} />
+      </ToolbarButton>
+      <ToolbarButton
+        label="Justifier"
+        active={editor?.isActive({ textAlign: 'justify' })}
+        onClick={() => editor?.chain().focus().setTextAlign('justify').run()}
+      >
+        <AlignJustify size={16} />
+      </ToolbarButton>
       <span className="mx-1 h-5 w-px bg-slate-300" aria-hidden="true" />
       <div className="relative">
         <ToolbarButton
@@ -307,6 +355,9 @@ function EditorToolbar({
       </div>
       <ToolbarButton label="Insérer une image" onClick={onInsertImage}>
         <ImageIcon size={16} />
+      </ToolbarButton>
+      <ToolbarButton label="Insérer un fichier (PDF, document…)" onClick={onInsertFile}>
+        <Paperclip size={16} />
       </ToolbarButton>
       <ToolbarButton label="À lire aussi" onClick={onInsertArticleEmbed}>
         <Newspaper size={16} />
@@ -360,6 +411,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
   const [layout, setLayout] = useState<'standard' | 'magazine'>('standard');
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [bodyImagePickerOpen, setBodyImagePickerOpen] = useState(false);
+  const [filePickerOpen, setFilePickerOpen] = useState(false);
   const [articlePickerOpen, setArticlePickerOpen] = useState(false);
   const [tagIds, setTagIds] = useState<number[]>([]);
   const [isDirty, setIsDirty] = useState(false);
@@ -396,10 +448,13 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
       TiptapImage,
       TiptapTextStyle,
       TiptapColor,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Highlight,
       ArticleEmbed,
       AdEmbed,
       FaqEmbed,
       ButtonEmbed,
+      FileEmbed,
     ],
     content: '',
     editorProps: {
@@ -740,6 +795,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
                   editor={editor}
                   onInsertImage={() => setBodyImagePickerOpen(true)}
                   onInsertArticleEmbed={() => setArticlePickerOpen(true)}
+                  onInsertFile={() => setFilePickerOpen(true)}
                 />
                 <EditorContent editor={editor} />
               </div>
@@ -1167,6 +1223,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
               editor={editor}
               onInsertImage={() => setBodyImagePickerOpen(true)}
               onInsertArticleEmbed={() => setArticlePickerOpen(true)}
+              onInsertFile={() => setFilePickerOpen(true)}
             />
             <div className="editor-fullscreen min-h-0 flex-1 overflow-y-auto">
               <EditorContent editor={editor} className="h-full" />
@@ -1201,6 +1258,15 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
           onSelect={(media) => {
             editor?.chain().focus().setImage({ src: media.url, alt: media.alt_text ?? '' }).run();
             setBodyImagePickerOpen(false);
+          }}
+        />
+      )}
+      {filePickerOpen && (
+        <FilePicker
+          onClose={() => setFilePickerOpen(false)}
+          onSelect={(file: UploadedFile) => {
+            editor?.chain().focus().insertFileEmbed(file).run();
+            setFilePickerOpen(false);
           }}
         />
       )}

@@ -16,6 +16,20 @@ final class AdminMediaController
     private const JPEG_QUALITY = 78;
     private const PNG_COMPRESSION = 9;
 
+    private const DOCUMENT_MAX_BYTES = 20_000_000;
+    private const DOCUMENT_MIME_EXTENSIONS = [
+        'application/pdf' => 'pdf',
+        'application/msword' => 'doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+        'application/vnd.ms-excel' => 'xls',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+        'application/vnd.ms-powerpoint' => 'ppt',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation' => 'pptx',
+        'application/zip' => 'zip',
+        'text/csv' => 'csv',
+        'text/plain' => 'txt',
+    ];
+
     public function index(): void
     {
         AdminAuthController::requireStaff();
@@ -89,6 +103,69 @@ final class AdminMediaController
             $this->json(['data' => ['id' => (int) $pdo->lastInsertId(), 'url' => $path, 'width' => $finalWidth, 'height' => $finalHeight]], 201);
         } catch (PDOException) {
             @unlink(dirname(__DIR__, 3) . '/public' . $path);
+            $this->json(['message' => 'Base de données indisponible.'], 503);
+        }
+    }
+
+    /**
+     * Uploads a downloadable document (PDF, Word, Excel, PowerPoint, zip,
+     * csv, txt) referenced from the article body — distinct from upload()
+     * because these files aren't images and can't go through getimagesize()
+     * or the GD compression pipeline. Stored in the same media table so
+     * deletion/audit tooling keeps working uniformly; original_name is kept
+     * in alt_text since documents don't have width/height to distinguish
+     * them by.
+     */
+    public function uploadDocument(): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor', 'author']);
+        $file = $_FILES['file'] ?? null;
+        if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
+            $this->json(['message' => 'Un fichier est requis.'], 422);
+            return;
+        }
+        if ($file['size'] > self::DOCUMENT_MAX_BYTES) {
+            $this->json(['message' => 'Le fichier ne doit pas dépasser 20 Mo.'], 422);
+            return;
+        }
+
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']) ?: '';
+        $extension = self::DOCUMENT_MIME_EXTENSIONS[$mime] ?? null;
+        if ($extension === null) {
+            $this->json(['message' => 'Type de fichier non pris en charge.'], 422);
+            return;
+        }
+
+        $directory = dirname(__DIR__, 3) . '/public/uploads/documents';
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            $this->json(['message' => 'Le dossier de documents est indisponible.'], 500);
+            return;
+        }
+
+        $originalName = trim((string) ($_POST['name'] ?? pathinfo((string) $file['name'], PATHINFO_FILENAME)));
+        $nameSlug = $originalName !== '' ? mb_substr(Slug::make($originalName), 0, 60) : 'document';
+        $filenameBase = ($nameSlug !== '' ? $nameSlug : 'document') . '-' . bin2hex(random_bytes(4));
+        $path = '/uploads/documents/' . $filenameBase . '.' . $extension;
+        $destination = $directory . '/' . $filenameBase . '.' . $extension;
+        if (!move_uploaded_file($file['tmp_name'], $destination)) {
+            $this->json(['message' => 'Impossible d’enregistrer ce fichier.'], 500);
+            return;
+        }
+        $bytes = @filesize($destination) ?: (int) $file['size'];
+
+        try {
+            $pdo = $this->pdo();
+            $statement = $pdo->prepare('INSERT INTO media (disk, path, mime_type, bytes, width, height, alt_text, credit) VALUES ("local", :path, :mime_type, :bytes, NULL, NULL, :alt_text, NULL)');
+            $statement->execute(['path' => $path, 'mime_type' => $mime, 'bytes' => $bytes, 'alt_text' => $originalName !== '' ? $originalName : ($file['name'] ?? 'Document')]);
+            $this->json(['data' => [
+                'id' => (int) $pdo->lastInsertId(),
+                'url' => $path,
+                'name' => $originalName !== '' ? $originalName : $file['name'],
+                'mime_type' => $mime,
+                'bytes' => $bytes,
+            ]], 201);
+        } catch (PDOException) {
+            @unlink($destination);
             $this->json(['message' => 'Base de données indisponible.'], 503);
         }
     }

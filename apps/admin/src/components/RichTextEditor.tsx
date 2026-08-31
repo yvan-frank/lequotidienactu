@@ -3,16 +3,24 @@ import { TextSelection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import TiptapLink from '@tiptap/extension-link';
 import TiptapImage from '@tiptap/extension-image';
+import TextAlign from '@tiptap/extension-text-align';
+import Highlight from '@tiptap/extension-highlight';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
   Bold,
   Heading2,
   Heading3,
+  Highlighter,
   Image as ImageIcon,
   Italic,
   Link2,
   List,
   ListOrdered,
+  Paperclip,
   Quote,
   Redo2,
   Strikethrough,
@@ -20,6 +28,8 @@ import {
 } from 'lucide-react';
 import { LinkPopover } from './LinkPopover';
 import { MediaPicker, type Media } from './MediaPicker';
+import { FilePicker, type UploadedFile } from './FilePicker';
+import { FileEmbed } from '../extensions/FileEmbed';
 
 function ToolbarButton({
   active,
@@ -53,10 +63,18 @@ function ToolbarButton({
 
 export function RichTextEditor({ value, onChange }: { value: string; onChange: (html: string) => void }) {
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
+  const [filePickerOpen, setFilePickerOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkClickAnchor, setLinkClickAnchor] = useState<HTMLAnchorElement | null>(null);
   const editor = useEditor({
-    extensions: [StarterKit, TiptapLink.configure({ openOnClick: false }), TiptapImage],
+    extensions: [
+      StarterKit,
+      TiptapLink.configure({ openOnClick: false }),
+      TiptapImage,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Highlight,
+      FileEmbed,
+    ],
     content: value,
     editorProps: {
       handleClick: (view, pos, event) => {
@@ -118,6 +136,22 @@ export function RichTextEditor({ value, onChange }: { value: string; onChange: (
         <ToolbarButton label="Citation" active={editor?.isActive('blockquote')} onClick={() => editor?.chain().focus().toggleBlockquote().run()}>
           <Quote size={16} />
         </ToolbarButton>
+        <ToolbarButton label="Surbrillance" active={editor?.isActive('highlight')} onClick={() => editor?.chain().focus().toggleHighlight().run()}>
+          <Highlighter size={16} />
+        </ToolbarButton>
+        <span className="mx-1 h-5 w-px bg-slate-300" aria-hidden="true" />
+        <ToolbarButton label="Aligner à gauche" active={editor?.isActive({ textAlign: 'left' })} onClick={() => editor?.chain().focus().setTextAlign('left').run()}>
+          <AlignLeft size={16} />
+        </ToolbarButton>
+        <ToolbarButton label="Centrer" active={editor?.isActive({ textAlign: 'center' })} onClick={() => editor?.chain().focus().setTextAlign('center').run()}>
+          <AlignCenter size={16} />
+        </ToolbarButton>
+        <ToolbarButton label="Aligner à droite" active={editor?.isActive({ textAlign: 'right' })} onClick={() => editor?.chain().focus().setTextAlign('right').run()}>
+          <AlignRight size={16} />
+        </ToolbarButton>
+        <ToolbarButton label="Justifier" active={editor?.isActive({ textAlign: 'justify' })} onClick={() => editor?.chain().focus().setTextAlign('justify').run()}>
+          <AlignJustify size={16} />
+        </ToolbarButton>
         <span className="mx-1 h-5 w-px bg-slate-300" aria-hidden="true" />
         <div className="relative">
           <ToolbarButton label="Lien" active={editor?.isActive('link')} onClick={() => setLinkOpen((current) => !current)}>
@@ -127,6 +161,9 @@ export function RichTextEditor({ value, onChange }: { value: string; onChange: (
         </div>
         <ToolbarButton label="Insérer une image" onClick={() => setMediaPickerOpen(true)}>
           <ImageIcon size={16} />
+        </ToolbarButton>
+        <ToolbarButton label="Insérer un fichier (PDF, document…)" onClick={() => setFilePickerOpen(true)}>
+          <Paperclip size={16} />
         </ToolbarButton>
       </div>
       <div className="rounded-b-lg border border-slate-200 bg-white px-4 py-3">
@@ -148,6 +185,15 @@ export function RichTextEditor({ value, onChange }: { value: string; onChange: (
           onSelect={(media: Media) => {
             editor?.chain().focus().setImage({ src: media.url, alt: media.alt_text ?? '' }).run();
             setMediaPickerOpen(false);
+          }}
+        />
+      )}
+      {filePickerOpen && (
+        <FilePicker
+          onClose={() => setFilePickerOpen(false)}
+          onSelect={(file: UploadedFile) => {
+            editor?.chain().focus().insertFileEmbed(file).run();
+            setFilePickerOpen(false);
           }}
         />
       )}
