@@ -16,13 +16,17 @@ import {
   HelpCircle,
   Image as ImageIcon,
   Megaphone,
+  Minus,
   MousePointerClick,
+  Newspaper,
   Quote,
   Trash2,
   Type,
+  Video,
 } from 'lucide-react';
 import { MediaPicker, type Media } from './MediaPicker';
 import { RichTextEditor } from './RichTextEditor';
+import { ArticlePicker, type ArticleSummary } from './ArticlePicker';
 
 export type ContentBlock = { id: string; type: string; props: Record<string, any> };
 
@@ -341,6 +345,101 @@ function ColumnsBlockEditor({
   );
 }
 
+function DividerBlockEditor() {
+  return (
+    <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
+      Une ligne de séparation s’affichera ici — aucun réglage nécessaire.
+    </p>
+  );
+}
+
+function detectVideoHost(url: string): 'youtube' | 'vimeo' | null {
+  if (/youtu\.?be/i.test(url)) return 'youtube';
+  if (/vimeo\.com/i.test(url)) return 'vimeo';
+  return null;
+}
+
+function VideoBlockEditor({
+  props,
+  onChange,
+}: {
+  props: Record<string, any>;
+  onChange: (props: Record<string, any>) => void;
+}) {
+  const url = props.url ?? '';
+  const host = url.trim() !== '' ? detectVideoHost(url) : null;
+  return (
+    <div className="grid gap-1.5">
+      <label className={fieldLabelClass}>
+        Lien YouTube ou Vimeo
+        <input
+          className={fieldInputClass}
+          value={url}
+          onChange={(event) => onChange({ ...props, url: event.target.value })}
+          placeholder="https://www.youtube.com/watch?v=…"
+        />
+      </label>
+      {url.trim() !== '' && (
+        <p className={`text-xs ${host ? 'text-emerald-600' : 'text-red-600'}`}>
+          {host === 'youtube' && 'Vidéo YouTube reconnue.'}
+          {host === 'vimeo' && 'Vidéo Vimeo reconnue.'}
+          {!host && 'Lien non reconnu — seuls YouTube et Vimeo sont pris en charge.'}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ArticleCardBlockEditor({
+  props,
+  onChange,
+}: {
+  props: Record<string, any>;
+  onChange: (props: Record<string, any>) => void;
+}) {
+  const [pickerOpen, setPickerOpen] = React.useState(false);
+  return (
+    <div>
+      {props.articleId ? (
+        <div className="flex items-center gap-3 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2.5">
+          <Newspaper size={16} className="shrink-0 text-orange-700" />
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800">{props.title}</span>
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="shrink-0 rounded px-2 py-1 text-xs font-semibold text-orange-700 hover:bg-orange-100"
+          >
+            Changer
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          className="w-full rounded-lg border-2 border-dashed border-slate-300 p-4 text-sm font-semibold text-slate-500 hover:border-orange-400 hover:bg-orange-50 hover:text-orange-800"
+        >
+          Choisir un article
+        </button>
+      )}
+      {pickerOpen && (
+        <ArticlePicker
+          onClose={() => setPickerOpen(false)}
+          onSelect={(article: ArticleSummary) => {
+            onChange({
+              ...props,
+              articleId: article.id,
+              title: article.title,
+              categorySlug: article.category_slug,
+              slug: article.slug,
+            });
+            setPickerOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 /**
  * Every block type the "Composants" content builder can insert. Adding a
  * new one is: an entry here (icon/label/default props/editor) plus a
@@ -385,6 +484,15 @@ const BLOCKS: {
     icon: Columns2,
     defaultProps: { columns: [{ blocks: [] }, { blocks: [] }] },
     Editor: ColumnsBlockEditor,
+  },
+  { type: 'divider', label: 'Séparateur', icon: Minus, defaultProps: {}, Editor: DividerBlockEditor },
+  { type: 'video', label: 'Vidéo', icon: Video, defaultProps: { url: '' }, Editor: VideoBlockEditor },
+  {
+    type: 'article',
+    label: 'À lire aussi',
+    icon: Newspaper,
+    defaultProps: { articleId: null, title: '', categorySlug: null, slug: null },
+    Editor: ArticleCardBlockEditor,
   },
 ];
 

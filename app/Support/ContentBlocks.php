@@ -56,6 +56,9 @@ final class ContentBlocks
                 'button' => self::renderButton($props),
                 'ad' => ArticleEmbeds::renderInArticleAd(),
                 'columns' => $depth < 1 ? self::renderColumns($props, $depth) : '',
+                'divider' => '<hr class="my-8 border-slate-200">',
+                'video' => self::renderVideo($props),
+                'article' => self::renderArticleCard($props),
                 default => '',
             };
         }
@@ -90,6 +93,7 @@ final class ContentBlocks
                     fn (array $column): string => self::toPlainText(is_array($column['blocks'] ?? null) ? $column['blocks'] : []),
                     is_array($props['columns'] ?? null) ? $props['columns'] : [],
                 )) . ' ',
+                'article' => trim((string) ($props['title'] ?? '')) . ' ',
                 default => '',
             };
         }
@@ -181,5 +185,54 @@ final class ContentBlocks
             $cells .= '<div>' . self::render($blocks, $depth + 1) . '</div>';
         }
         return '<div class="my-6 grid gap-6 sm:grid-cols-' . $count . '">' . $cells . '</div>';
+    }
+
+    /**
+     * Accepts a YouTube or Vimeo watch/share URL (typed or pasted straight
+     * from the browser address bar) and embeds it responsively. Anything
+     * else — a host we don't recognize — renders nothing rather than risk
+     * embedding an arbitrary iframe.
+     */
+    private static function renderVideo(array $props): string
+    {
+        $url = trim((string) ($props['url'] ?? ''));
+        if ($url === '') {
+            return '';
+        }
+        $embedUrl = self::toEmbedUrl($url);
+        if ($embedUrl === null) {
+            return '';
+        }
+        $safeUrl = htmlspecialchars($embedUrl, ENT_QUOTES, 'UTF-8');
+        return '<div class="not-prose my-6 aspect-video overflow-hidden rounded-xl bg-slate-950">'
+            . '<iframe class="size-full" src="' . $safeUrl . '" title="Vidéo intégrée" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>'
+            . '</div>';
+    }
+
+    private static function toEmbedUrl(string $url): ?string
+    {
+        if (preg_match('#youtu\.be/([\w-]{6,})#', $url, $match)
+            || preg_match('#youtube\.com/(?:watch\?v=|embed/|shorts/)([\w-]{6,})#', $url, $match)
+        ) {
+            return 'https://www.youtube-nocookie.com/embed/' . $match[1];
+        }
+        if (preg_match('#vimeo\.com/(?:video/)?(\d+)#', $url, $match)) {
+            return 'https://player.vimeo.com/video/' . $match[1];
+        }
+        return null;
+    }
+
+    /**
+     * The block only stores the target article's id — its title/link
+     * always reflect the current state of that article, same guarantee as
+     * the classic editor's "À lire aussi" embed.
+     */
+    private static function renderArticleCard(array $props): string
+    {
+        $articleId = (int) ($props['articleId'] ?? 0);
+        if ($articleId <= 0) {
+            return '';
+        }
+        return ArticleEmbeds::renderCard($articleId);
     }
 }
