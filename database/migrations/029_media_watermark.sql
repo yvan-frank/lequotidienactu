@@ -1,0 +1,2 @@
+ALTER TABLE media
+    ADD COLUMN watermarked TINYINT(1) NOT NULL DEFAULT 0 AFTER credit;

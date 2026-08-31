@@ -1,6 +1,6 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ImagePlus, Loader2, Search, Sparkles, Trash2, Upload } from 'lucide-react';
+import { ImagePlus, Loader2, Search, ShieldCheck, Sparkles, Trash2, Upload } from 'lucide-react';
 import { api } from './api';
 import { Toast } from './components/Toast';
 
@@ -13,6 +13,7 @@ type MediaItem = {
   height: number | null;
   alt_text: string | null;
   credit: string | null;
+  watermarked: number | boolean;
   created_at: string;
 };
 
@@ -58,10 +59,18 @@ function MediaCard({
       />
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-mono text-slate-500">
+          <p className="min-w-0 flex-1 truncate text-xs font-mono text-slate-500">
             {item.width && item.height ? `${item.width}×${item.height} · ` : ''}
             {formatBytes(item.bytes)} · {item.mime_type.replace('image/', '')}
           </p>
+          {!item.watermarked && (
+            <span
+              className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold tracking-wide text-amber-800 uppercase"
+              title="Cette image n'a pas encore le filigrane du logo"
+            >
+              Sans filigrane
+            </span>
+          )}
           <button
             type="button"
             disabled={compressing}
@@ -208,6 +217,21 @@ export function Media() {
     onSettled: () => setCompressingId(null),
   });
 
+  const watermarkAll = useMutation({
+    mutationFn: async () =>
+      (await api.post<{ data: { processed: number; failed: number }; message: string }>('/admin/media/watermark-all'))
+        .data,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['media-library'] });
+      setToast({ tone: 'success', message: result.message });
+    },
+    onError: (error: any) =>
+      setToast({
+        tone: 'error',
+        message: error.response?.data?.message ?? 'Impossible d’appliquer le filigrane.',
+      }),
+  });
+
   const filtered = React.useMemo(
     () =>
       (media.data ?? []).filter((item) =>
@@ -229,6 +253,16 @@ export function Media() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={watermarkAll.isPending}
+            onClick={() => watermarkAll.mutate()}
+            title="Applique le filigrane du logo aux images qui ne l'ont pas encore"
+            className="inline-flex items-center gap-2 rounded border border-orange-300 px-4 py-2 text-sm font-semibold text-orange-800 hover:bg-orange-50 disabled:opacity-50"
+          >
+            {watermarkAll.isPending ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
+            Appliquer le filigrane à toutes les images
+          </button>
           <button
             type="button"
             disabled={upload.isPending}

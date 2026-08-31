@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Support\AuditLog;
 use App\Support\Slug;
+use App\Support\Watermark;
 use PDO;
 use PDOException;
 
@@ -34,7 +35,7 @@ final class AdminMediaController
     {
         AdminAuthController::requireStaff();
         try {
-            $rows = $this->pdo()->query('SELECT id, path AS url, mime_type, bytes, width, height, alt_text, credit, created_at FROM media WHERE mime_type LIKE "image/%" ORDER BY created_at DESC, id DESC LIMIT 120')->fetchAll(PDO::FETCH_ASSOC);
+            $rows = $this->pdo()->query('SELECT id, path AS url, mime_type, bytes, width, height, alt_text, credit, watermarked, created_at FROM media WHERE mime_type LIKE "image/%" ORDER BY created_at DESC, id DESC LIMIT 120')->fetchAll(PDO::FETCH_ASSOC);
             $this->json(['data' => $rows]);
         } catch (PDOException) {
             $this->json(['message' => 'Base de données indisponible.'], 503);
@@ -76,6 +77,7 @@ final class AdminMediaController
         $filenameBase = $filenamePrefix . '-' . bin2hex(random_bytes(4));
 
         $compressed = $this->compress($file['tmp_name'], $mime, $size[0], $size[1], $directory, $filenameBase);
+        $watermarked = $compressed !== null;
         if ($compressed !== null) {
             $path = $compressed['path'];
             $finalMime = $compressed['mime_type'];
@@ -98,8 +100,8 @@ final class AdminMediaController
 
         try {
             $pdo = $this->pdo();
-            $statement = $pdo->prepare('INSERT INTO media (disk, path, mime_type, bytes, width, height, alt_text, credit) VALUES ("local", :path, :mime_type, :bytes, :width, :height, :alt_text, :credit)');
-            $statement->execute(['path' => $path, 'mime_type' => $finalMime, 'bytes' => $bytes, 'width' => $finalWidth, 'height' => $finalHeight, 'alt_text' => $altText ?: null, 'credit' => trim((string) ($_POST['credit'] ?? '')) ?: null]);
+            $statement = $pdo->prepare('INSERT INTO media (disk, path, mime_type, bytes, width, height, alt_text, credit, watermarked) VALUES ("local", :path, :mime_type, :bytes, :width, :height, :alt_text, :credit, :watermarked)');
+            $statement->execute(['path' => $path, 'mime_type' => $finalMime, 'bytes' => $bytes, 'width' => $finalWidth, 'height' => $finalHeight, 'alt_text' => $altText ?: null, 'credit' => trim((string) ($_POST['credit'] ?? '')) ?: null, 'watermarked' => $watermarked ? 1 : 0]);
             $this->json(['data' => ['id' => (int) $pdo->lastInsertId(), 'url' => $path, 'width' => $finalWidth, 'height' => $finalHeight]], 201);
         } catch (PDOException) {
             @unlink(dirname(__DIR__, 3) . '/public' . $path);
@@ -185,7 +187,7 @@ final class AdminMediaController
         }
 
         $pdo = $this->pdo();
-        $statement = $pdo->prepare('SELECT path, mime_type, bytes FROM media WHERE id = :id');
+        $statement = $pdo->prepare('SELECT path, mime_type, bytes, watermarked FROM media WHERE id = :id');
         $statement->execute(['id' => $id]);
         $row = $statement->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
@@ -203,7 +205,9 @@ final class AdminMediaController
 
         $directory = dirname($absolute);
         $filenameBase = pathinfo($row['path'], PATHINFO_FILENAME);
-        $result = $this->compress($absolute, $row['mime_type'], $size[0], $size[1], $directory, $filenameBase);
+        // Never watermark twice — recompressing an image that already has
+        // one would stack a second, more visible copy on top of it.
+        $result = $this->compress($absolute, $row['mime_type'], $size[0], $size[1], $directory, $filenameBase, !$row['watermarked']);
         if ($result === null) {
             $this->json(['message' => 'Impossible de compresser cette image.'], 500);
             return;
@@ -214,7 +218,7 @@ final class AdminMediaController
             @unlink($absolute);
         }
 
-        $update = $pdo->prepare('UPDATE media SET path = :path, mime_type = :mime_type, bytes = :bytes, width = :width, height = :height WHERE id = :id');
+        $update = $pdo->prepare('UPDATE media SET path = :path, mime_type = :mime_type, bytes = :bytes, width = :width, height = :height, watermarked = 1 WHERE id = :id');
         $update->execute(['path' => $result['path'], 'mime_type' => $result['mime_type'], 'bytes' => $result['bytes'], 'width' => $result['width'], 'height' => $result['height'], 'id' => $id]);
 
         $this->json(['data' => [
@@ -242,7 +246,7 @@ final class AdminMediaController
      *
      * @return array{path: string, mime_type: string, width: int, height: int, bytes: int}|null
      */
-    private function compress(string $sourcePath, string $mimeType, int $width, int $height, string $directory, string $filenameBase): ?array
+    private function compress(string $sourcePath, string $mimeType, int $width, int $height, string $directory, string $filenameBase, bool $applyWatermark = true): ?array
     {
         if (!extension_loaded('gd')) {
             return null;
@@ -272,6 +276,10 @@ final class AdminMediaController
             $height = $targetHeight;
         }
 
+        if ($applyWatermark) {
+            Watermark::apply($image, $width, $height);
+        }
+
         $useWebp = function_exists('imagewebp');
         $extension = $useWebp ? 'webp' : ($mimeType === 'image/png' ? 'png' : 'jpg');
         $outMime = $useWebp ? 'image/webp' : ($mimeType === 'image/png' ? 'image/png' : 'image/jpeg');
@@ -299,6 +307,58 @@ final class AdminMediaController
             'height' => $height,
             'bytes' => filesize($destination) ?: 0,
         ];
+    }
+
+    /**
+     * Bulk-applies the logo watermark to every already-stored image that
+     * predates it (or was uploaded while GD was unavailable) — the
+     * "Appliquer le filigrane à toutes les images" button in the media
+     * library. Reuses compress() per row so the file is also recompressed
+     * to WebP in the process; images already marked watermarked are
+     * skipped entirely, making this safe to click more than once.
+     */
+    public function watermarkAll(): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        if (!extension_loaded('gd')) {
+            $this->json(['message' => 'L’extension GD n’est pas disponible sur ce serveur.'], 503);
+            return;
+        }
+        set_time_limit(300);
+
+        $pdo = $this->pdo();
+        $rows = $pdo->query('SELECT id, path, mime_type, bytes FROM media WHERE mime_type LIKE "image/%" AND watermarked = 0')->fetchAll(PDO::FETCH_ASSOC);
+        $publicRoot = dirname(__DIR__, 3) . '/public';
+        $update = $pdo->prepare('UPDATE media SET path = :path, mime_type = :mime_type, bytes = :bytes, width = :width, height = :height, watermarked = 1 WHERE id = :id');
+        $processed = 0;
+        $failed = 0;
+
+        foreach ($rows as $row) {
+            $absolute = $publicRoot . $row['path'];
+            $size = is_file($absolute) ? @getimagesize($absolute) : false;
+            if ($size === false) {
+                $failed++;
+                continue;
+            }
+            $directory = dirname($absolute);
+            $filenameBase = pathinfo($row['path'], PATHINFO_FILENAME);
+            $result = $this->compress($absolute, $row['mime_type'], $size[0], $size[1], $directory, $filenameBase, true);
+            if ($result === null) {
+                $failed++;
+                continue;
+            }
+            if ($result['path'] !== $row['path'] && is_file($absolute)) {
+                @unlink($absolute);
+            }
+            $update->execute(['path' => $result['path'], 'mime_type' => $result['mime_type'], 'bytes' => $result['bytes'], 'width' => $result['width'], 'height' => $result['height'], 'id' => $row['id']]);
+            $processed++;
+        }
+
+        AuditLog::record('media.watermark_all', 'media', 0, ['processed' => $processed, 'failed' => $failed]);
+        $message = $processed === 0 && $failed === 0
+            ? 'Toutes les images ont déjà le filigrane.'
+            : "Filigrane appliqué à {$processed} image(s)." . ($failed > 0 ? " {$failed} image(s) ignorée(s)." : '');
+        $this->json(['data' => ['processed' => $processed, 'failed' => $failed], 'message' => $message]);
     }
 
     public function update(int $id): void
