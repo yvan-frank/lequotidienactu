@@ -106,7 +106,7 @@ final class AdminArticleController
         $this->respond(function (PDO $pdo): array {
             return [
                 'categories' => $pdo->query('SELECT id, parent_id, name, slug FROM categories ORDER BY position, name')->fetchAll(PDO::FETCH_ASSOC),
-                'authors' => $pdo->query('SELECT id, display_name FROM authors ORDER BY display_name')->fetchAll(PDO::FETCH_ASSOC),
+                'authors' => $pdo->query('SELECT id, user_id, display_name FROM authors ORDER BY display_name')->fetchAll(PDO::FETCH_ASSOC),
                 'tags' => $pdo->query('SELECT id, name, slug FROM tags ORDER BY name')->fetchAll(PDO::FETCH_ASSOC),
             ];
         });

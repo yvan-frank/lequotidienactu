@@ -60,7 +60,7 @@ import { FileEmbed } from './extensions/FileEmbed';
 
 type Taxonomy = {
   categories: { id: number; parent_id: number | null; name: string; slug: string }[];
-  authors: { id: number; display_name: string }[];
+  authors: { id: number; user_id: number | null; display_name: string }[];
   tags: { id: number; name: string }[];
 };
 type Status = 'draft' | 'review' | 'scheduled' | 'published' | 'archived';
@@ -441,6 +441,11 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
     queryKey: ['taxonomy'],
     queryFn: async () => (await api.get<Taxonomy>('/admin/taxonomy')).data,
   });
+  const session = useQuery({
+    queryKey: ['admin-session'],
+    queryFn: async () => (await api.get<{ user: { id: number } | null }>('/admin/session')).data,
+    staleTime: 60_000,
+  });
   const existingArticle = useQuery({
     queryKey: ['admin-article', articleId],
     queryFn: async () =>
@@ -543,6 +548,22 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
     editor?.commands.setContent(article.body, false);
     setIsDirty(false);
   }, [editor, existingArticle.data]);
+  const defaultAuthorApplied = useRef(false);
+  useEffect(() => {
+    if (articleId !== null || defaultAuthorApplied.current) return;
+    const currentUserId = session.data?.user?.id;
+    if (!currentUserId || !taxonomy.data) return;
+    defaultAuthorApplied.current = true;
+    // Prefer the author profile linked to whoever is logged in; if none is
+    // linked (common on a single-author site, where nobody's bothered
+    // wiring that up) and there's exactly one author to begin with, that's
+    // an unambiguous default too.
+    const ownAuthor = taxonomy.data.authors.find((author) => author.user_id === currentUserId);
+    const defaultAuthor = ownAuthor ?? (taxonomy.data.authors.length === 1 ? taxonomy.data.authors[0] : null);
+    if (defaultAuthor) {
+      setForm((current) => (current.author_id === '' ? { ...current, author_id: String(defaultAuthor.id) } : current));
+    }
+  }, [articleId, session.data, taxonomy.data]);
   useEffect(() => {
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
       if (!isDirty) return;
