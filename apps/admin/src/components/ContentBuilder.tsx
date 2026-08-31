@@ -16,6 +16,8 @@ import {
   Heading,
   HelpCircle,
   Image as ImageIcon,
+  Info,
+  ListTree,
   Megaphone,
   Minus,
   MousePointerClick,
@@ -549,6 +551,84 @@ function TableBlockEditor({
   );
 }
 
+const CALLOUT_VARIANTS: { value: string; label: string }[] = [
+  { value: 'info', label: 'Information' },
+  { value: 'tip', label: 'Astuce' },
+  { value: 'warning', label: 'Avertissement' },
+];
+
+function CalloutBlockEditor({
+  props,
+  onChange,
+}: {
+  props: Record<string, any>;
+  onChange: (props: Record<string, any>) => void;
+}) {
+  return (
+    <div className="grid gap-2">
+      <label className={fieldLabelClass}>
+        Type
+        <select
+          className={fieldInputClass}
+          value={props.variant ?? 'info'}
+          onChange={(event) => onChange({ ...props, variant: event.target.value })}
+        >
+          {CALLOUT_VARIANTS.map((variant) => (
+            <option key={variant.value} value={variant.value}>
+              {variant.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className={fieldLabelClass}>
+        Titre (optionnel)
+        <input
+          className={fieldInputClass}
+          value={props.title ?? ''}
+          onChange={(event) => onChange({ ...props, title: event.target.value })}
+          placeholder="À retenir"
+        />
+      </label>
+      <label className={fieldLabelClass}>
+        Texte
+        <textarea
+          rows={3}
+          className={fieldInputClass}
+          value={props.text ?? ''}
+          onChange={(event) => onChange({ ...props, text: event.target.value })}
+        />
+      </label>
+    </div>
+  );
+}
+
+function TocBlockEditor({
+  props,
+  onChange,
+}: {
+  props: Record<string, any>;
+  onChange: (props: Record<string, any>) => void;
+}) {
+  return (
+    <div className="grid gap-2">
+      <label className={fieldLabelClass}>
+        Titre du bloc
+        <input
+          className={fieldInputClass}
+          value={props.title ?? ''}
+          onChange={(event) => onChange({ ...props, title: event.target.value })}
+          placeholder="Sommaire"
+        />
+      </label>
+      <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
+        Se construit automatiquement à partir des blocs Titre de cet article. Aucune configuration
+        supplémentaire n’est nécessaire — ajoutez, réordonnez ou renommez vos titres, le sommaire
+        suit.
+      </p>
+    </div>
+  );
+}
+
 /**
  * Every block type the "Composants" content builder can insert. Adding a
  * new one is: an entry here (icon/label/default props/editor) plus a
@@ -609,6 +689,20 @@ const BLOCKS: {
     icon: Newspaper,
     defaultProps: { articleId: null, title: '', categorySlug: null, slug: null },
     Editor: ArticleCardBlockEditor,
+  },
+  {
+    type: 'callout',
+    label: 'Encadré',
+    icon: Info,
+    defaultProps: { variant: 'info', title: '', text: '' },
+    Editor: CalloutBlockEditor,
+  },
+  {
+    type: 'toc',
+    label: 'Sommaire',
+    icon: ListTree,
+    defaultProps: { title: 'Sommaire' },
+    Editor: TocBlockEditor,
   },
 ];
 
