@@ -39,6 +39,7 @@ import {
   Menu,
   MessageSquare,
   MoreHorizontal,
+  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
@@ -62,6 +63,7 @@ import { Media } from './Media';
 import { Ads } from './Ads';
 import { Newsletter } from './Newsletter';
 import { Taxonomy } from './Taxonomy';
+import { Theme } from './Theme';
 import { Users as UsersPage } from './Users';
 import { Redirects } from './Redirects';
 import { DrawRounds } from './DrawRounds';
@@ -320,6 +322,7 @@ const navGroups = [
       { to: '/pages', label: 'Pages', icon: FilesIcon, exact: false },
       { to: '/media', label: 'Médiathèque', icon: ImageIcon, exact: false },
       { to: '/taxonomy', label: 'Rubriques & tags', icon: Tags, exact: false },
+      { to: '/theme', label: 'Thème', icon: Palette, exact: false },
     ],
   },
   {
@@ -1483,6 +1486,11 @@ const taxonomyRoute = new Route({
   path: '/taxonomy',
   component: Taxonomy,
 });
+const themeRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/theme',
+  component: Theme,
+});
 const redirectsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/redirects',
@@ -1546,6 +1554,7 @@ const router = createRouter({
     mediaRoute,
     loginRoute,
     taxonomyRoute,
+    themeRoute,
     redirectsRoute,
     drawRoundsRoute,
     commentsRoute,

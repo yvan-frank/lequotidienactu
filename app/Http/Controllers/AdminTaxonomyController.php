@@ -64,6 +64,54 @@ final class AdminTaxonomyController
         });
     }
 
+    /**
+     * Bulk-persists a new display order for one sibling group (all
+     * categories sharing the same parent_id, including the top-level
+     * group where parent_id is null) — used by the admin's "Thème > Menu"
+     * reorder screen instead of N individual updateCategory() calls.
+     */
+    public function reorderCategories(): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        $this->respond(function (PDO $pdo): array {
+            $input = $this->input();
+            $orderedIds = array_map('intval', $input['ordered_ids'] ?? []);
+            if ($orderedIds === []) {
+                throw new \InvalidArgumentException('La liste des rubriques à réordonner est requise.');
+            }
+            $parentId = !empty($input['parent_id']) ? (int) $input['parent_id'] : null;
+
+            $placeholders = implode(',', array_fill(0, count($orderedIds), '?'));
+            $check = $pdo->prepare("SELECT id, parent_id FROM categories WHERE id IN ($placeholders)");
+            $check->execute($orderedIds);
+            $rows = $check->fetchAll(PDO::FETCH_KEY_PAIR);
+            if (count($rows) !== count($orderedIds)) {
+                throw new \InvalidArgumentException('Une des rubriques est introuvable.');
+            }
+            foreach ($rows as $rowParentId) {
+                $normalizedParent = $rowParentId !== null ? (int) $rowParentId : null;
+                if ($normalizedParent !== $parentId) {
+                    throw new \InvalidArgumentException('Toutes les rubriques doivent appartenir au même groupe.');
+                }
+            }
+
+            $pdo->beginTransaction();
+            try {
+                $update = $pdo->prepare('UPDATE categories SET position = :position WHERE id = :id');
+                foreach (array_values($orderedIds) as $index => $id) {
+                    $update->execute(['position' => $index, 'id' => $id]);
+                }
+                $pdo->commit();
+            } catch (\Throwable $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
+
+            AuditLog::record('category.reorder', 'category', $parentId ?? 0, ['ordered_ids' => $orderedIds]);
+            return ['message' => 'Ordre du menu mis à jour.'];
+        });
+    }
+
     public function deleteCategory(int $id): void
     {
         AdminAuthController::requireStaff(['admin', 'editor']);

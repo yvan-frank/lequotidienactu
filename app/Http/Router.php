@@ -144,6 +144,7 @@ final class Router
         if ($method === 'DELETE' && preg_match('#^/api/admin/pages/(\d+)$#', $path, $m)) { $adminPages->delete((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/categories') { $adminTaxonomy->categories(); return; }
         if ($method === 'POST' && $path === '/api/admin/categories') { $adminTaxonomy->createCategory(); return; }
+        if ($method === 'PUT' && $path === '/api/admin/categories/reorder') { $adminTaxonomy->reorderCategories(); return; }
         if ($method === 'PUT' && preg_match('#^/api/admin/categories/(\d+)$#', $path, $m)) { $adminTaxonomy->updateCategory((int) $m[1]); return; }
         if ($method === 'DELETE' && preg_match('#^/api/admin/categories/(\d+)$#', $path, $m)) { $adminTaxonomy->deleteCategory((int) $m[1]); return; }
         if ($method === 'GET' && $path === '/api/admin/tags') { $adminTaxonomy->tags(); return; }

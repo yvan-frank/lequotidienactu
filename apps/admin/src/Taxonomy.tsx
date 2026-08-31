@@ -43,7 +43,7 @@ function apiErrorMessage(error: any, fallback: string): string {
 
 const emptyToFilled = (value: string | null | undefined) => value ?? '';
 
-function SectionCard({
+export function SectionCard({
   icon,
   title,
   description,
