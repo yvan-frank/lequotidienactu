@@ -118,7 +118,14 @@ details[open] .mega-panel {
 [data-mega-backdrop] {
   position: fixed;
   inset-inline: 0;
-  top: 5rem;
+  /*
+   * top: 0, not the header's own height — the header shrinks (min-h-20 to
+   * 3.5rem) on scroll via header[data-scrolled] in this file, and a fixed
+   * offset here left a gap under the shrunk header. The header sits at
+   * z-40 above this backdrop's z-30, so it always paints over this top
+   * edge regardless of its current height.
+   */
+  top: 0;
   bottom: 0;
   z-index: 30;
   display: none;

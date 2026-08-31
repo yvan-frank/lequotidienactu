@@ -136,9 +136,9 @@ $overflowNavCategories = array_slice($categoryTree, $maxVisibleNavCategories);
         $overflowSlugs = array_column($overflowNavCategories, 'slug');
         $isOverflowActive = in_array($currentFirstSegment, $overflowSlugs, true);
         ?>
-        <details class="group" data-mega-menu>
+        <details class="group relative" data-mega-menu>
           <summary class="relative z-30 flex cursor-pointer list-none items-center gap-1.5 rounded px-2.5 py-2 leading-none transition marker:hidden hover:bg-stone-100 hover:text-brand-600 focus:outline-none focus-visible:text-brand-700 group-open:rounded-t-md group-open:rounded-b-none group-open:border group-open:border-b-stone-50 group-open:border-slate-200 group-open:bg-stone-50 group-open:px-4 group-open:font-semibold group-open:text-brand-700 <?= $isOverflowActive ? 'bg-stone-50 font-semibold text-brand-700' : 'text-slate-700' ?>"><span>Plus</span><svg class="mt-px size-3.5 shrink-0 transition-transform duration-200 group-open:rotate-180" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></svg></summary>
-          <div class="mega-panel absolute top-full right-0 z-20 hidden w-72 overflow-y-auto rounded-b-lg border border-slate-200 bg-stone-50 shadow-xl group-open:block">
+          <div class="mega-panel absolute top-full right-0 z-20 mt-1 hidden w-72 overflow-y-auto rounded-lg border border-slate-200 bg-stone-50 shadow-xl group-open:block">
             <ul class="grid gap-1 p-3">
               <?php foreach ($overflowNavCategories as $navItem): ?>
                 <li>
