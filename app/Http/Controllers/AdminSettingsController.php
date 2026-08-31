@@ -7,6 +7,7 @@ use App\Support\AuditLog;
 use App\Support\Mailer;
 use App\Support\RateLimits;
 use App\Support\Settings;
+use App\Support\Watermark;
 use PDOException;
 
 final class AdminSettingsController
@@ -196,6 +197,118 @@ final class AdminSettingsController
             Settings::set('head_code', $data);
             AuditLog::record('settings.update', 'settings', null, ['group' => 'head_code']);
             return ['data' => $data, 'message' => 'Code personnalisé enregistré.'];
+        });
+    }
+
+    public function watermark(): void
+    {
+        AdminAuthController::requireStaff();
+        $this->respond(function (): array {
+            $settings = Watermark::settings();
+            return ['data' => [...$settings, 'default_image_url' => '/assets/logo-header.png']];
+        });
+    }
+
+    public function updateWatermark(): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        $this->respond(function (): array {
+            $input = json_decode(file_get_contents('php://input') ?: '[]', true, 512, JSON_THROW_ON_ERROR);
+            $widthPercent = (int) ($input['width_percent'] ?? Watermark::DEFAULTS['width_percent']);
+            $opacityPercent = (int) ($input['opacity_percent'] ?? Watermark::DEFAULTS['opacity_percent']);
+            $position = (string) ($input['position'] ?? Watermark::DEFAULTS['position']);
+            if ($widthPercent < 5 || $widthPercent > 50) {
+                throw new \InvalidArgumentException('La taille du filigrane doit être comprise entre 5 et 50 %.');
+            }
+            if ($opacityPercent < 1 || $opacityPercent > 100) {
+                throw new \InvalidArgumentException('L’opacité du filigrane doit être comprise entre 1 et 100 %.');
+            }
+            if (!in_array($position, ['center', 'top-left', 'top-right', 'bottom-left', 'bottom-right'], true)) {
+                throw new \InvalidArgumentException('Position de filigrane invalide.');
+            }
+
+            $current = Watermark::settings();
+            $data = [
+                'enabled' => !empty($input['enabled']),
+                'image_path' => $current['image_path'],
+                'width_percent' => $widthPercent,
+                'opacity_percent' => $opacityPercent,
+                'position' => $position,
+            ];
+            Settings::set('watermark', $data);
+            AuditLog::record('settings.update', 'settings', null, ['group' => 'watermark']);
+            return ['data' => [...$data, 'default_image_url' => '/assets/logo-header.png'], 'message' => 'Filigrane enregistré.'];
+        });
+    }
+
+    /**
+     * Uploads a custom watermark image, replacing whichever one was used
+     * before (the default logo, or an earlier custom upload — the old
+     * custom file is deleted since nothing else references it).
+     */
+    public function uploadWatermarkImage(): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        $file = $_FILES['file'] ?? null;
+        if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
+            $this->error('Une image est requise.', 422);
+            return;
+        }
+        if ($file['size'] > 4_000_000) {
+            $this->error('L’image ne doit pas dépasser 4 Mo.', 422);
+            return;
+        }
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']) ?: '';
+        $extension = match ($mime) {
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/jpeg' => 'jpg',
+            default => null,
+        };
+        if ($extension === null) {
+            $this->error('Format d’image non pris en charge (PNG, JPEG ou WebP).', 422);
+            return;
+        }
+
+        $directory = dirname(__DIR__, 3) . '/public/uploads/watermark';
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            $this->error('Le dossier de filigrane est indisponible.', 500);
+            return;
+        }
+        $filename = 'custom-' . bin2hex(random_bytes(6)) . '.' . $extension;
+        if (!move_uploaded_file($file['tmp_name'], $directory . '/' . $filename)) {
+            $this->error('Impossible d’enregistrer cette image.', 500);
+            return;
+        }
+
+        $current = Watermark::settings();
+        $previousPath = $current['image_path'];
+        $newPath = '/uploads/watermark/' . $filename;
+        $data = [...$current, 'image_path' => $newPath];
+        Settings::set('watermark', $data);
+        if (is_string($previousPath) && $previousPath !== '') {
+            @unlink(dirname(__DIR__, 3) . '/public' . $previousPath);
+        }
+
+        AuditLog::record('settings.update', 'settings', null, ['group' => 'watermark', 'action' => 'image_upload']);
+        http_response_code(201);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['data' => [...$data, 'default_image_url' => '/assets/logo-header.png'], 'message' => 'Image de filigrane mise à jour.']);
+    }
+
+    public function resetWatermarkImage(): void
+    {
+        AdminAuthController::requireStaff(['admin', 'editor']);
+        $this->respond(function (): array {
+            $current = Watermark::settings();
+            $previousPath = $current['image_path'];
+            $data = [...$current, 'image_path' => null];
+            Settings::set('watermark', $data);
+            if (is_string($previousPath) && $previousPath !== '') {
+                @unlink(dirname(__DIR__, 3) . '/public' . $previousPath);
+            }
+            AuditLog::record('settings.update', 'settings', null, ['group' => 'watermark', 'action' => 'image_reset']);
+            return ['data' => [...$data, 'default_image_url' => '/assets/logo-header.png'], 'message' => 'Logo par défaut restauré.'];
         });
     }
 

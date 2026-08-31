@@ -196,6 +196,10 @@ final class Router
         if ($method === 'PUT' && $path === '/api/admin/settings/head-code') { $adminSettings->updateHeadCode(); return; }
         if ($method === 'GET' && $path === '/api/admin/settings/rate-limits') { $adminSettings->rateLimits(); return; }
         if ($method === 'PUT' && $path === '/api/admin/settings/rate-limits') { $adminSettings->updateRateLimits(); return; }
+        if ($method === 'GET' && $path === '/api/admin/settings/watermark') { $adminSettings->watermark(); return; }
+        if ($method === 'PUT' && $path === '/api/admin/settings/watermark') { $adminSettings->updateWatermark(); return; }
+        if ($method === 'POST' && $path === '/api/admin/settings/watermark/image') { $adminSettings->uploadWatermarkImage(); return; }
+        if ($method === 'DELETE' && $path === '/api/admin/settings/watermark/image') { $adminSettings->resetWatermarkImage(); return; }
         if ($method === 'GET' && $path === '/api/admin/ad-slots') { $adminAds->slots(); return; }
         if ($method === 'GET' && $path === '/api/admin/ads') { $adminAds->index(); return; }
         if ($method === 'POST' && $path === '/api/admin/ads') { $adminAds->create(); return; }
