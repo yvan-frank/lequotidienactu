@@ -49,6 +49,7 @@ import { LinkPopover } from './components/LinkPopover';
 import { MediaPicker, type Media } from './components/MediaPicker';
 import { FilePicker, type UploadedFile } from './components/FilePicker';
 import { SidebarBuilder, type SidebarBlock } from './components/SidebarBuilder';
+import { ContentBuilder, type ContentBlock } from './components/ContentBuilder';
 import { Toast } from './components/Toast';
 import { CategoryCombobox, TagsInput } from './components/TaxonomyPicker';
 import { ArticleEmbed } from './extensions/ArticleEmbed';
@@ -91,6 +92,8 @@ type StoredArticle = {
   layout: 'standard' | 'magazine';
   sidebar_mode: 'default' | 'custom';
   sidebar_blocks_json: string | null;
+  content_mode: 'classic' | 'builder';
+  content_blocks_json: string | null;
   tag_ids: number[];
 };
 const slugify = (value: string) =>
@@ -414,6 +417,8 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
   const [layout, setLayout] = useState<'standard' | 'magazine'>('standard');
   const [sidebarMode, setSidebarMode] = useState<'default' | 'custom'>('default');
   const [sidebarBlocks, setSidebarBlocks] = useState<SidebarBlock[]>([]);
+  const [contentMode, setContentMode] = useState<'classic' | 'builder'>('classic');
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [bodyImagePickerOpen, setBodyImagePickerOpen] = useState(false);
   const [filePickerOpen, setFilePickerOpen] = useState(false);
@@ -514,6 +519,13 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
     } catch {
       setSidebarBlocks([]);
     }
+    setContentMode(article.content_mode === 'builder' ? 'builder' : 'classic');
+    try {
+      const parsedContentBlocks = article.content_blocks_json ? JSON.parse(article.content_blocks_json) : [];
+      setContentBlocks(Array.isArray(parsedContentBlocks) ? parsedContentBlocks : []);
+    } catch {
+      setContentBlocks([]);
+    }
     setHeroMedia(
       article.hero_media_id && article.hero_url
         ? {
@@ -554,6 +566,8 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
             layout,
             sidebar_mode: sidebarMode,
             sidebar_blocks: sidebarMode === 'custom' ? sidebarBlocks : [],
+            content_mode: contentMode,
+            content_blocks: contentMode === 'builder' ? contentBlocks : [],
           })
         : api.post('/admin/articles', {
             ...form,
@@ -566,6 +580,8 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
             layout,
             sidebar_mode: sidebarMode,
             sidebar_blocks: sidebarMode === 'custom' ? sidebarBlocks : [],
+            content_mode: contentMode,
+            content_blocks: contentMode === 'builder' ? contentBlocks : [],
           })),
       status,
       wasCreate: !effectiveArticleId,
@@ -604,10 +620,21 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
     setForm((current) => ({ ...current, [key]: value }));
     markDirty();
   };
+  const contentPlainText =
+    contentMode === 'builder'
+      ? contentBlocks
+          .map((block) => {
+            if (block.type === 'heading') return String(block.props.text ?? '');
+            if (block.type === 'text') return String(block.props.html ?? '').replace(/<[^>]+>/g, ' ');
+            if (block.type === 'image') return String(block.props.alt ?? '');
+            return '';
+          })
+          .join(' ')
+      : form.body;
   const aiContext = {
     title: form.title,
     excerpt: form.excerpt,
-    body: form.body,
+    body: contentPlainText,
     category_name:
       taxonomy.data?.categories.find((category) => String(category.id) === String(form.category_id))?.name ?? '',
   };
@@ -649,7 +676,8 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
     if (status === 'published' || status === 'scheduled') {
       const missing: string[] = [];
       if (!form.title.trim()) missing.push('le titre');
-      if (!form.body.trim()) missing.push('le contenu');
+      const hasContent = contentMode === 'builder' ? contentBlocks.length > 0 : Boolean(form.body.trim());
+      if (!hasContent) missing.push('le contenu');
       if (!form.category_id) missing.push('la rubrique');
       if (!form.author_id) missing.push('l’auteur');
       if (missing.length > 0) {
@@ -796,24 +824,72 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
             <details open className="rounded-lg border border-slate-200 bg-white p-6">
               <summary className="cursor-pointer font-semibold">Contenu</summary>
               <div className="mt-4">
-                <div className="flex items-center justify-end gap-2">
-                  <AiAssistButton task="proofread" label="Corriger" context={aiContext} onApply={applyProofread} />
-                  <button
-                    type="button"
-                    onClick={expandContent}
-                    className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                    title="Agrandir pour utiliser tout l’espace disponible"
-                  >
-                    <Maximize2 size={14} /> Agrandir
-                  </button>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:w-72">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setContentMode('classic');
+                        markDirty();
+                      }}
+                      className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                        contentMode === 'classic'
+                          ? 'border-orange-600 bg-orange-50 text-orange-800'
+                          : 'border-slate-200 font-normal text-slate-600 hover:border-slate-300'
+                      }`}
+                    >
+                      Éditeur classique
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setContentMode('builder');
+                        markDirty();
+                      }}
+                      className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                        contentMode === 'builder'
+                          ? 'border-orange-600 bg-orange-50 text-orange-800'
+                          : 'border-slate-200 font-normal text-slate-600 hover:border-slate-300'
+                      }`}
+                    >
+                      Composants
+                    </button>
+                  </div>
+                  {contentMode === 'classic' && (
+                    <div className="flex items-center gap-2">
+                      <AiAssistButton task="proofread" label="Corriger" context={aiContext} onApply={applyProofread} />
+                      <button
+                        type="button"
+                        onClick={expandContent}
+                        className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                        title="Agrandir pour utiliser tout l’espace disponible"
+                      >
+                        <Maximize2 size={14} /> Agrandir
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <EditorToolbar
-                  editor={editor}
-                  onInsertImage={() => setBodyImagePickerOpen(true)}
-                  onInsertArticleEmbed={() => setArticlePickerOpen(true)}
-                  onInsertFile={() => setFilePickerOpen(true)}
-                />
-                <EditorContent editor={editor} />
+                {contentMode === 'classic' ? (
+                  <>
+                    <EditorToolbar
+                      editor={editor}
+                      onInsertImage={() => setBodyImagePickerOpen(true)}
+                      onInsertArticleEmbed={() => setArticlePickerOpen(true)}
+                      onInsertFile={() => setFilePickerOpen(true)}
+                    />
+                    <EditorContent editor={editor} />
+                  </>
+                ) : (
+                  <div className="mt-4">
+                    <ContentBuilder
+                      blocks={contentBlocks}
+                      onChange={(blocks) => {
+                        setContentBlocks(blocks);
+                        markDirty();
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </details>
           )}
@@ -919,7 +995,7 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
                       label="Dans le chapô"
                     />
                     <KeywordCheck
-                      ok={containsKeyword(form.body, form.primary_keyword)}
+                      ok={containsKeyword(contentPlainText, form.primary_keyword)}
                       label="Dans le contenu"
                     />
                   </ul>

@@ -171,7 +171,8 @@ final class PublicController
         } elseif (isset($article['id'])) {
             $this->recordView((int) $article['id']);
         }
-        $wordCount = str_word_count(strip_tags($article['body'] ?? ''));
+        $bodyText = strip_tags(\App\Support\ContentBlocks::renderArticleBody($article));
+        $wordCount = str_word_count($bodyText);
         $readingMinutes = max(1, (int) ceil($wordCount / 200));
         $tags = $this->articleTags($article['id'] ?? null);
         $related = $this->relatedArticles($article);
@@ -546,7 +547,7 @@ final class PublicController
             if (is_array($category) && $category === []) {
                 return [];
             }
-            $sql = 'SELECT a.id, a.category_id, a.title, a.slug, a.excerpt, a.body, a.status, a.layout, a.sidebar_mode, a.sidebar_blocks_json, a.published_at, a.updated_at, a.meta_title, a.meta_description, a.canonical_url, a.robots, a.is_sponsored, a.is_featured, c.slug AS category, c.name AS category_name, au.display_name AS author, au.slug AS author_slug, au.job_title AS author_job_title, au.bio AS author_bio, au.disclosure AS author_disclosure, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image, m.credit AS hero_credit, m.alt_text AS hero_alt FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN authors au ON au.id = a.author_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE 1 = 1';
+            $sql = 'SELECT a.id, a.category_id, a.title, a.slug, a.excerpt, a.body, a.status, a.layout, a.sidebar_mode, a.sidebar_blocks_json, a.content_mode, a.content_blocks_json, a.published_at, a.updated_at, a.meta_title, a.meta_description, a.canonical_url, a.robots, a.is_sponsored, a.is_featured, c.slug AS category, c.name AS category_name, au.display_name AS author, au.slug AS author_slug, au.job_title AS author_job_title, au.bio AS author_bio, au.disclosure AS author_disclosure, COALESCE(m.path, "/assets/hero-placeholder.svg") AS hero_image, m.credit AS hero_credit, m.alt_text AS hero_alt FROM articles a INNER JOIN categories c ON c.id = a.category_id INNER JOIN authors au ON au.id = a.author_id LEFT JOIN media m ON m.id = a.hero_media_id WHERE 1 = 1';
             $params = [];
             if (is_array($category)) {
                 $placeholders = [];

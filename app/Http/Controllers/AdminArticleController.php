@@ -126,7 +126,7 @@ final class AdminArticleController
                     throw new \InvalidArgumentException('L’image de couverture sélectionnée est introuvable.');
                 }
             }
-            $statement = $pdo->prepare('INSERT INTO articles (category_id, author_id, hero_media_id, title, slug, excerpt, body, status, published_at, meta_title, meta_description, canonical_url, robots, primary_keyword, secondary_keywords, is_sponsored, layout, sidebar_mode, sidebar_blocks_json) VALUES (:category_id, :author_id, :hero_media_id, :title, :slug, :excerpt, :body, :status, :published_at, :meta_title, :meta_description, :canonical_url, :robots, :primary_keyword, :secondary_keywords, :is_sponsored, :layout, :sidebar_mode, :sidebar_blocks_json)');
+            $statement = $pdo->prepare('INSERT INTO articles (category_id, author_id, hero_media_id, title, slug, excerpt, body, status, published_at, meta_title, meta_description, canonical_url, robots, primary_keyword, secondary_keywords, is_sponsored, layout, sidebar_mode, sidebar_blocks_json, content_mode, content_blocks_json) VALUES (:category_id, :author_id, :hero_media_id, :title, :slug, :excerpt, :body, :status, :published_at, :meta_title, :meta_description, :canonical_url, :robots, :primary_keyword, :secondary_keywords, :is_sponsored, :layout, :sidebar_mode, :sidebar_blocks_json, :content_mode, :content_blocks_json)');
             $statement->execute($data);
             $id = (int) $pdo->lastInsertId();
             $this->syncTags($pdo, $id, $tagIds);
@@ -151,13 +151,16 @@ final class AdminArticleController
             if (!in_array($status, self::STATUSES, true)) {
                 throw new \InvalidArgumentException('Statut éditorial invalide.');
             }
-            $current = $pdo->prepare('SELECT status, title, body, category_id, author_id FROM articles WHERE id = :id');
+            $current = $pdo->prepare('SELECT status, title, body, category_id, author_id, content_mode, content_blocks_json FROM articles WHERE id = :id');
             $current->execute(['id' => $id]);
             $row = $current->fetch(PDO::FETCH_ASSOC);
             if (!$row) throw new \InvalidArgumentException('Article introuvable.');
             $previousStatus = $row['status'];
             if (in_array($status, ['published', 'scheduled'], true)) {
-                if (trim((string) $row['title']) === '' || trim((string) $row['body']) === '' || $row['category_id'] === null || $row['author_id'] === null) {
+                $hasContent = $row['content_mode'] === 'builder'
+                    ? !empty($row['content_blocks_json'])
+                    : trim((string) $row['body']) !== '';
+                if (trim((string) $row['title']) === '' || !$hasContent || $row['category_id'] === null || $row['author_id'] === null) {
                     throw new \InvalidArgumentException('Complétez le titre, le contenu, la rubrique et l’auteur avant de publier ou programmer.');
                 }
             }
@@ -225,7 +228,7 @@ final class AdminArticleController
                 if (!$media->fetchColumn()) throw new \InvalidArgumentException('L’image de couverture sélectionnée est introuvable.');
             }
             $data['id'] = $id;
-            $statement = $pdo->prepare('UPDATE articles SET category_id = :category_id, author_id = :author_id, hero_media_id = :hero_media_id, title = :title, slug = :slug, excerpt = :excerpt, body = :body, status = :status, published_at = :published_at, meta_title = :meta_title, meta_description = :meta_description, canonical_url = :canonical_url, robots = :robots, primary_keyword = :primary_keyword, secondary_keywords = :secondary_keywords, is_sponsored = :is_sponsored, layout = :layout, sidebar_mode = :sidebar_mode, sidebar_blocks_json = :sidebar_blocks_json WHERE id = :id');
+            $statement = $pdo->prepare('UPDATE articles SET category_id = :category_id, author_id = :author_id, hero_media_id = :hero_media_id, title = :title, slug = :slug, excerpt = :excerpt, body = :body, status = :status, published_at = :published_at, meta_title = :meta_title, meta_description = :meta_description, canonical_url = :canonical_url, robots = :robots, primary_keyword = :primary_keyword, secondary_keywords = :secondary_keywords, is_sponsored = :is_sponsored, layout = :layout, sidebar_mode = :sidebar_mode, sidebar_blocks_json = :sidebar_blocks_json, content_mode = :content_mode, content_blocks_json = :content_blocks_json WHERE id = :id');
             $statement->execute($data);
             if ($statement->rowCount() === 0) {
                 $exists = $pdo->prepare('SELECT 1 FROM articles WHERE id = :id');
@@ -323,8 +326,12 @@ final class AdminArticleController
         $authorId = !empty($input['author_id']) ? (int) $input['author_id'] : null;
         $heroMediaId = !empty($input['hero_media_id']) ? (int) $input['hero_media_id'] : null;
 
+        $contentMode = ($input['content_mode'] ?? 'classic') === 'builder' ? 'builder' : 'classic';
+        $contentBlocksJson = $this->validateContentBlocks($input['content_blocks'] ?? null);
+        $hasContent = $contentMode === 'builder' ? $contentBlocksJson !== null : $body !== '';
+
         $requiresComplete = in_array($status, ['published', 'scheduled'], true);
-        if ($requiresComplete && ($title === '' || $body === '' || $categoryId === null || $authorId === null)) {
+        if ($requiresComplete && ($title === '' || !$hasContent || $categoryId === null || $authorId === null)) {
             throw new \InvalidArgumentException('Titre, contenu, rubrique et auteur sont obligatoires pour publier ou programmer un article.');
         }
 
@@ -354,7 +361,27 @@ final class AdminArticleController
             'layout' => ($input['layout'] ?? 'standard') === 'magazine' ? 'magazine' : 'standard',
             'sidebar_mode' => ($input['sidebar_mode'] ?? 'default') === 'custom' ? 'custom' : 'default',
             'sidebar_blocks_json' => $this->validateSidebarBlocks($input['sidebar_blocks'] ?? null),
+            'content_mode' => $contentMode,
+            'content_blocks_json' => $contentBlocksJson,
         ];
+    }
+
+    /**
+     * Same shape/guard as validateSidebarBlocks — see ContentBlocks for the
+     * per-`type` rendering (and PublicController for the plain-text
+     * extraction used for word count / reading time / SEO checks).
+     */
+    private function validateContentBlocks(mixed $blocks): ?string
+    {
+        if (!is_array($blocks) || $blocks === []) {
+            return null;
+        }
+        foreach ($blocks as $block) {
+            if (!is_array($block) || !isset($block['type']) || !is_string($block['type'])) {
+                throw new \InvalidArgumentException('Bloc de contenu invalide.');
+            }
+        }
+        return json_encode(array_values($blocks), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
     /**

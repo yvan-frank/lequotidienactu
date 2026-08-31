@@ -4,7 +4,7 @@ $categoryName = $article['category_name'] ?? ucfirst($categorySlug);
 $canonicalUrl = rtrim($_ENV['APP_URL'] ?? 'http://localhost:8000', '/') . '/' . $categorySlug . '/' . ($article['slug'] ?? '');
 $authorInitial = mb_strtoupper(mb_substr($article['author'] ?? '?', 0, 1));
 $showUpdated = !empty($article['updated_at_display']) && !empty($article['published_at']) && $article['updated_at_display'] !== $article['published_at'];
-$articleBody = \App\Support\ArticleEmbeds::render($article['body'] ?? '<p>' . htmlspecialchars($article['excerpt'] ?? '') . '</p>');
+$articleBody = \App\Support\ContentBlocks::renderArticleBody($article);
 ?>
 <div data-reading-progress class="fixed inset-x-0 top-0 z-50 -translate-y-full bg-white/95 backdrop-blur transition-transform duration-300" aria-hidden="true">
   <div class="mx-auto flex max-w-7xl items-center gap-3 px-5 py-2.5">
