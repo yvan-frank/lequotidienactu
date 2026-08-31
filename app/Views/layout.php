@@ -18,6 +18,9 @@ if ($categoryTree === []) {
         ['Afrique', 'France & Diaspora', 'Business', 'Tech', 'Sport', 'Culture'],
     );
 }
+$maxVisibleNavCategories = 6;
+$visibleNavCategories = array_slice($categoryTree, 0, $maxVisibleNavCategories);
+$overflowNavCategories = array_slice($categoryTree, $maxVisibleNavCategories);
 ?>
 <!doctype html>
 <html lang="fr">
@@ -89,7 +92,7 @@ if ($categoryTree === []) {
     <div data-site-header-inner class="site-header-inner mx-auto flex min-h-20 max-w-7xl items-center justify-between gap-4 px-6 py-3 transition-[min-height] duration-300">
       <a class="flex shrink-0 items-center" href="/" aria-label="Le Quotidien Actu - accueil"><img class="site-logo h-14 w-auto max-w-44 object-contain object-left transition-[height] duration-300" src="/assets/logo-header.png" alt="Le Quotidien Actu" width="1482" height="720"></a>
       <nav class="hidden items-center gap-1 text-sm font-medium lg:flex" aria-label="Rubriques">
-      <?php foreach ($categoryTree as $navItem): ?>
+      <?php foreach ($visibleNavCategories as $navItem): ?>
         <?php
         $slug = $navItem['slug'];
         $children = $navItem['children'] ?? [];
@@ -128,6 +131,31 @@ if ($categoryTree === []) {
           </div>
         </details>
       <?php endforeach; ?>
+      <?php if ($overflowNavCategories !== []): ?>
+        <?php
+        $overflowSlugs = array_column($overflowNavCategories, 'slug');
+        $isOverflowActive = in_array($currentFirstSegment, $overflowSlugs, true);
+        ?>
+        <details class="group" data-mega-menu>
+          <summary class="relative z-30 flex cursor-pointer list-none items-center gap-1.5 rounded px-2.5 py-2 leading-none transition marker:hidden hover:bg-stone-100 hover:text-brand-600 focus:outline-none focus-visible:text-brand-700 group-open:rounded-t-md group-open:rounded-b-none group-open:border group-open:border-b-stone-50 group-open:border-slate-200 group-open:bg-stone-50 group-open:px-4 group-open:font-semibold group-open:text-brand-700 <?= $isOverflowActive ? 'bg-stone-50 font-semibold text-brand-700' : 'text-slate-700' ?>"><span>Plus</span><svg class="mt-px size-3.5 shrink-0 transition-transform duration-200 group-open:rotate-180" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></svg></summary>
+          <div class="mega-panel absolute top-full right-0 z-20 hidden w-72 overflow-y-auto rounded-b-lg border border-slate-200 bg-stone-50 shadow-xl group-open:block">
+            <ul class="grid gap-1 p-3">
+              <?php foreach ($overflowNavCategories as $navItem): ?>
+                <li>
+                  <a class="block rounded px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-stone-100 hover:text-brand-600" href="/<?= htmlspecialchars($navItem['slug']) ?>"><?= htmlspecialchars($navItem['name']) ?></a>
+                  <?php if (!empty($navItem['children'])): ?>
+                    <ul class="mt-0.5 ml-3 grid gap-0.5 border-l border-slate-200 pl-3">
+                      <?php foreach ($navItem['children'] as $child): ?>
+                        <li><a class="block rounded px-2 py-1.5 text-xs text-slate-500 hover:bg-stone-100 hover:text-brand-600" href="/<?= htmlspecialchars($child['slug']) ?>"><?= htmlspecialchars($child['name']) ?></a></li>
+                      <?php endforeach; ?>
+                    </ul>
+                  <?php endif; ?>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+          </div>
+        </details>
+      <?php endif; ?>
       </nav>
       <div class="flex items-center gap-2">
         <div data-island="search-trigger"></div>
