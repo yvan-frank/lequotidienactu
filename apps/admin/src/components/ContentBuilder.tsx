@@ -11,6 +11,7 @@ import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities';
 import {
   Columns2,
+  Columns3,
   GripVertical,
   Heading,
   HelpCircle,
@@ -20,6 +21,8 @@ import {
   MousePointerClick,
   Newspaper,
   Quote,
+  Rows3,
+  Table as TableIcon,
   Trash2,
   Type,
   Video,
@@ -440,6 +443,112 @@ function ArticleCardBlockEditor({
   );
 }
 
+function TableBlockEditor({
+  props,
+  onChange,
+}: {
+  props: Record<string, any>;
+  onChange: (props: Record<string, any>) => void;
+}) {
+  const rows: string[][] = Array.isArray(props.rows) && props.rows.length > 0 ? props.rows : [
+    ['', ''],
+    ['', ''],
+  ];
+  const headerRow = props.headerRow !== false;
+  const columnCount = rows[0]?.length ?? 0;
+
+  const setCell = (r: number, c: number, value: string) =>
+    onChange({ ...props, rows: rows.map((row, i) => (i === r ? row.map((cell, j) => (j === c ? value : cell)) : row)) });
+  const addRow = () => onChange({ ...props, rows: [...rows, Array(columnCount).fill('')] });
+  const removeRow = (r: number) => {
+    if (rows.length <= 1) return;
+    onChange({ ...props, rows: rows.filter((_, i) => i !== r) });
+  };
+  const addColumn = () => onChange({ ...props, rows: rows.map((row) => [...row, '']) });
+  const removeColumn = (c: number) => {
+    if (columnCount <= 1) return;
+    onChange({ ...props, rows: rows.map((row) => row.filter((_, j) => j !== c)) });
+  };
+
+  return (
+    <div>
+      <label className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-600">
+        <input
+          type="checkbox"
+          className="rounded border-slate-300"
+          checked={headerRow}
+          onChange={(event) => onChange({ ...props, headerRow: event.target.checked })}
+        />
+        Première ligne = en-tête
+      </label>
+      <div className="overflow-x-auto">
+        <table className="border-collapse">
+          <tbody>
+            {rows.map((row, r) => (
+              <tr key={r}>
+                {row.map((cell, c) => (
+                  <td key={c} className="border border-slate-200 p-0.5">
+                    <input
+                      className={`w-24 rounded border-0 px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 ${
+                        headerRow && r === 0 ? 'bg-slate-50 font-bold' : ''
+                      }`}
+                      value={cell}
+                      onChange={(event) => setCell(r, c, event.target.value)}
+                    />
+                  </td>
+                ))}
+                <td className="p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => removeRow(r)}
+                    disabled={rows.length <= 1}
+                    className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30"
+                    aria-label={`Supprimer la ligne ${r + 1}`}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+            <tr>
+              {Array.from({ length: columnCount }).map((_, c) => (
+                <td key={c} className="p-0.5 text-center">
+                  <button
+                    type="button"
+                    onClick={() => removeColumn(c)}
+                    disabled={columnCount <= 1}
+                    className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30"
+                    aria-label={`Supprimer la colonne ${c + 1}`}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </td>
+              ))}
+              <td />
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          onClick={addRow}
+          className="inline-flex items-center gap-1 rounded border border-dashed border-slate-300 px-2 py-1 text-xs font-semibold text-slate-600 hover:border-orange-400 hover:bg-orange-50"
+        >
+          <Rows3 size={12} /> Ligne
+        </button>
+        <button
+          type="button"
+          onClick={addColumn}
+          className="inline-flex items-center gap-1 rounded border border-dashed border-slate-300 px-2 py-1 text-xs font-semibold text-slate-600 hover:border-orange-400 hover:bg-orange-50"
+        >
+          <Columns3 size={12} /> Colonne
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Every block type the "Composants" content builder can insert. Adding a
  * new one is: an entry here (icon/label/default props/editor) plus a
@@ -478,6 +587,13 @@ const BLOCKS: {
     Editor: ButtonBlockEditor,
   },
   { type: 'ad', label: 'Publicité', icon: Megaphone, defaultProps: {}, Editor: AdBlockEditor },
+  {
+    type: 'table',
+    label: 'Tableau',
+    icon: TableIcon,
+    defaultProps: { headerRow: true, rows: [['', ''], ['', '']] },
+    Editor: TableBlockEditor,
+  },
   {
     type: 'columns',
     label: 'Colonnes',

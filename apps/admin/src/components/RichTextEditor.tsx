@@ -5,6 +5,10 @@ import TiptapLink from '@tiptap/extension-link';
 import TiptapImage from '@tiptap/extension-image';
 import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
+import TiptapTable from '@tiptap/extension-table';
+import TiptapTableRow from '@tiptap/extension-table-row';
+import TiptapTableHeader from '@tiptap/extension-table-header';
+import TiptapTableCell from '@tiptap/extension-table-cell';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   AlignCenter,
@@ -12,6 +16,7 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  Columns3,
   Heading2,
   Heading3,
   Highlighter,
@@ -23,7 +28,10 @@ import {
   Paperclip,
   Quote,
   Redo2,
+  Rows3,
   Strikethrough,
+  Table as TableIcon,
+  Trash2,
   Undo2,
 } from 'lucide-react';
 import { LinkPopover } from './LinkPopover';
@@ -73,6 +81,10 @@ export function RichTextEditor({ value, onChange }: { value: string; onChange: (
       TiptapImage,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Highlight,
+      TiptapTable.configure({ resizable: true }),
+      TiptapTableRow,
+      TiptapTableHeader,
+      TiptapTableCell,
       FileEmbed,
     ],
     content: value,
@@ -165,6 +177,30 @@ export function RichTextEditor({ value, onChange }: { value: string; onChange: (
         <ToolbarButton label="Insérer un fichier (PDF, document…)" onClick={() => setFilePickerOpen(true)}>
           <Paperclip size={16} />
         </ToolbarButton>
+        <ToolbarButton
+          label="Insérer un tableau"
+          active={editor?.isActive('table')}
+          onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+        >
+          <TableIcon size={16} />
+        </ToolbarButton>
+        {editor?.isActive('table') && (
+          <>
+            <span className="mx-1 h-5 w-px bg-slate-300" aria-hidden="true" />
+            <ToolbarButton label="Ajouter une ligne" onClick={() => editor?.chain().focus().addRowAfter().run()}>
+              <Rows3 size={16} />
+            </ToolbarButton>
+            <ToolbarButton label="Ajouter une colonne" onClick={() => editor?.chain().focus().addColumnAfter().run()}>
+              <Columns3 size={16} />
+            </ToolbarButton>
+            <ToolbarButton label="Supprimer la ligne" onClick={() => editor?.chain().focus().deleteRow().run()}>
+              <Trash2 size={16} />
+            </ToolbarButton>
+            <ToolbarButton label="Supprimer le tableau" onClick={() => editor?.chain().focus().deleteTable().run()}>
+              <Trash2 size={16} className="text-red-600" />
+            </ToolbarButton>
+          </>
+        )}
       </div>
       <div className="rounded-b-lg border border-slate-200 bg-white px-4 py-3">
         <EditorContent

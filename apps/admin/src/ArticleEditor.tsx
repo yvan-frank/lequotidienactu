@@ -8,6 +8,10 @@ import TiptapTextStyle from '@tiptap/extension-text-style';
 import TiptapColor from '@tiptap/extension-color';
 import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
+import TiptapTable from '@tiptap/extension-table';
+import TiptapTableRow from '@tiptap/extension-table-row';
+import TiptapTableHeader from '@tiptap/extension-table-header';
+import TiptapTableCell from '@tiptap/extension-table-cell';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
@@ -19,6 +23,7 @@ import {
   Bold,
   CheckCircle2,
   Circle,
+  Columns3,
   Eye,
   Heading2,
   Heading3,
@@ -39,7 +44,10 @@ import {
   Palette,
   Quote,
   Redo2,
+  Rows3,
   Strikethrough,
+  Table as TableIcon,
+  Trash2,
   Undo2,
 } from 'lucide-react';
 import { api } from './api';
@@ -365,6 +373,30 @@ function EditorToolbar({
       <ToolbarButton label="Insérer un fichier (PDF, document…)" onClick={onInsertFile}>
         <Paperclip size={16} />
       </ToolbarButton>
+      <ToolbarButton
+        label="Insérer un tableau"
+        active={editor?.isActive('table')}
+        onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+      >
+        <TableIcon size={16} />
+      </ToolbarButton>
+      {editor?.isActive('table') && (
+        <>
+          <span className="mx-1 h-5 w-px bg-slate-300" aria-hidden="true" />
+          <ToolbarButton label="Ajouter une ligne" onClick={() => editor?.chain().focus().addRowAfter().run()}>
+            <Rows3 size={16} />
+          </ToolbarButton>
+          <ToolbarButton label="Ajouter une colonne" onClick={() => editor?.chain().focus().addColumnAfter().run()}>
+            <Columns3 size={16} />
+          </ToolbarButton>
+          <ToolbarButton label="Supprimer la ligne" onClick={() => editor?.chain().focus().deleteRow().run()}>
+            <Trash2 size={16} />
+          </ToolbarButton>
+          <ToolbarButton label="Supprimer le tableau" onClick={() => editor?.chain().focus().deleteTable().run()}>
+            <Trash2 size={16} className="text-red-600" />
+          </ToolbarButton>
+        </>
+      )}
       <ToolbarButton label="À lire aussi" onClick={onInsertArticleEmbed}>
         <Newspaper size={16} />
       </ToolbarButton>
@@ -465,6 +497,10 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
       TiptapColor,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Highlight,
+      TiptapTable.configure({ resizable: true }),
+      TiptapTableRow,
+      TiptapTableHeader,
+      TiptapTableCell,
       ArticleEmbed,
       AdEmbed,
       FaqEmbed,

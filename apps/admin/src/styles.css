@@ -211,3 +211,60 @@ html.is-scrolling {
 .ProseMirror s {
   text-decoration: line-through;
 }
+
+.ProseMirror mark {
+  background-color: #fef08a;
+  border-radius: 0.15rem;
+  padding: 0 0.1rem;
+}
+
+/* Tiptap's table extension ships unstyled by design — this is the
+   documented minimum (wrapper for horizontal scroll, cell borders, a
+   resize-cursor state, and a stripe for the header row). */
+.ProseMirror .tableWrapper {
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.ProseMirror table td,
+.ProseMirror table th {
+  position: relative;
+  min-width: 1em;
+  border: 1px solid #cbd5e1;
+  padding: 0.4rem 0.6rem;
+  vertical-align: top;
+}
+
+.ProseMirror table th {
+  background-color: #f1f5f9;
+  font-weight: 700;
+  text-align: left;
+}
+
+.ProseMirror table .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(194, 65, 12, 0.08);
+  pointer-events: none;
+}
+
+.ProseMirror table .column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: 0;
+  width: 4px;
+  background-color: #c2410c;
+  pointer-events: none;
+}
+
+.ProseMirror.resize-cursor {
+  cursor: col-resize;
+}

@@ -59,6 +59,7 @@ final class ContentBlocks
                 'divider' => '<hr class="my-8 border-slate-200">',
                 'video' => self::renderVideo($props),
                 'article' => self::renderArticleCard($props),
+                'table' => self::renderTable($props),
                 default => '',
             };
         }
@@ -94,6 +95,10 @@ final class ContentBlocks
                     is_array($props['columns'] ?? null) ? $props['columns'] : [],
                 )) . ' ',
                 'article' => trim((string) ($props['title'] ?? '')) . ' ',
+                'table' => implode(' ', array_map(
+                    static fn (mixed $row): string => is_array($row) ? implode(' ', array_map('strval', $row)) : '',
+                    is_array($props['rows'] ?? null) ? $props['rows'] : [],
+                )) . ' ',
                 default => '',
             };
         }
@@ -234,5 +239,50 @@ final class ContentBlocks
             return '';
         }
         return ArticleEmbeds::renderCard($articleId);
+    }
+
+    /**
+     * Renders as a plain <table>, styled the same way as a table pasted or
+     * typed directly into the classic Tiptap editor (they share the exact
+     * same markup shape — this is just Tiptap's own table output, hand-
+     * assembled from the builder's row/column grid instead).
+     */
+    private static function renderTable(array $props): string
+    {
+        $rows = is_array($props['rows'] ?? null) ? array_values($props['rows']) : [];
+        if ($rows === []) {
+            return '';
+        }
+        $headerRow = $props['headerRow'] ?? true;
+
+        $renderRow = static function (mixed $row, string $cellTag): string {
+            if (!is_array($row)) {
+                return '';
+            }
+            $cells = '';
+            foreach ($row as $cell) {
+                $cells .= '<' . $cellTag . '>' . nl2br(htmlspecialchars((string) $cell, ENT_QUOTES, 'UTF-8')) . '</' . $cellTag . '>';
+            }
+            return $cells === '' ? '' : '<tr>' . $cells . '</tr>';
+        };
+
+        $theadHtml = '';
+        if ($headerRow) {
+            $headRow = array_shift($rows);
+            $headHtml = $renderRow($headRow, 'th');
+            if ($headHtml !== '') {
+                $theadHtml = '<thead>' . $headHtml . '</thead>';
+            }
+        }
+
+        $bodyHtml = '';
+        foreach ($rows as $row) {
+            $bodyHtml .= $renderRow($row, 'td');
+        }
+
+        if ($theadHtml === '' && $bodyHtml === '') {
+            return '';
+        }
+        return '<table>' . $theadHtml . '<tbody>' . $bodyHtml . '</tbody></table>';
     }
 }
