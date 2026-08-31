@@ -48,6 +48,7 @@ import { ArticlePicker, type ArticleSummary } from './components/ArticlePicker';
 import { LinkPopover } from './components/LinkPopover';
 import { MediaPicker, type Media } from './components/MediaPicker';
 import { FilePicker, type UploadedFile } from './components/FilePicker';
+import { SidebarBuilder, type SidebarBlock } from './components/SidebarBuilder';
 import { Toast } from './components/Toast';
 import { CategoryCombobox, TagsInput } from './components/TaxonomyPicker';
 import { ArticleEmbed } from './extensions/ArticleEmbed';
@@ -88,6 +89,8 @@ type StoredArticle = {
   hero_created_at: string | null;
   is_sponsored: number | boolean;
   layout: 'standard' | 'magazine';
+  sidebar_mode: 'default' | 'custom';
+  sidebar_blocks_json: string | null;
   tag_ids: number[];
 };
 const slugify = (value: string) =>
@@ -409,6 +412,8 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
   const [heroAlt, setHeroAlt] = useState('');
   const [isSponsored, setIsSponsored] = useState(false);
   const [layout, setLayout] = useState<'standard' | 'magazine'>('standard');
+  const [sidebarMode, setSidebarMode] = useState<'default' | 'custom'>('default');
+  const [sidebarBlocks, setSidebarBlocks] = useState<SidebarBlock[]>([]);
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [bodyImagePickerOpen, setBodyImagePickerOpen] = useState(false);
   const [filePickerOpen, setFilePickerOpen] = useState(false);
@@ -502,6 +507,13 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
     setHeroAlt(article.hero_alt_text ?? '');
     setIsSponsored(Boolean(article.is_sponsored));
     setLayout(article.layout === 'magazine' ? 'magazine' : 'standard');
+    setSidebarMode(article.sidebar_mode === 'custom' ? 'custom' : 'default');
+    try {
+      const parsedSidebarBlocks = article.sidebar_blocks_json ? JSON.parse(article.sidebar_blocks_json) : [];
+      setSidebarBlocks(Array.isArray(parsedSidebarBlocks) ? parsedSidebarBlocks : []);
+    } catch {
+      setSidebarBlocks([]);
+    }
     setHeroMedia(
       article.hero_media_id && article.hero_url
         ? {
@@ -540,6 +552,8 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
             tag_ids: tagIds,
             is_sponsored: isSponsored,
             layout,
+            sidebar_mode: sidebarMode,
+            sidebar_blocks: sidebarMode === 'custom' ? sidebarBlocks : [],
           })
         : api.post('/admin/articles', {
             ...form,
@@ -550,6 +564,8 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
             tag_ids: tagIds,
             is_sponsored: isSponsored,
             layout,
+            sidebar_mode: sidebarMode,
+            sidebar_blocks: sidebarMode === 'custom' ? sidebarBlocks : [],
           })),
       status,
       wasCreate: !effectiveArticleId,
@@ -801,6 +817,58 @@ export function ArticleEditor({ articleId = null }: { articleId?: number | null 
               </div>
             </details>
           )}
+          <details className="rounded-lg border border-slate-200 bg-white p-6">
+            <summary className="cursor-pointer font-semibold">Barre latérale</summary>
+            <div className="mt-4">
+              <p className="text-sm text-slate-500">
+                Par défaut, la barre latérale affiche la publicité et les derniers articles. Passez
+                en mode « Composants » pour la personnaliser par glisser-déposer.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:w-80">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSidebarMode('default');
+                    markDirty();
+                  }}
+                  className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                    sidebarMode === 'default'
+                      ? 'border-orange-600 bg-orange-50 text-orange-800'
+                      : 'border-slate-200 font-normal text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  Classique
+                  <span className="mt-0.5 block font-normal text-slate-400">Pub + derniers articles</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSidebarMode('custom');
+                    markDirty();
+                  }}
+                  className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                    sidebarMode === 'custom'
+                      ? 'border-orange-600 bg-orange-50 text-orange-800'
+                      : 'border-slate-200 font-normal text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  Composants
+                  <span className="mt-0.5 block font-normal text-slate-400">Widgets personnalisés</span>
+                </button>
+              </div>
+              {sidebarMode === 'custom' && (
+                <div className="mt-5">
+                  <SidebarBuilder
+                    blocks={sidebarBlocks}
+                    onChange={(blocks) => {
+                      setSidebarBlocks(blocks);
+                      markDirty();
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </details>
           <details className="rounded-lg border border-slate-200 bg-white p-6">
             <summary className="cursor-pointer font-semibold">SEO & distribution</summary>
             <div className="mt-5 grid grid-cols-1 gap-4">

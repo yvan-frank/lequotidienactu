@@ -126,7 +126,7 @@ final class AdminArticleController
                     throw new \InvalidArgumentException('L’image de couverture sélectionnée est introuvable.');
                 }
             }
-            $statement = $pdo->prepare('INSERT INTO articles (category_id, author_id, hero_media_id, title, slug, excerpt, body, status, published_at, meta_title, meta_description, canonical_url, robots, primary_keyword, secondary_keywords, is_sponsored, layout) VALUES (:category_id, :author_id, :hero_media_id, :title, :slug, :excerpt, :body, :status, :published_at, :meta_title, :meta_description, :canonical_url, :robots, :primary_keyword, :secondary_keywords, :is_sponsored, :layout)');
+            $statement = $pdo->prepare('INSERT INTO articles (category_id, author_id, hero_media_id, title, slug, excerpt, body, status, published_at, meta_title, meta_description, canonical_url, robots, primary_keyword, secondary_keywords, is_sponsored, layout, sidebar_mode, sidebar_blocks_json) VALUES (:category_id, :author_id, :hero_media_id, :title, :slug, :excerpt, :body, :status, :published_at, :meta_title, :meta_description, :canonical_url, :robots, :primary_keyword, :secondary_keywords, :is_sponsored, :layout, :sidebar_mode, :sidebar_blocks_json)');
             $statement->execute($data);
             $id = (int) $pdo->lastInsertId();
             $this->syncTags($pdo, $id, $tagIds);
@@ -225,7 +225,7 @@ final class AdminArticleController
                 if (!$media->fetchColumn()) throw new \InvalidArgumentException('L’image de couverture sélectionnée est introuvable.');
             }
             $data['id'] = $id;
-            $statement = $pdo->prepare('UPDATE articles SET category_id = :category_id, author_id = :author_id, hero_media_id = :hero_media_id, title = :title, slug = :slug, excerpt = :excerpt, body = :body, status = :status, published_at = :published_at, meta_title = :meta_title, meta_description = :meta_description, canonical_url = :canonical_url, robots = :robots, primary_keyword = :primary_keyword, secondary_keywords = :secondary_keywords, is_sponsored = :is_sponsored, layout = :layout WHERE id = :id');
+            $statement = $pdo->prepare('UPDATE articles SET category_id = :category_id, author_id = :author_id, hero_media_id = :hero_media_id, title = :title, slug = :slug, excerpt = :excerpt, body = :body, status = :status, published_at = :published_at, meta_title = :meta_title, meta_description = :meta_description, canonical_url = :canonical_url, robots = :robots, primary_keyword = :primary_keyword, secondary_keywords = :secondary_keywords, is_sponsored = :is_sponsored, layout = :layout, sidebar_mode = :sidebar_mode, sidebar_blocks_json = :sidebar_blocks_json WHERE id = :id');
             $statement->execute($data);
             if ($statement->rowCount() === 0) {
                 $exists = $pdo->prepare('SELECT 1 FROM articles WHERE id = :id');
@@ -352,7 +352,27 @@ final class AdminArticleController
             'secondary_keywords' => trim((string) ($input['secondary_keywords'] ?? '')) ?: null,
             'is_sponsored' => !empty($input['is_sponsored']) ? 1 : 0,
             'layout' => ($input['layout'] ?? 'standard') === 'magazine' ? 'magazine' : 'standard',
+            'sidebar_mode' => ($input['sidebar_mode'] ?? 'default') === 'custom' ? 'custom' : 'default',
+            'sidebar_blocks_json' => $this->validateSidebarBlocks($input['sidebar_blocks'] ?? null),
         ];
+    }
+
+    /**
+     * Accepts the builder's array of { type, props } widget instances as-is
+     * (rendering validates/ignores unknown `type`s — see SidebarBlocks) and
+     * just guards against a malformed payload before it's stored as JSON.
+     */
+    private function validateSidebarBlocks(mixed $blocks): ?string
+    {
+        if (!is_array($blocks) || $blocks === []) {
+            return null;
+        }
+        foreach ($blocks as $block) {
+            if (!is_array($block) || !isset($block['type']) || !is_string($block['type'])) {
+                throw new \InvalidArgumentException('Bloc de barre latérale invalide.');
+            }
+        }
+        return json_encode(array_values($blocks), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
     private function validateTagIds(array $input, PDO $pdo): array
