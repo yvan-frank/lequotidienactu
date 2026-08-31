@@ -87,7 +87,7 @@ final class ArticleEmbeds
      * with a plain <a> tag in one of four configurable, dependency-free
      * styles, optionally stretched to the full content width.
      */
-    private static function renderButton(string $text, string $url, string $style, bool $fullWidth): string
+    public static function renderButton(string $text, string $url, string $style, bool $fullWidth): string
     {
         $text = trim($text);
         $url = trim($url);
@@ -156,7 +156,7 @@ final class ArticleEmbeds
      * "article_in_article" ad slot. Can appear multiple times; each
      * occurrence renders its own ad.
      */
-    private static function renderInArticleAd(): string
+    public static function renderInArticleAd(): string
     {
         return '<div class="not-prose my-8">' . Ads::renderSlot('article_in_article', 'Publicité') . '</div>';
     }
@@ -170,7 +170,18 @@ final class ArticleEmbeds
     private static function renderFaq(string $json): string
     {
         $items = json_decode($json, true);
-        if (!is_array($items) || $items === []) {
+        return is_array($items) ? self::renderFaqItems($items) : '';
+    }
+
+    /**
+     * Shared by the classic-editor FAQ embed (above, decoded from its
+     * data-faq="[…]" placeholder) and the "Composants" content builder's
+     * `faq` block (App\Support\ContentBlocks), which already has its items
+     * as a native array — no JSON round-trip needed there.
+     */
+    public static function renderFaqItems(array $items): string
+    {
+        if ($items === []) {
             return '';
         }
 

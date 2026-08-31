@@ -9,7 +9,18 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Heading, Image as ImageIcon, Trash2, Type } from 'lucide-react';
+import {
+  Columns2,
+  GripVertical,
+  Heading,
+  HelpCircle,
+  Image as ImageIcon,
+  Megaphone,
+  MousePointerClick,
+  Quote,
+  Trash2,
+  Type,
+} from 'lucide-react';
 import { MediaPicker, type Media } from './MediaPicker';
 import { RichTextEditor } from './RichTextEditor';
 
@@ -122,6 +133,214 @@ function ImageBlockEditor({
   );
 }
 
+function QuoteBlockEditor({
+  props,
+  onChange,
+}: {
+  props: Record<string, any>;
+  onChange: (props: Record<string, any>) => void;
+}) {
+  return (
+    <div className="grid gap-2">
+      <label className={fieldLabelClass}>
+        Citation
+        <textarea
+          rows={3}
+          className={fieldInputClass}
+          value={props.text ?? ''}
+          onChange={(event) => onChange({ ...props, text: event.target.value })}
+          placeholder="Le texte mis en avant…"
+        />
+      </label>
+      <label className={fieldLabelClass}>
+        Auteur / source (optionnel)
+        <input
+          className={fieldInputClass}
+          value={props.author ?? ''}
+          onChange={(event) => onChange({ ...props, author: event.target.value })}
+        />
+      </label>
+    </div>
+  );
+}
+
+type FaqItem = { question: string; answer: string };
+
+function FaqBlockEditor({
+  props,
+  onChange,
+}: {
+  props: Record<string, any>;
+  onChange: (props: Record<string, any>) => void;
+}) {
+  const items: FaqItem[] = Array.isArray(props.items) && props.items.length > 0 ? props.items : [{ question: '', answer: '' }];
+  const updateItem = (index: number, patch: Partial<FaqItem>) =>
+    onChange({ ...props, items: items.map((item, i) => (i === index ? { ...item, ...patch } : item)) });
+  const removeItem = (index: number) => {
+    if (items.length <= 1) return;
+    onChange({ ...props, items: items.filter((_, i) => i !== index) });
+  };
+  const addItem = () => onChange({ ...props, items: [...items, { question: '', answer: '' }] });
+
+  return (
+    <div className="grid gap-2">
+      {items.map((item, index) => (
+        <div key={index} className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+          <div className="flex items-center gap-2">
+            <input
+              className={`${fieldInputClass} mt-0 font-semibold`}
+              value={item.question}
+              onChange={(event) => updateItem(index, { question: event.target.value })}
+              placeholder={`Question ${index + 1}`}
+            />
+            <button
+              type="button"
+              onClick={() => removeItem(index)}
+              disabled={items.length <= 1}
+              className="shrink-0 rounded p-1.5 text-slate-400 hover:bg-slate-200 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label={`Retirer la question ${index + 1}`}
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+          <textarea
+            rows={2}
+            className={fieldInputClass}
+            value={item.answer}
+            onChange={(event) => updateItem(index, { answer: event.target.value })}
+            placeholder="Réponse…"
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addItem}
+        className="inline-flex w-fit items-center gap-1.5 rounded px-2 py-1.5 text-sm font-semibold text-orange-700 hover:bg-orange-50"
+      >
+        + Ajouter une question
+      </button>
+    </div>
+  );
+}
+
+const BUTTON_STYLES: { value: string; label: string }[] = [
+  { value: 'solid', label: 'Plein' },
+  { value: 'outline', label: 'Contour' },
+  { value: 'soft', label: 'Doux' },
+  { value: 'link', label: 'Lien' },
+];
+
+function ButtonBlockEditor({
+  props,
+  onChange,
+}: {
+  props: Record<string, any>;
+  onChange: (props: Record<string, any>) => void;
+}) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      <label className={fieldLabelClass}>
+        Texte du bouton
+        <input
+          className={fieldInputClass}
+          value={props.text ?? ''}
+          onChange={(event) => onChange({ ...props, text: event.target.value })}
+          placeholder="Découvrir"
+        />
+      </label>
+      <label className={fieldLabelClass}>
+        Lien
+        <input
+          className={fieldInputClass}
+          value={props.url ?? ''}
+          onChange={(event) => onChange({ ...props, url: event.target.value })}
+          placeholder="https://…"
+        />
+      </label>
+      <label className={fieldLabelClass}>
+        Style
+        <select
+          className={fieldInputClass}
+          value={props.style ?? 'solid'}
+          onChange={(event) => onChange({ ...props, style: event.target.value })}
+        >
+          {BUTTON_STYLES.map((style) => (
+            <option key={style.value} value={style.value}>
+              {style.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="mt-6 flex items-center gap-2 text-sm font-semibold text-slate-700">
+        <input
+          type="checkbox"
+          className="rounded border-slate-300"
+          checked={Boolean(props.fullWidth)}
+          onChange={(event) => onChange({ ...props, fullWidth: event.target.checked })}
+        />
+        Pleine largeur
+      </label>
+    </div>
+  );
+}
+
+function AdBlockEditor() {
+  return (
+    <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
+      Un emplacement publicitaire s’affichera automatiquement ici (masqué pour les lecteurs premium).
+    </p>
+  );
+}
+
+type ColumnData = { blocks: ContentBlock[] };
+
+function ColumnsBlockEditor({
+  props,
+  onChange,
+}: {
+  props: Record<string, any>;
+  onChange: (props: Record<string, any>) => void;
+}) {
+  const columns: ColumnData[] =
+    Array.isArray(props.columns) && props.columns.length >= 2 ? props.columns : [{ blocks: [] }, { blocks: [] }];
+  const setColumnBlocks = (index: number, blocks: ContentBlock[]) =>
+    onChange({ ...props, columns: columns.map((column, i) => (i === index ? { blocks } : column)) });
+  const setColumnCount = (count: number) => {
+    const next = [...columns];
+    while (next.length < count) next.push({ blocks: [] });
+    onChange({ ...props, columns: next.slice(0, count) });
+  };
+
+  return (
+    <div>
+      <label className={`${fieldLabelClass} sm:w-40`}>
+        Nombre de colonnes
+        <select
+          className={fieldInputClass}
+          value={columns.length}
+          onChange={(event) => setColumnCount(Number(event.target.value))}
+        >
+          <option value={2}>2 colonnes</option>
+          <option value={3}>3 colonnes</option>
+        </select>
+      </label>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {columns.map((column, index) => (
+          <div key={index} className="rounded-lg border border-dashed border-slate-300 bg-slate-50/60 p-2.5">
+            <p className="mb-2 text-xs font-bold tracking-widest text-slate-400 uppercase">Colonne {index + 1}</p>
+            <ContentBuilder
+              blocks={column.blocks}
+              onChange={(blocks) => setColumnBlocks(index, blocks)}
+              excludeTypes={['columns']}
+              compact
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Every block type the "Composants" content builder can insert. Adding a
  * new one is: an entry here (icon/label/default props/editor) plus a
@@ -143,6 +362,29 @@ const BLOCKS: {
     icon: ImageIcon,
     defaultProps: { url: '', media_id: null, alt: '', caption: '' },
     Editor: ImageBlockEditor,
+  },
+  { type: 'quote', label: 'Citation', icon: Quote, defaultProps: { text: '', author: '' }, Editor: QuoteBlockEditor },
+  {
+    type: 'faq',
+    label: 'FAQ',
+    icon: HelpCircle,
+    defaultProps: { items: [{ question: '', answer: '' }] },
+    Editor: FaqBlockEditor,
+  },
+  {
+    type: 'button',
+    label: 'Bouton',
+    icon: MousePointerClick,
+    defaultProps: { text: 'Découvrir', url: '', style: 'solid', fullWidth: false },
+    Editor: ButtonBlockEditor,
+  },
+  { type: 'ad', label: 'Publicité', icon: Megaphone, defaultProps: {}, Editor: AdBlockEditor },
+  {
+    type: 'columns',
+    label: 'Colonnes',
+    icon: Columns2,
+    defaultProps: { columns: [{ blocks: [] }, { blocks: [] }] },
+    Editor: ColumnsBlockEditor,
   },
 ];
 
@@ -197,11 +439,19 @@ function SortableBlock({
 export function ContentBuilder({
   blocks,
   onChange,
+  excludeTypes,
+  compact,
 }: {
   blocks: ContentBlock[];
   onChange: (blocks: ContentBlock[]) => void;
+  /** Block types hidden from this instance's palette — used by the Colonnes
+   * block's nested builders to keep columns from containing more columns. */
+  excludeTypes?: string[];
+  /** Tighter spacing for a builder nested inside another block (Colonnes). */
+  compact?: boolean;
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const availableBlocks = excludeTypes ? BLOCKS.filter((block) => !excludeTypes.includes(block.type)) : BLOCKS;
 
   const addBlock = (type: string) => {
     const blockDef = BLOCKS.find((candidate) => candidate.type === type);
@@ -223,21 +473,21 @@ export function ContentBuilder({
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-bold tracking-widest text-slate-400 uppercase">Ajouter un bloc</span>
-        {BLOCKS.map((block) => (
+        {!compact && <span className="text-xs font-bold tracking-widest text-slate-400 uppercase">Ajouter un bloc</span>}
+        {availableBlocks.map((block) => (
           <button
             key={block.type}
             type="button"
             onClick={() => addBlock(block.type)}
-            className="inline-flex items-center gap-1.5 rounded border border-dashed border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-orange-400 hover:bg-orange-50 hover:text-orange-800"
+            className={`inline-flex items-center gap-1.5 rounded border border-dashed border-slate-300 font-semibold text-slate-700 hover:border-orange-400 hover:bg-orange-50 hover:text-orange-800 ${compact ? 'px-2 py-1 text-[11px]' : 'px-3 py-1.5 text-xs'}`}
           >
-            <block.icon size={14} /> {block.label}
+            <block.icon size={compact ? 12 : 14} /> {block.label}
           </button>
         ))}
       </div>
       {blocks.length === 0 && (
-        <p className="mt-3 rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-          Ajoutez un bloc ci-dessus pour commencer à construire l’article.
+        <p className={`mt-3 rounded-lg border border-dashed border-slate-300 text-center text-slate-500 ${compact ? 'p-3 text-xs' : 'p-6 text-sm'}`}>
+          {compact ? 'Ajoutez un bloc.' : 'Ajoutez un bloc ci-dessus pour commencer à construire l’article.'}
         </p>
       )}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
