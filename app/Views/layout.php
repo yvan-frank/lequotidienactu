@@ -1,6 +1,7 @@
 <?php
 /** @var string $title */
 $currentPath = rtrim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/', '/') ?: '/';
+$adminUser = \App\Support\AdminSession::current();
 $seoSettings = \App\Support\Settings::get('seo', ['ga_measurement_id' => '', 'gsc_verification' => '', 'adsense_client' => '']);
 $generalSettings = \App\Support\Settings::get('general', [
     'tagline' => '',
@@ -87,8 +88,16 @@ $overflowNavCategories = array_slice($categoryTree, $maxVisibleNavCategories);
     <?= $headCode['head_html'] ?>
   <?php endif; ?>
 </head>
-<body class="overflow-x-hidden bg-stone-50 font-sans text-slate-900 antialiased">
-  <header data-site-header class="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur transition-all duration-300">
+<body class="overflow-x-hidden bg-stone-50 font-sans text-slate-900 antialiased<?= $adminUser !== null ? ' pt-10' : '' ?>">
+  <?php if ($adminUser !== null): ?>
+    <div class="fixed inset-x-0 top-0 z-[60] flex h-10 items-center justify-center gap-3 bg-slate-950 px-4 text-center text-xs font-semibold text-white sm:text-sm">
+      <span class="truncate">Connecté en tant qu’administrateur — <?= htmlspecialchars($adminUser['name']) ?></span>
+      <a class="inline-flex shrink-0 items-center gap-1 rounded-full bg-orange-600 px-3 py-1 font-bold text-white transition hover:bg-orange-700" href="/u/admin/">
+        Retour à l’espace admin
+      </a>
+    </div>
+  <?php endif; ?>
+  <header data-site-header class="sticky <?= $adminUser !== null ? 'top-10' : 'top-0' ?> z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur transition-all duration-300">
     <div data-site-header-inner class="site-header-inner mx-auto flex min-h-20 max-w-7xl items-center justify-between gap-4 px-6 py-3 transition-[min-height] duration-300">
       <a class="flex shrink-0 items-center" href="/" aria-label="Le Quotidien Actu - accueil"><img class="site-logo h-14 w-auto max-w-44 object-contain object-left transition-[height] duration-300" src="/assets/logo-header.png" alt="Le Quotidien Actu" width="1482" height="720"></a>
       <nav class="hidden items-center gap-1 text-sm font-medium lg:flex" aria-label="Rubriques">

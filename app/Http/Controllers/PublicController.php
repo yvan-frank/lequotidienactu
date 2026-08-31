@@ -533,12 +533,7 @@ final class PublicController
 
     private function isPreviewAuthorized(): bool
     {
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            session_name('lqa_admin');
-            session_start();
-        }
-
-        return isset($_SESSION['admin_user']);
+        return \App\Support\AdminSession::current() !== null;
     }
 
     private function publishedArticles(string|array|null $category = null, ?string $slug = null, bool $includeUnpublished = false, int $limit = 30, int $offset = 0): array
